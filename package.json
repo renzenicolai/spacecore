@@ -1,0 +1,23 @@
+{
+  "name": "tkkrlab-datastore",
+  "version": "1.0.0",
+  "description": "A generic datastore for storing all space related data.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Renze Nicolai",
+  "license": "GPLv3",
+  "dependencies": {
+    "crypt3": "^1.0.0",
+    "mqtt": "^2.18.1",
+    "mysql2": "^1.5.3",
+    "tree-node": "^0.2.3",
+    "uuid": "^3.3.2",
+    "ws": "^6.0.0"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.0",
+    "utf-8-validate": "^5.0.1"
+  }
+}
