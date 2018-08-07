@@ -19,6 +19,10 @@ class Persons {
 	}
 	
 	list(session, params={}) {
+		return this._table.list(params);
+	}
+	
+	/*list(session, params={}) {
 		return new Promise((resolve, reject) => {
 			if (typeof params !== 'object') return reject("Invalid params (1)");			
 			return this._table.selectRecords(params).then((records) => {
@@ -29,7 +33,7 @@ class Persons {
 				return resolve(result);
 			}).catch((error) => { return reject(error); });
 		});
-	}
+	}*/
 
 	details(session, params) {
 		return new Promise((resolve, reject) => {

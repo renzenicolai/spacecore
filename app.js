@@ -46,12 +46,12 @@ function start() {
         ws: websocketserver.ws()
 	});
 
-	var mqttclient = new Mqttclient({
+	/*var mqttclient = new Mqttclient({
 		port: 1883,
 		host: 'tkkrlab.space',
 		topic: 'test/bar',
 		rpc: rpc
-	});
+	});*/
 
 	var ping = new Ping();         //A simple ping endpoint to check connection status
 
