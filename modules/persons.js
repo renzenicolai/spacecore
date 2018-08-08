@@ -1,27 +1,54 @@
 "use strict";
 
-const precisionRound = require('../lib/precisionRound.js');
+const mime = require('mime-types');
 
 class Persons {
 	constructor(opts) {
 		this._opts = Object.assign({
-			database: null
+			database: null,
+			table: 'persons',
+			table_address: 'person_address',
+			table_bankaccount: 'person_bankaccount',
+			table_email: 'person_email',
+			table_phone: 'person_phone',
+			table_file: 'person_file'
 		}, opts);
 		if (this._opts.database == null) {
 			print("The persons module can not be started without a database!");
 			process.exit(1);
 		}
-		this._table = this._opts.database.table('persons');
-		
-		
-		this._table_member_types = this._opts.database.table('types_member');
-		this._table_member_history = this._opts.database.table('history_member');
+		this._table             = this._opts.database.table(this._opts.table);
+		this._table_address     = this._opts.database.table(this._opts.table_address);
+		this._table_bankaccount = this._opts.database.table(this._opts.table_bankaccount);
+		this._table_email       = this._opts.database.table(this._opts.table_email);
+		this._table_phone       = this._opts.database.table(this._opts.table_phone);
+		this._table_file        = this._opts.database.table(this._opts.table_file);
 	}
 	
 	list(session, params={}) {
-		return this._table.list(params);
+		return this._table.list(params).then((result) => {
+			var promises = [];
+			for (var i in result) {
+				promises.push(this._getFile(result[i].avatar));
+			}
+			return Promise.all(promises).then((resultArray) => {
+				for (var i in resultArray) {
+					result[i].avatar = null;
+					if (resultArray[i].file !== null) {
+						result[i].avatar = {
+							data: resultArray[i].file.toString('base64'),
+							mime: mime.lookup(resultArray[i].filename.split('.').pop())
+						};
+					}
+				}
+				return Promise.resolve(result);
+			}).catch((err) => {
+				console.log("FILE ERROR IN PERSON LIST 2",err);
+				return Promise.reject(err);
+			});
+		});
 	}
-	
+		
 	/*list(session, params={}) {
 		return new Promise((resolve, reject) => {
 			if (typeof params !== 'object') return reject("Invalid params (1)");			
@@ -34,14 +61,72 @@ class Persons {
 			}).catch((error) => { return reject(error); });
 		});
 	}*/
-
-	details(session, params) {
+	
+	_getFile(id) {
 		return new Promise((resolve, reject) => {
-			if(params.length != 1) return reject("invalid parameter count");
-			return this._table.selectRecords({"id":parseInt(params)}).then((records) => {
+			console.log('File', id);
+			if (id === null) {
+				return resolve({
+					id: null,
+					person_id: null,
+					filename: null,
+					file: null,
+					description: null
+				});
+			}
+			if(typeof id !== 'number') return reject("Invalid parameter: please provide the id of a file");
+			return this._table_file.selectRecords({"id":parseInt(id)}).then((records) => {
 				if (records.length > 1) return reject("Duplicate id error!");
 				var result = records[0].getFields();
 				return resolve(result);
+			}).catch((error) => { return reject(error); });
+		});
+	}
+
+	details(session, id) {
+		return new Promise((resolve, reject) => {
+			if(typeof id !== 'number') return reject("Invalid parameter: please provide the id of a person");
+			return this._table.selectRecords({"id":parseInt(id)}).then((records) => {
+				if (records.length > 1) return reject("Duplicate id error!");
+				var result = records[0].getFields();
+				return this._getFile(result.avatar).then((avatar_res) => {
+					if (avatar_res.file !== null) {
+						result.avatar = {
+								data: avatar_res.file.toString('base64'),
+								mime: mime.lookup(avatar_res.filename.split('.').pop())
+							};
+					}
+					return this._table_address.selectRecords({'person_id':id}).then((address_res) => {
+						var addresses = [];
+						for (var i in address_res) {
+							addresses.push(address_res[i].getFields());
+						}
+						result.address = addresses;
+						return this._table_bankaccount.selectRecords({'person_id':id}).then((bankaccount_res) => {
+							var bankaccounts = [];
+							for (var i in bankaccount_res) {
+								bankaccounts.push(bankaccount_res[i].getFields());
+							}
+							result.bankaccount = bankaccounts;
+							return this._table_email.selectRecords({'person_id':id}).then((email_res) => {
+								var email = [];
+								for (var i in email_res) {
+									email.push(email_res[i].getFields());
+								}
+								result.email = email;
+								return this._table_phone.selectRecords({'person_id':id}).then((phone_res) => {
+									var phone = [];
+									for (var i in phone_res) {
+										phone.push(phone_res[i].getFields());
+									}
+									result.phone = phone;
+									return resolve(result);
+								});
+							});
+						});
+					});
+					
+				});
 			}).catch((error) => { return reject(error); });
 		});
 	}

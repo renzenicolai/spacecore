@@ -17,6 +17,12 @@ const Persons  = require('./modules/persons.js');
 //const Journal  = require('./modules/journal.js');
 //const Deposit  = require('./modules/deposit.js');
 
+process.on('unhandledRejection', (err) => { 
+	console.error('======== UNHANDLED REJECTION ========');
+	console.error(err);
+	process.exit(1);
+})
+
 var database = new Database({
 	host: '127.0.0.1',
 	user: 'datastore',

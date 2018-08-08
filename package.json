@@ -10,6 +10,7 @@
   "license": "GPLv3",
   "dependencies": {
     "crypt3": "^1.0.0",
+    "mime-types": "^2.1.19",
     "mqtt": "^2.18.1",
     "mysql2": "^1.5.3",
     "uuid": "^3.3.2",
