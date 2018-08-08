@@ -131,6 +131,16 @@ class Persons {
 		});
 	}
 	
+	getAddress(id) {
+		return new Promise((resolve, reject) => {
+			if (typeof id !== 'number') return reject("Invalid parameter");
+			this._table_address.selectRecords({'id':id}).then((address_res) => {
+				if (address_res.length<1) return reject("Not found");
+				return resolve(address_res[0].getFields());
+			});
+		});
+	}
+	
 	/*add(session, params) {
 		return new Promise((resolve, reject) => {
 			if((params.length > 2) || (params.length < 1)) return reject("invalid parameter count");
@@ -157,6 +167,7 @@ class Persons {
 		if (prefix!="") prefix = prefix + "/";
 		rpc.addMethod(prefix+"list", this.list.bind(this));
 		rpc.addMethod(prefix+"details", this.details.bind(this));
+		rpc.addMethod(prefix+"address/get", this.getAddress.bind(this));
 		//rpc.addMethod(prefix+"add", this.add.bind(this));
 	}
 }
