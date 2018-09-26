@@ -11,28 +11,24 @@ class Persons {
 			table_bankaccount: 'person_bankaccount',
 			table_email: 'person_email',
 			table_phone: 'person_phone',
-			table_group_mapping: 'person_group_mapping',
-			table_group: 'person_group',
 			files: null
 		}, opts);
 		if (this._opts.database == null) {
 			print("The persons module can not be started without a database!");
 			process.exit(1);
 		}
-		this._table               = this._opts.database.table(this._opts.table);
-		this._table_address       = this._opts.database.table(this._opts.table_address);
-		this._table_bankaccount   = this._opts.database.table(this._opts.table_bankaccount);
-		this._table_email         = this._opts.database.table(this._opts.table_email);
-		this._table_phone         = this._opts.database.table(this._opts.table_phone);
-		this._table_group_mapping = this._opts.database.table(this._opts.table_group_mapping);
-		this._table_group         = this._opts.database.table(this._opts.table_group);
+		this._table             = this._opts.database.table(this._opts.table);
+		this._table_address     = this._opts.database.table(this._opts.table_address);
+		this._table_bankaccount = this._opts.database.table(this._opts.table_bankaccount);
+		this._table_email       = this._opts.database.table(this._opts.table_email);
+		this._table_phone       = this._opts.database.table(this._opts.table_phone);
 	}
 	
 	list(session, params={}) {
 		return this._table.list(params).then((result) => {
 			var promises = [];
 			for (var i in result) {
-				promises.push(this._getFile(result[i].avatar_id));
+				promises.push(this._getFile(result[i].avatar));
 			}
 			return Promise.all(promises).then((resultArray) => {
 				for (var i in resultArray) {
@@ -48,6 +44,19 @@ class Persons {
 			});
 		});
 	}
+		
+	/*list(session, params={}) {
+		return new Promise((resolve, reject) => {
+			if (typeof params !== 'object') return reject("Invalid params (1)");			
+			return this._table.selectRecords(params).then((records) => {
+				var result = [];
+				for (var i = 0; i<records.length; i++) {
+					result.push(records[i].getFields());
+				}
+				return resolve(result);
+			}).catch((error) => { return reject(error); });
+		});
+	}*/
 	
 	_getFile(id) {
 		if (this._opts.files === null) {
@@ -64,7 +73,7 @@ class Persons {
 			return this._table.selectRecords({"id":parseInt(id)}).then((records) => {
 				if (records.length > 1) return reject("Duplicate id error!");
 				var result = records[0].getFields();
-				return this._getFile(result.avatar_id).then((avatar_res) => {
+				return this._getFile(result.avatar).then((avatar_res) => {
 					if (avatar_res.file !== null) {
 						result.avatar = {
 								data: avatar_res.file.toString('base64'),
@@ -95,32 +104,14 @@ class Persons {
 										phone.push(phone_res[i].getFields());
 									}
 									result.phone = phone;
-									return this._table_group_mapping.selectRecords({'person_id':id}).then((group_res) => {
-										console.log("GROUP_MAP", group_res);
-										result.group = [];
-										if (group_res.length < 1 ) {
-											console.log("NOGRP", result);
-											return resolve(result);
-										}
-										var promises = [];
-										for (var i in group_res) {
-											promises.push(this._table_group.selectRecords({'id':group_res[i].getField('person_group_id')}));
-										}
-										return Promise.all(promises).then((results) => {
-											for (var i in results) {
-												for (var j in results[i]) {
-													result.group.push(results[i][j].getFields());
-												}
-											}
-											return resolve(result);
-										});
-									});
+									return resolve(result);
 								});
 							});
 						});
 					});
+					
 				});
-			});
+			}).catch((error) => { return reject(error); });
 		});
 	}
 	

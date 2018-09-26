@@ -11,11 +11,9 @@ const password   = require('../password.js');
 //Modules
 const Ping     = require('./modules/ping.js');
 const Sessions = require('./modules/sessions.js');
-const Users  = require('./modules/users.js');
+const Files    = require('./modules/files.js');
+const Users    = require('./modules/users.js');
 const Persons  = require('./modules/persons.js');
-//const Products = require('./modules/products.js');
-//const Journal  = require('./modules/journal.js');
-//const Deposit  = require('./modules/deposit.js');
 
 process.on('unhandledRejection', (err) => { 
 	console.error('======== UNHANDLED REJECTION ========');
@@ -63,15 +61,22 @@ function start() {
 
 	//database.registerRpcMethods(rpc, "db"); // <- Allows for executing raw queries. Do not enable in production!
 
-	var users = new Users({
+	var files = new Files({
 		database: database
+	});
+	
+	var users = new Users({
+		database: database,
+		files: files
 	});
 
 	var persons = new Persons({
-		database: database
+		database: database,
+		files: files
 	});
 
 	sessions.registerRpcMethods(rpc);
+	files.registerRpcMethods(rpc);
 	users.registerRpcMethods(rpc);
 	ping.registerRpcMethods(rpc);
 	persons.registerRpcMethods(rpc);

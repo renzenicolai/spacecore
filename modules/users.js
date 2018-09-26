@@ -1,13 +1,15 @@
 "use strict";
 
 const crypt = require('crypt3/sync');
+const mime  = require('mime-types');
 
 class Users {
 	constructor(opts) {
 		this._opts = Object.assign({
 			database: null,
 			table_users: 'users',
-			table_permissions: 'user_permissions'
+			table_permissions: 'user_permissions',
+			files: null
 		}, opts);
 						
 		if (this._opts.database === null) {
@@ -15,8 +17,8 @@ class Users {
 			process.exit(1);
 		}
 		
-		this._table = this._opts.database.table(this._opts.table_users);
-		this._tablePermissions = this._opts.database.table(this._opts.table_permissions);
+		this._table             = this._opts.database.table(this._opts.table_users);
+		this._tablePermissions  = this._opts.database.table(this._opts.table_permissions);
 		
 		if (this._table === null) {
 			console.log("Users table not found.");
@@ -36,20 +38,38 @@ class Users {
 			if (typeof params !== 'object') return reject("Invalid params (1)");
 			if (typeof params.username !== 'string') return reject("Invalid params (2)");
 			if (typeof params.password !== 'string') return reject("Invalid params (3)");
-			return this._table.selectRecords({'username':params.username, "active":1}).then((records) => {
+			return this._table.selectRecords({'user_name':params.username, "active":1}).then((records) => {
 				for (var i in records) {
 					records[i].print();
 					var hash = records[i].getField('password');
 					if (crypt(params.password, hash) === hash) {
-						console.log("PASS CORRECT");
+						//console.log("PASS CORRECT");
 						return this._getPermissions(records[i].getIndex()).then((permissions) => {
-							console.log("USER PERMS ADDED TO SESSION");
-							session.user = {
-								id: records[i].getIndex(),
-								username: records[i].getField('username'),
-								permissions: permissions
-							};
-							return resolve('ok');
+							return this._getFile(records[i].getField('avatar_id')).then((file) => {
+								//console.log("USER PERMS ADDED TO SESSION");
+								
+								console.log("FILES!!", file);
+								
+								var avatar = null;
+								if (file !== null) {
+									if (file.file !== null) {
+										avatar = {
+											data: file.file.toString('base64'),
+											mime: mime.lookup(file.filename.split('.').pop())
+										};
+									}
+								}
+								
+								session.user = {
+									id: records[i].getIndex(),
+									user_name: records[i].getField('user_name'),
+									full_name: records[i].getField('full_name'),
+									title: records[i].getField('title'),
+									avatar: avatar,
+									permissions: permissions
+								};
+								return resolve('ok');
+							});
 						});
 					}
 				}
@@ -71,16 +91,23 @@ class Users {
 	}
 	
 	list(params) {
-		return new Promise((resolve, reject) => {
-			return this._table.selectRecords().then((records) => {
-				var result = {};
-				for (var i = 0; i<records.length; i++) {
-					result[records[i].getIndex()] = {
-						username: records[i].getField('username'),
-						active: records[i].getField('active')
-					};
+		return this._table.list(params).then((result) => {
+			var promises = [];
+			for (var i in result) {
+				promises.push(this._getFile(result[i].avatar_id));
+			}
+			return Promise.all(promises).then((resultArray) => {
+				for (var i in resultArray) {
+					delete result[i].password;
+					result[i].avatar = null;
+					if (resultArray[i].file !== null) {
+						result[i].avatar = {
+							data: resultArray[i].file.toString('base64'),
+							mime: mime.lookup(resultArray[i].filename.split('.').pop())
+						};
+					}
 				}
-				return resolve(result);
+				return Promise.resolve(result);
 			});
 		});
 	}
@@ -88,15 +115,29 @@ class Users {
 	find(params) {
 		return new Promise((resolve, reject) => {
 			if(params.length != 1) return reject("invalid parameter count");
-			return this._table.selectRecords({"username":params[0]}).then((records) => {
+			return this._table.selectRecords({"user_name":params[0]}).then((records) => {
 				var result = {};
+				if (records.length < 1) return resolve([]);
 				for (var i = 0; i<records.length; i++) {
-					result[records[i].getIndex()] = {
-						username: records[i].getField('username'),
-						active: records[i].getField('active')
-					};
+					result[records[i].getIndex()] = records[i].getFields();
+					delete result[records[i].getIndex()].password;
 				}
-				return resolve(result);
+				var promises = [];
+				for (var i in result) {
+					promises.push(this._getFile(result[i].avatar_id));
+				}
+				return Promise.all(promises).then((resultArray) => {
+					for (var i in resultArray) {
+						result[i].avatar = null;
+						if (resultArray[i].file !== null) {
+							result[i].avatar = {
+								data: resultArray[i].file.toString('base64'),
+								mime: mime.lookup(resultArray[i].filename.split('.').pop())
+							};
+						}
+					}
+					return Promise.resolve(result);
+				});
 			});
 		});
 	}
@@ -112,19 +153,25 @@ class Users {
 	
 	add(params) {
 		return new Promise((resolve, reject) => {
-			if (typeof params !== 'object') return reject("Invalid params (1)");
-			if (typeof params.username !== 'string') return reject("Invalid params (2)");
-			if (typeof params.password !== 'string') return reject("Invalid params (3)");
-						   
-			this.find([params.username]).then((existingUsers) => {
+			if (typeof params !== 'object') return reject("Invalid params (object)");
+			if (typeof params.username !== 'string') return reject("Invalid params (username)");
+			if (typeof params.password !== 'string') return reject("Invalid params (password)");
+			if (typeof params.name !== 'string') return reject("Invalid params (name)");
+			if (typeof params.title !== 'string') return reject("Invalid params (title)");
+			console.log("PARAMS OK");
+			return this.find([params.username]).then((existingUsers) => {
 				if (existingUsers.length>0) {
+					console.log("USER EXISTS");
 					return reject("A user with the username '"+params.username+"' exists already");
 				} else {
+					console.log("CREATING USER");
 					var record = this._table.createRecord();
-					record.setField('username', params.username);
+					record.setField('user_name', params.username);
 					record.setField('password', crypt(params.password, crypt.createSalt('sha512')));
+					record.setField('full_name', params.name);
+					record.setField('title', params.title);
 					record.setField('active', 1);
-					resolve(record.flush());
+					return resolve(record.flush());
 				}
 			});
 		});
@@ -139,7 +186,7 @@ class Users {
 					return reject("A user with the username '"+params.username+"' exists already");
 				}
 				return this._getUserRecord(id).then( (user) => {
-					user.setField('username', params.username);
+					user.setField('user_name', params.username);
 					resolve(user.flush());
 				});
 			});
@@ -169,6 +216,14 @@ class Users {
 		this.changePassword({id: session.user.id, password: params.password});
 	}
 	
+	_getFile(id) {
+		if (this._opts.files === null) {
+			return new Promise((resolve, reject) => {
+				return resolve(null);
+			});
+		}
+		return this._opts.files.getFile(id);
+	}	
 
 	registerRpcMethods(rpc, prefix="user") {
 		if (prefix!=="") prefix = prefix + "/";
