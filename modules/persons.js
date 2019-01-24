@@ -9,7 +9,8 @@ class Persons {
 			table: 'persons',
 			table_group_mapping: 'person_group_mapping',
 			table_group: 'person_group',
-			files: null
+			files: null,
+			products: null
 		}, opts);
 		if (this._opts.database === null) {
 			console.log("The persons module can not be started without a database!");
@@ -30,10 +31,12 @@ class Persons {
 				for (var i in resultArray) {
 					result[i].avatar = null;
 					if ("file" in resultArray[i]) {
-						result[i].avatar = {
-							data: resultArray[i].file.toString('base64'),
-							mime: mime.lookup(resultArray[i].filename.split('.').pop())
-						};
+						if (resultArray[i].file !== null) {
+							result[i].avatar = {
+								data: resultArray[i].file.toString('base64'),
+								mime: mime.lookup(resultArray[i].filename.split('.').pop())
+							};
+						}
 					}
 				}
 				
@@ -94,12 +97,69 @@ class Persons {
 		return this._table_group.list(params);
 	}
 
+	add(session, params) {
+		if (typeof params != "string") {
+			return new Promise((resolve, reject) => {
+				return reject("Invalid argument.");
+			});
+		}
+		
+		return this.list(session, {nick_name: params}).then((result) => {
+			if (result.length > 0) return new Promise((resolve, reject) => {
+				console.log(result);
+				return reject("Nickname already in use for another user.");
+			});
+			return this._opts.products.findByNameLike(session, params).then((result) => {
+				if (result.length > 0) return new Promise((resolve, reject) => {
+					return reject("Nickname already in use for product.");
+				});
+								
+				return this.getGroups(session, {addToNew:1}).then((groupResult) => {
+					return this._opts.database.transaction("addPerson ("+params+")").then((dbTransaction) => {
+						var personRecord = this._table.createRecord();
+						personRecord.setField("nick_name", params);
+						personRecord.setField("first_name", params);
+						personRecord.setField("last_name", "");
+						personRecord.setField("saldo", 0);
+						return personRecord.flush(dbTransaction).then((personResult) => {
+							if (!personResult) {
+								console.log("Error: PERSON NOT CREATED");
+								return new Promise(function(resolve, reject) {
+									return reject("Error: person not created?!");
+								});
+							}
+							//console.log("RECORD", personRecord, dbTransaction, personResult);
+							var person_id = personRecord.getIndex();
+							//console.log("New user ID",person_id);
+							var mapping_record_promises = [];
+							for (var i in groupResult) {
+								var mappingRecord = this._table_group_mapping.createRecord();
+								mappingRecord.setField("person_group_id", groupResult[i].id);
+								mappingRecord.setField("person_id", person_id);
+								mapping_record_promises.push(mappingRecord.flush(dbTransaction));
+							}
+							return Promise.all(mapping_record_promises).then( (result) => {
+								dbTransaction.commit();
+								return "Account created!";
+							});
+						}).catch((error) => {
+							console.log("ERROR", error);
+							dbTransaction.rollback();
+							return error;
+						});
+					});
+				});
+			});
+		});
+	}
+	
 	registerRpcMethods(rpc, prefix="person") {
 		if (prefix!=="") prefix = prefix + "/";
 		rpc.addMethod(prefix+"list", this.list.bind(this));
 		rpc.addMethod(prefix+"find/id", this.findById.bind(this));
 		rpc.addMethod(prefix+"find", this.find.bind(this));
 		rpc.addMethod(prefix+"groups", this.getGroups.bind(this));
+		rpc.addMethod(prefix+"add", this.add.bind(this));
 	}
 }
 

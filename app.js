@@ -97,16 +97,17 @@ function start() {
 		files: files
 	});
 
-	var persons = new Persons({
-		database: database,
-		files: files
-	});
-	
 	var products = new Products({
 		database: database,
 		files: files
 	});
 	
+	var persons = new Persons({
+		database: database,
+		files: files,
+		products: products
+	});
+		
 	var transactions = new Transactions({
 		database: database,
 		persons: persons,

@@ -295,10 +295,8 @@ class Transactions {
 									}
 									
 									return Promise.all(selected_stock_promises).then((resultArray) => {
-										console.log("THEN STOCK ROW");
 										for (var i in resultArray) {
 											if (!resultArray[i]) {
-												console.log("ERROR STOCK ROW");
 												return new Promise(function(resolve, reject) {
 													return reject("Error: stock row not created?!");
 												});
@@ -317,7 +315,7 @@ class Transactions {
 												"person": person_record.getFields()
 											};
 										});
-									}).catch( (error) => { console.log("REJECT STOCK ROW"); return error; });
+									});
 								});
 							}).catch( (error) => {
 								console.log("ROLLBACK", error);
