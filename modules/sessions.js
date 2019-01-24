@@ -31,7 +31,7 @@ class Session {
 		}
 		
 		if ((this.user!==null) && (typeof this.user.permissions === 'object')) {
-			for (var i in this.user.permissions) {
+			for (i in this.user.permissions) {
 				console.log("PERM", method, this.user.permissions[i], method.startsWith(this.user.permissions[i]));
 				if (method.startsWith(this.user.permissions[i])) return true;
 			}

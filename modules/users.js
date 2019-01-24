@@ -11,27 +11,27 @@ class Users {
 			table_permissions: 'user_permissions',
 			files: null
 		}, opts);
-						
+
 		if (this._opts.database === null) {
-			print("The users module can not be started without a database!");
+			console.log("The users module can not be started without a database!");
 			process.exit(1);
 		}
-		
+
 		this._table             = this._opts.database.table(this._opts.table_users);
 		this._tablePermissions  = this._opts.database.table(this._opts.table_permissions);
-		
+
 		if (this._table === null) {
 			console.log("Users table not found.");
 			process.exit(1);
 		}
-		
+
 		if (this._tablePermissions === null) {
 			console.log("User permissions table not found.");
 			process.exit(1);
 		}
 		//console.log("table",this._table);
 	}
-			
+
 	authenticate(session, params) {
 		return new Promise((resolve, reject) => {
 			if (typeof session !== 'object') return reject("Invalid session");
@@ -47,9 +47,9 @@ class Users {
 						return this._getPermissions(records[i].getIndex()).then((permissions) => {
 							return this._getFile(records[i].getField('avatar_id')).then((file) => {
 								//console.log("USER PERMS ADDED TO SESSION");
-								
+
 								console.log("FILES!!", file);
-								
+
 								var avatar = null;
 								if (file !== null) {
 									if (file.file !== null) {
@@ -59,7 +59,7 @@ class Users {
 										};
 									}
 								}
-								
+
 								session.user = {
 									id: records[i].getIndex(),
 									user_name: records[i].getField('user_name'),
@@ -68,7 +68,13 @@ class Users {
 									avatar: avatar,
 									permissions: permissions
 								};
-								return resolve('ok');
+								var result = {
+									user_name: records[i].getField('user_name'),
+									full_name: records[i].getField('full_name'),
+									title: records[i].getField('title'),
+									permissions: permissions
+								};
+								return resolve(result);
 							});
 						});
 					}
@@ -77,7 +83,7 @@ class Users {
 			});
 		});
 	}
-	
+
 	_getPermissions(id) {
 		return new Promise((resolve, reject) => {
 			return this._tablePermissions.selectRecords({'user_id':id}).then((records) => {
@@ -89,7 +95,7 @@ class Users {
 			});
 		});
 	}
-	
+
 	list(params) {
 		return this._table.list(params).then((result) => {
 			var promises = [];
@@ -111,7 +117,7 @@ class Users {
 			});
 		});
 	}
-	
+
 	find(params) {
 		return new Promise((resolve, reject) => {
 			if(params.length != 1) return reject("invalid parameter count");
@@ -123,7 +129,7 @@ class Users {
 					delete result[records[i].getIndex()].password;
 				}
 				var promises = [];
-				for (var i in result) {
+				for (i in result) {
 					promises.push(this._getFile(result[i].avatar_id));
 				}
 				return Promise.all(promises).then((resultArray) => {
@@ -141,7 +147,7 @@ class Users {
 			});
 		});
 	}
-	
+
 	_getUserRecord(id) {
 		return new Promise((resolve, reject) => {
 			return this._table.selectRecords({"id":id}).then((records) => {
@@ -150,7 +156,7 @@ class Users {
 			});
 		});
 	}
-	
+
 	add(params) {
 		return new Promise((resolve, reject) => {
 			if (typeof params !== 'object') return reject("Invalid params (object)");
@@ -176,46 +182,46 @@ class Users {
 			});
 		});
 	}
-	
+
 	changeUsername(params) {
-			if (typeof params !== 'object') return reject("Invalid params (1)");
-			if (typeof params.id !== 'string') return reject("Invalid params (2)");
-			if (typeof params.username !== 'string') return reject("Invalid params (3)");
+			if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
+			if (typeof params.id !== 'string') return Promise.reject("Invalid params (2)");
+			if (typeof params.username !== 'string') return Promise.reject("Invalid params (3)");
 			return this.find([params.username]).then( (existingUsers) => {
 				if (existingUsers.length > 0) {
-					return reject("A user with the username '"+params.username+"' exists already");
+					return Promise.reject("A user with the username '"+params.username+"' exists already");
 				}
-				return this._getUserRecord(id).then( (user) => {
+				return this._getUserRecord(params.id).then( (user) => {
 					user.setField('user_name', params.username);
-					resolve(user.flush());
+					Promise.resolve(user.flush());
 				});
 			});
 	}
-	
+
 	changePassword(params) {
-			if (typeof params !== 'object') return reject("Invalid params (1)");
-			if (typeof params.id !== 'string') return reject("Invalid params (2)");
-			if (typeof params.password !== 'string') return reject("Invalid params (3)");
-			return this._getUserRecord(id).then( (user) => {
+			if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
+			if (typeof params.id !== 'string') return Promise.reject("Invalid params (2)");
+			if (typeof params.password !== 'string') return Promise.reject("Invalid params (3)");
+			return this._getUserRecord(params.id).then( (user) => {
 				user.setField('password', crypt(params.password, crypt.createSalt('sha512')));
-				resolve(user.flush());
+				Promise.resolve(user.flush());
 			});
 	}
-	
+
 	changeMyUsername(session, params) {
-		if (typeof params !== 'object') return reject("Invalid params (1)");
-		if (typeof params.username !== 'string') return reject("Invalid params (2)");
-		if (typeof session.user.id !== 'number')  return reject("There is no user associated with your session");
+		if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
+		if (typeof params.username !== 'string') return Promise.reject("Invalid params (2)");
+		if (typeof session.user.id !== 'number')  return Promise.reject("There is no user associated with your session");
 		return this.changeUsername({id: session.user.id, username: params.username});
 	}
-	
+
 	changeMyPassword(session, params) {
-		if (typeof params !== 'object') return reject("Invalid params (1)");
-		if (typeof params.password !== 'string') return reject("Invalid params (2)");
-		if (typeof session.user.id !== 'number')  return reject("There is no user associated with your session");
+		if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
+		if (typeof params.password !== 'string') return Promise.reject("Invalid params (2)");
+		if (typeof session.user.id !== 'number')  return Promise.reject("There is no user associated with your session");
 		this.changePassword({id: session.user.id, password: params.password});
 	}
-	
+
 	_getFile(id) {
 		if (this._opts.files === null) {
 			return new Promise((resolve, reject) => {
@@ -223,22 +229,22 @@ class Users {
 			});
 		}
 		return this._opts.files.getFile(id);
-	}	
+	}
 
 	registerRpcMethods(rpc, prefix="user") {
 		if (prefix!=="") prefix = prefix + "/";
-		
+
 		rpc.addMethod(prefix+"authenticate", this.authenticate.bind(this));
-		
+
 		rpc.addMethod(prefix+"list", this.list.bind(this));
 		rpc.addMethod(prefix+"find", this.find.bind(this));
-		
+
 		rpc.addMethod(prefix+"add", this.add.bind(this));
 		rpc.addMethod(prefix+"change/username", this.changeUsername.bind(this));
 		rpc.addMethod(prefix+"change/password", this.changePassword.bind(this));
 		rpc.addMethod(prefix+"change/my/username", this.changeMyUsername.bind(this));
 		rpc.addMethod(prefix+"change/my/password", this.changeMyPassword.bind(this));
-		
+
 		//rpc.addMethod(prefix+"remove", this.add.bind(this));
 		//rpc.addMethod(prefix+"update", this.add.bind(this));
 	}

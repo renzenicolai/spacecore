@@ -1,32 +1,59 @@
 "use strict";
 
 //Libraries
-const Rpc        = require('./lib/rpc.js');
-const Webserver  = require('./lib/webserver.js');
+const Rpc              = require('./lib/rpc.js');
+const Webserver        = require('./lib/webserver.js');
 const Websocketserver  = require('./lib/websocketserver.js');
-const Mqttclient = require('./lib/mqtt.js');
-const Database   = require('./lib/db.js');
-const password   = require('../password.js');
+const Mqttclient       = require('./lib/mqtt.js');
+const Database         = require('./lib/db.js');
+const fs               = require('fs'); 
+const password         = require('../password.js');
 
 //Modules
-const Ping     = require('./modules/ping.js');
-const Sessions = require('./modules/sessions.js');
-const Files    = require('./modules/files.js');
-const Users    = require('./modules/users.js');
-const Persons  = require('./modules/persons.js');
+const Ping             = require('./modules/ping.js');
+const Sessions         = require('./modules/sessions.js');
+const Files            = require('./modules/files.js');
+const Users            = require('./modules/users.js');
+const Persons          = require('./modules/persons.js');
+const Products         = require('./modules/products.js');
+const Transactions     = require('./modules/transactions.js');
+
+var now = new Date();
+var logFile = fs.createWriteStream('log/'+now.getTime()+'.txt');
 
 process.on('unhandledRejection', (err) => { 
+	logFile.write("UNHANDLED REJECTION: "+err+"\n");
 	console.error('======== UNHANDLED REJECTION ========');
 	console.error(err);
 	process.exit(1);
 })
 
+process.on('uncaughtException', (err) => { 
+	logFile.write("UNCAUGHT EXCEPTION: "+err+"\n");
+	console.error('======== UNCAUGHT EXCEPTION ========');
+	console.error(err);
+	process.exit(1);
+})
+
+process.on('SIGINT', () => {
+	console.log("\n======== APPLICATION INTERRUPTED ========");
+	logFile.write("Application interrupted.\n");
+	process.exit(0);
+});
+
+process.on('exit', (code) => {
+	console.log("Application terminated with code "+code);
+	logFile.write("Application terminated with code "+code+"\n");
+	logFile.end();
+});
+
 var database = new Database({
 	host: '127.0.0.1',
 	user: 'datastore',
 	password: password,
-	database: 'datastore',
-	onConnect: start
+	database: 'datastore_bar',
+	onConnect: start,
+	logFile: logFile
 });
 
 function start() {
@@ -43,7 +70,7 @@ function start() {
 
 	var webserver = new Webserver({
 		port: 8000,
-		host: '127.0.0.1',
+		host: '0.0.0.0',
 		queue: 512,
 		application: rpc,
 		mime: 'application/json',
@@ -74,12 +101,25 @@ function start() {
 		database: database,
 		files: files
 	});
+	
+	var products = new Products({
+		database: database,
+		files: files
+	});
+	
+	var transactions = new Transactions({
+		database: database,
+		persons: persons,
+		products: products
+	});
 
 	sessions.registerRpcMethods(rpc);
 	files.registerRpcMethods(rpc);
 	users.registerRpcMethods(rpc);
 	ping.registerRpcMethods(rpc);
 	persons.registerRpcMethods(rpc);
+	products.registerRpcMethods(rpc);
+	transactions.registerRpcMethods(rpc);
     
 	sessions.addAlwaysAllow('session/create');
     sessions.addAlwaysAllow('user/authenticate');
@@ -87,12 +127,6 @@ function start() {
 	
 	//console.log(rpc.listMethods());
     
-    
-	/*var products = new Products({
-		database: database
-	});
-	products.registerRpcMethods(rpc, "products");*/
-
 	/*var journal = new Journal({
 		database: database
 	});

@@ -12,7 +12,7 @@ class Ping {
 	}
 	
 	registerRpcMethods(rpc, prefix="") {
-		if (prefix!="") prefix = prefix + "/";
+		if (prefix!=="") prefix = prefix + "/";
 		rpc.addMethod(prefix+"ping", this.ping.bind(this));
 	}
 }
