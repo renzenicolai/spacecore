@@ -34,108 +34,98 @@ class Products {
 		this._table_identifier_type  = this._opts.database.table(this._opts.table_identifier_type);
 	}
 	
-	list(session, params) {
-		console.log("PRODUCTS LIST",params);
-		return this._table.list(params).then((result) => {
-			var promises = [];
-			for (var i in result) {
-				promises.push(this._getFile(result[i].picture_id));
+	async list(session, params) {
+		var products = await this._table.list(params);
+		
+		var promises = [];
+		for (var i in products) {
+			promises.push(this._getFileBase64(products[i].picture_id));
+		}
+		var pictures = await Promise.all(promises);
+		
+		for (var i in pictures) products[i].picture = pictures[i];
+		
+		promises = [];
+		for (i in products) {
+			promises.push(this._table_group_mapping.selectRecordsRaw("SELECT mapping.id as 'mapping_id', group.id, group.name, group.description FROM `product_group_mapping` AS `mapping` INNER JOIN `product_group` AS `group` ON mapping.product_group_id = group.id WHERE `product_id` = ?", [products[i].id], false));
+		}
+		var groups = await Promise.all(promises);
+		for (i in groups) products[i].groups = groups[i];
+					
+		promises = [];
+		for (i in products) {
+			promises.push(this._table_stock.selectRecordsRaw("SELECT `id`, `product_id`, `amount_initial`, `amount_current`, UNIX_TIMESTAMP(`timestamp_initial`) AS `timestamp_initial`, UNIX_TIMESTAMP(`timestamp_current`) AS `timestamp_current`, `person_id`, `comment` FROM `product_stock` WHERE `product_id` = ? AND `amount_current` > 0 ORDER BY `timestamp_initial` ASC", [products[i].id], false));
+		}
+		var stock = await Promise.all(promises);
+		for (i in stock) products[i].stock = stock[i];
+		
+		promises = [];
+		for (i in products) promises.push(this._table_brand.selectRecords({"id":products[i].brand_id}));
+		var brands = await Promise.all(promises);
+		for (i in brands) {
+			products[i].brand = null;
+			if (brands[i].length > 0) products[i].brand = brands[i][0].getFields();
+		}
+		
+		promises = [];
+		for (i in products) {
+			promises.push(this._table_identifier.selectRecords({product_id: products[i].id}));
+		}
+		var identifiers = await Promise.all(promises);
+		for (i in identifiers) {
+			products[i].identifier = null;
+			if (identifiers[i].length > 0) products[i].identifier = identifiers[i][0].getFields();
+		}
+		
+		promises = [];
+		for (var i in products) {
+			if (products[i].package_id !== null) {
+				promises.push(this._table_package.selectRecords({id: products[i].package_id}));
+			} else {
+				promises.push(new Promise((resolve, reject) => { resolve([]); }));
 			}
-			return Promise.all(promises).then((resultArray) => {
-				for (var i in resultArray) {
-					result[i].picture = null;
-					if ("file" in resultArray[i] && resultArray[i].file !== null) {
-						result[i].picture = {
-							data: resultArray[i].file.toString('base64'),
-							mime: mime.lookup(resultArray[i].filename.split('.').pop())
-						};
-					}
-				}
-				
-				var promises = [];
-				for (i in result) {
-					promises.push(this._table_group_mapping.selectRecordsRaw("SELECT mapping.id as 'mapping_id', group.id, group.name, group.description FROM `product_group_mapping` AS `mapping` INNER JOIN `product_group` AS `group` ON mapping.product_group_id = group.id WHERE `product_id` = ?", [result[i].id], false));
-				}
-				
-				return Promise.all(promises).then((resultArray) => {
-					for (i in resultArray) {
-						result[i].groups = resultArray[i];
-					}
-					
-					var promises = [];
-					for (i in result) {
-						promises.push(this._table_stock.selectRecordsRaw("SELECT stock.id as 'stock_id', location.id, location.name, location.description, location.sub, stock.id, stock.amount_current FROM `product_stock` AS `stock` INNER JOIN `product_location` AS `location` ON stock.product_location_id = location.id WHERE `product_id` = ? AND `amount_current` > 0 AND `visible` > 0 ORDER BY `timestamp_initial` ASC", [result[i].id], false));
-					}
-					
-					return Promise.all(promises).then((resultArray) => {
-						for (i in resultArray) {
-							result[i].stock = resultArray[i];
-						}
-						
-						var promises = [];
-						for (i in result) {
-							promises.push(this._table_brand.selectRecords({"id":result[i].brand_id}));
-						}
-						
-						return Promise.all(promises).then((resultArray) => {
-							for (i in resultArray) {
-								result[i].brand = null;
-								if (resultArray[i].length > 0) result[i].brand = resultArray[i][0].getFields();
-							}
-							
-							var promises = [];
-							for (i in result) {
-								promises.push(this._table_identifier.selectRecords({product_id: result[i].id}));
-							}
-							
-							return Promise.all(promises).then((resultArray) => {
-								for (i in resultArray) {
-									result[i].identifier = null;
-									if (resultArray[i].length > 0) result[i].identifier = resultArray[i][0].getFields();
-								}
-								
-								var promises = [];
-								for (var i in result) {
-									promises.push(this._table_package.selectRecords({id: result[i].package_id}));
-								}
-								
-								return Promise.all(promises).then((resultArray) => {
-									for (i in resultArray) {
-										result[i].package = null;
-										if (resultArray[i].length > 0) result[i].package = resultArray[i][0].getFields();
-									}
-									
-									var promises = [];
-									for (i in result) {
-										promises.push(this._table_price.selectRecords({product_id: result[i].id}));
-									}
-									
-									return Promise.all(promises).then((resultArray) => {
-										for (var i in resultArray) {
-											result[i].price = [];
-											for (var j in resultArray[i]) {
-												result[i].price.push(resultArray[i][j].getFields());
-											}
-										}
-										
-										return Promise.resolve(result);
-									});
-								});
-							});
-						});
-					});
-				});
-			});
-		});
+		}
+		var packages = await Promise.all(promises);
+		for (i in packages) {
+			products[i].package = null;
+			if (packages[i].length > 0) products[i].package = packages[i][0].getFields();
+		}
+		
+		promises = [];
+		for (i in products) {
+			promises.push(this._table_price.selectRecords({product_id: products[i].id}));
+		}
+		
+		var prices = await Promise.all(promises);
+		for (var i in prices) {
+			products[i].price = [];
+			for (var j in prices[i]) {
+				products[i].price.push(prices[i][j].getFields());
+			}
+		}
+		
+		return Promise.resolve(products);
 	}
-
-	_getFile(id) {
+	
+	_getFileRecord(id) {
 		if (this._opts.files === null) {
 			return new Promise((resolve, reject) => {
 				return resolve(null);
 			});
 		}
 		return this._opts.files.getFile(id);
+	}
+	
+	_getFileBase64(id) {
+		return this._getFileRecord(id).then((result) => {
+			if ("file" in result && result.file !== null) {
+				return {
+					data: result.file.toString('base64'),
+					mime: mime.lookup(result.filename.split('.').pop())
+				};
+			}
+			return null;
+		});
 	}
 	
 	findByName(session, params) {
@@ -176,7 +166,7 @@ class Products {
 		return this._table_identifier_type.list(params);
 	}
 	
-	getIdentifier(session, params) {
+	async getIdentifier(session, params) {
 		var barcode = null;
 		var type = null;
 		if (typeof params === "object") {
@@ -190,21 +180,23 @@ class Products {
 		} else {
 			return Promise.reject("Params should be string or object.");
 		}
-		console.log("getIdentifier", barcode, type);
-		return this.getIdentifierTypes().then((types) => {
-			var typesById = {};
-			for (var i in types) typesById[types[i].id] = types[i];
-			var typesByName = {};
-			for (i in types) typesByName[types[i].name] = types[i];
-			var query  = {value: barcode};
-			if (typeof type === "string") {
-				if (!(type in typesByName)) return Promise.reject("Unknown type");
-				query.type_id = typesByName[type].id;
-			} else if (typeof type === "number") {
-				query.type_id = type;
-			}
-			return this._table_identifier.list(query);
-		});
+
+		var types =  await this.getIdentifierTypes();
+		
+		var typesById = {};
+		for (var i in types) typesById[types[i].id] = types[i];
+		
+		var typesByName = {};
+		for (i in types) typesByName[types[i].name] = types[i];
+		
+		var query  = {value: barcode};
+		if (typeof type === "string") {
+			if (!(type in typesByName)) return Promise.reject("Unknown type");
+			query.type_id = typesByName[type].id;
+		} else if (typeof type === "number") {
+			query.type_id = type;
+		}
+		return this._table_identifier.list(query);
 	}
 	
 	getLocation(session, params) {
@@ -221,7 +213,7 @@ class Products {
 		return this._table_location.list(query);
 	}
 	
-	findByLocation(session, params) {
+	/*findByLocation(session, params) {
 		return this.getLocation(session, params).then((locations) => {
 			var location_ids = [];
 			for (var i in locations) location_ids.push(locations[i].id);
@@ -236,7 +228,7 @@ class Products {
 				return this.list(session, {id: product_ids});
 			});
 		});
-	}
+	}*/
 	
 	getStock(session, params) {
 		console.log(params);
@@ -257,7 +249,6 @@ class Products {
 	}
 	
 	getStockRecords(session, params) {
-		console.log("STOCK RECORDS QUERY", params);
 		return this._table_stock.selectRecords(params, "ORDER BY `timestamp_initial` ASC");
 	}
 	
@@ -265,20 +256,20 @@ class Products {
 		if (!("product_id" in params) && (typeof params.product_id === "number")) {
 			return new Promise((resolve, reject) => {return "Missing product_id param."; });
 		}
-		if (!("location_id" in params) && (typeof params.location_id === "number")) {
+		/*if (!("location_id" in params) && (typeof params.location_id === "number")) {
 			return new Promise((resolve, reject) => {return "Missing location_id param."; });
-		}
+		}*/
 		if (!("amount" in params) && (typeof params.amount === "number")) {
 			return new Promise((resolve, reject) => {return "Missing amount param."; });
 		}
 		var product = params.product_id;
-		var location = params.location_id;
+		//var location = params.location_id;
 		var amount = params.amount;
 		
-		return this._opts.database.transaction("addStock ("+product+", "+location+", "+amount+")").then((dbTransaction) => {
+		return this._opts.database.transaction("addStock (Product: "+product+", Amount: "+amount+")").then((dbTransaction) => {
 			var record = this._table_stock.createRecord();
 			record.setField("product_id", product);
-			record.setField("product_location_id", location);
+			//record.setField("product_location_id", location);
 			record.setField("amount_initial", amount);
 			record.setField("amount_current", amount);
 			return record.flush(dbTransaction).then((result) => {
@@ -316,6 +307,46 @@ class Products {
 		});
 	}
 	
+	async setPrice(session, params) {
+		if (!("product_id" in params) && (typeof params.product_id === "number")) {
+			return new Promise((resolve, reject) => {return "Missing product_id param."; });
+		}
+		if (!("group_id" in params) && (typeof params.group_id === "number")) {
+			return new Promise((resolve, reject) => {return "Missing group_id param."; });
+		}
+		if (!("amount" in params) && (typeof params.amount === "number")) {
+			return new Promise((resolve, reject) => {return "Missing amount param."; });
+		}
+		var product = params.product_id;
+		var group = params.group_id;
+		var amount = params.amount;
+		
+		var selectResult = await this._table_price.selectRecords({product_id: product, person_group_id: group});
+		
+		var record = null;
+		
+		if (selectResult.length < 1) {
+			record = this._table_price.createRecord();
+			record.setField("product_id", product);
+			record.setField("person_group_id", group);
+		} else if (selectResult.length > 1) {
+			return "Duplicate price record found. Check the database!";
+		} else {
+			record = selectResult[0];
+		}
+		record.setField("amount", amount);
+			
+		return this._opts.database.transaction("setPrice ("+product+", "+group+", "+amount+")").then((dbTransaction) => {				
+			return record.flush(dbTransaction).then((result) => {
+				dbTransaction.commit();
+				return result;
+			}).catch((error) => {
+				dbTransaction.rollback();
+				return error;
+			});
+		});
+	}
+	
 
 	registerRpcMethods(rpc, prefix="product") {
 		if (prefix!=="") prefix = prefix + "/";
@@ -324,7 +355,7 @@ class Products {
 		rpc.addMethod(prefix+"find/name/like", this.findByNameLike.bind(this));
 		rpc.addMethod(prefix+"find/id", this.findById.bind(this));
 		rpc.addMethod(prefix+"find/barcode", this.findByBarcode.bind(this));
-		rpc.addMethod(prefix+"find/location", this.findByLocation.bind(this));
+		//rpc.addMethod(prefix+"find/location", this.findByLocation.bind(this));
 		rpc.addMethod(prefix+"barcode", this.getIdentifier.bind(this));
 		rpc.addMethod(prefix+"barcode/types", this.getIdentifierTypes.bind(this));
 		rpc.addMethod(prefix+"location", this.getLocation.bind(this));
@@ -332,6 +363,7 @@ class Products {
 		rpc.addMethod(prefix+"stock/add", this.addStock.bind(this));
 		rpc.addMethod(prefix+"stock/remove", this.removeStock.bind(this));
 		rpc.addMethod(prefix+"add", this.add.bind(this));
+		rpc.addMethod(prefix+"price/set", this.setPrice.bind(this))
 	}
 }
 
