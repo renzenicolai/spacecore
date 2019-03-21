@@ -21,7 +21,7 @@ class SaldoVerification {
 			var transactions = await this._opts.transactions.select({person_id: persons[i].getIndex()});
 			var transactionSaldo = 0;
 			for (var j in transactions) {
-				transactionSaldo += transactions[j].getField("total");
+				transactionSaldo -= transactions[j].getField("total");
 			}
 			if (persons[i].getField("saldo") != transactionSaldo) {
 				console.log("Saldo verification failed for "+persons[i].getField("nick_name")+": saldo is "+persons[i].getField("saldo")+" and transaction total is "+transactionSaldo);
