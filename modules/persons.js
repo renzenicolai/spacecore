@@ -20,6 +20,10 @@ class Persons {
 		this._table_group_mapping = this._opts.database.table(this._opts.table_group_mapping);
 		this._table_group         = this._opts.database.table(this._opts.table_group);
 	}
+	
+	select(where={}, extra="", separator="AND") {
+		return this._table.selectRecords(where, extra, separator);
+	}
 
 	list(session, params) {
 		return this._table.list(params).then((result) => {

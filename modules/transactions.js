@@ -20,6 +20,10 @@ class Transactions {
 		this._table_rows               = this._opts.database.table(this._opts.table_rows);
 		this._table_rows_stock_mapping = this._opts.database.table(this._opts.table_rows_stock_mapping);
 	}
+	
+	select(where={}, extra="", separator="AND") {
+		return this._table.selectRecords(where, extra, separator);
+	}
 
 	list(session, params) {
 		return this._table.list(params).then((result) => {

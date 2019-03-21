@@ -18,6 +18,9 @@ const Persons          = require('./modules/persons.js');
 const Products         = require('./modules/products.js');
 const Transactions     = require('./modules/transactions.js');
 
+//Verifications
+const VerifySaldo      = require('./verification/saldo.js');
+
 var now = new Date();
 var logFile = fs.createWriteStream('log/'+now.getTime()+'.txt');
 
@@ -126,17 +129,14 @@ function start() {
     sessions.addAlwaysAllow('user/authenticate');
     sessions.addAlwaysAllow('ping');
 	
-	//console.log(rpc.listMethods());
-    
-	/*var journal = new Journal({
-		database: database
-	});
-	journal.registerRpcMethods(rpc, "journal");*/
-
-	/*var deposit = new Deposit({
-		database: database,
+	var verifications = [];
+	
+	verifications.push(new VerifySaldo({
 		persons: persons,
 		transactions: transactions
-	});
-	deposit.registerRpcMethods(rpc, "deposit");*/
+	}));
+	
+	for (var i in verifications) {
+		verifications[i].verify();
+	}
 }
