@@ -54,7 +54,7 @@ var database = new Database({
 	host: '127.0.0.1',
 	user: 'datastore',
 	password: password,
-	database: 'datastore_bar',
+	database: 'datastore',
 	onConnect: start,
 	logFile: logFile
 });
