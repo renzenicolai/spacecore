@@ -41,7 +41,7 @@ class Transactions {
 	}
 	
 	listLast(session, params) {
-		if (!typeof params === "number") return new Promise((resolve, reject) => {return "Invalid param.";});
+		if (!typeof params === "number") return new Promise((resolve, reject) => {return reject("Invalid param.");});
 		return this._table.listExtra({}, "ORDER BY `timestamp` DESC LIMIT "+params).then((result) => {
 			var promises = [];
 			for (var i in result) {
@@ -51,6 +51,38 @@ class Transactions {
 				for (var i in resultArray) {
 					result[i].rows = resultArray[i];
 				}
+				return result;
+			});
+		});
+	}
+	
+	listQuery(session, params) {
+		if ((typeof params !== "object") || (params.length < 1) || (params.length > 2)) {
+			return new Promise((resolve, reject) => {return reject("Invalid param.");});
+		}
+		var query = params[0];
+		var amount = null;
+		if (params.length > 1) {
+			amount = params[1];
+			if (typeof amount !== "number") {
+				return new Promise((resolve, reject) => {return reject("Invalid amount param.");});
+			}
+		}
+		var limit = "";
+		if (amount != null) {
+			limit = "DESC LIMIT "+amount;
+		}
+		console.log("NOW EXECUTING LIST-QUERY ",query,limit);
+		return this._table.listExtra(query, "ORDER BY `timestamp`"+limit).then((result) => {
+			var promises = [];
+			for (var i in result) {
+				promises.push(this._table_rows.selectRecords({"transaction_id":result[i].id},"","AND",false));
+			}
+			return Promise.all(promises).then((resultArray) => {
+				for (var i in resultArray) {
+					result[i].rows = resultArray[i];
+				}
+				console.log("DONE");
 				return result;
 			});
 		});
@@ -337,6 +369,7 @@ class Transactions {
 		if (prefix!=="") prefix = prefix + "/";
 		rpc.addMethod(prefix+"list", this.list.bind(this));
 		rpc.addMethod(prefix+"list/last", this.listLast.bind(this));
+		rpc.addMethod(prefix+"list/query", this.listQuery.bind(this));
 		rpc.addMethod(prefix+"execute", this.execute.bind(this));
 	}
 }

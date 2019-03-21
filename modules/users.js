@@ -96,7 +96,7 @@ class Users {
 		});
 	}
 
-	list(params) {
+	list(session, params) {
 		return this._table.list(params).then((result) => {
 			var promises = [];
 			for (var i in result) {
@@ -118,7 +118,7 @@ class Users {
 		});
 	}
 
-	find(params) {
+	find(session, params) {
 		return new Promise((resolve, reject) => {
 			if(params.length != 1) return reject("invalid parameter count");
 			return this._table.selectRecords({"user_name":params[0]}).then((records) => {
@@ -157,7 +157,7 @@ class Users {
 		});
 	}
 
-	add(params) {
+	add(session, params) {
 		return new Promise((resolve, reject) => {
 			if (typeof params !== 'object') return reject("Invalid params (object)");
 			if (typeof params.username !== 'string') return reject("Invalid params (username)");
@@ -183,7 +183,7 @@ class Users {
 		});
 	}
 
-	changeUsername(params) {
+	changeUsername(session, params) {
 			if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
 			if (typeof params.id !== 'string') return Promise.reject("Invalid params (2)");
 			if (typeof params.username !== 'string') return Promise.reject("Invalid params (3)");
@@ -198,7 +198,7 @@ class Users {
 			});
 	}
 
-	changePassword(params) {
+	changePassword(session, params) {
 			if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
 			if (typeof params.id !== 'string') return Promise.reject("Invalid params (2)");
 			if (typeof params.password !== 'string') return Promise.reject("Invalid params (3)");

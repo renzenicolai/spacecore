@@ -26,6 +26,7 @@ class Persons {
 	}
 
 	list(session, params) {
+		/* List, but filters groups out if user does not fit group policy */
 		return this._table.list(params).then((result) => {
 			var promises = [];
 			for (var i in result) {
@@ -60,6 +61,45 @@ class Persons {
 									result[i].groups.push(group);
 								}
 							}
+						}
+					}
+					return Promise.resolve(result);
+				});
+			});
+		});
+	}
+	
+	listFull(session, params) {
+		/* Normal list function */
+		return this._table.list(params).then((result) => {
+			var promises = [];
+			for (var i in result) {
+				promises.push(this._getFile(result[i].avatar_id));
+			}
+			return Promise.all(promises).then((resultArray) => {
+				for (var i in resultArray) {
+					result[i].avatar = null;
+					if ("file" in resultArray[i]) {
+						if (resultArray[i].file !== null) {
+							result[i].avatar = {
+								data: resultArray[i].file.toString('base64'),
+								mime: mime.lookup(resultArray[i].filename.split('.').pop())
+							};
+						}
+					}
+				}
+				
+				var promises = [];
+				for (i in result) {
+					promises.push(this._table_group_mapping.selectRecordsRaw("SELECT mapping.id as 'mapping_id', group.id, group.name, group.description, group.min_saldo, group.max_saldo, group.alert_msg, group.alert_sound, group.alert_visual, group.alert_mail FROM `person_group_mapping` AS `mapping` INNER JOIN `person_group` AS `group` ON mapping.person_group_id = group.id WHERE `person_id` = ?", [result[i].id], false));
+				}
+				
+				return Promise.all(promises).then((resultArray) => {
+					for (i in resultArray) {
+						result[i].groups = [];
+						for (var item in resultArray[i]) {
+							var group = resultArray[i][item];
+							result[i].groups.push(group);
 						}
 					}
 					return Promise.resolve(result);
@@ -102,28 +142,39 @@ class Persons {
 	}
 
 	add(session, params) {
-		if (typeof params != "string") {
+		var nick_name = "";
+		var first_name = "";
+		var last_name = "";
+		
+		if (typeof params === "string") {
+			nick_name = params;
+			first_name = params;
+		} else if ((typeof params === "object") && (typeof params.nick_name === "string")) {
+			nick_name = params.nick_name;
+			if (typeof params.first_name === "string") first_name = params.first_name;
+			if (typeof params.last_name === "string") last_name = params.last_name;
+		} else {
 			return new Promise((resolve, reject) => {
 				return reject("Invalid argument.");
 			});
 		}
-		
-		return this.list(session, {nick_name: params}).then((result) => {
+				
+		return this.list(session, {nick_name: nick_name}).then((result) => {
 			if (result.length > 0) return new Promise((resolve, reject) => {
 				console.log(result);
 				return reject("Nickname already in use for another user.");
 			});
-			return this._opts.products.findByNameLike(session, params).then((result) => {
+			return this._opts.products.findByNameLike(session, nick_name).then((result) => {
 				if (result.length > 0) return new Promise((resolve, reject) => {
 					return reject("Nickname already in use for product.");
 				});
 								
 				return this.getGroups(session, {addToNew:1}).then((groupResult) => {
-					return this._opts.database.transaction("addPerson ("+params+")").then((dbTransaction) => {
+					return this._opts.database.transaction("addPerson ("+nick_name+")").then((dbTransaction) => {
 						var personRecord = this._table.createRecord();
-						personRecord.setField("nick_name", params);
-						personRecord.setField("first_name", params);
-						personRecord.setField("last_name", "");
+						personRecord.setField("nick_name", nick_name);
+						personRecord.setField("first_name", first_name);
+						personRecord.setField("last_name", last_name);
 						personRecord.setField("saldo", 0);
 						return personRecord.flush(dbTransaction).then((personResult) => {
 							if (!personResult) {
@@ -160,6 +211,7 @@ class Persons {
 	registerRpcMethods(rpc, prefix="person") {
 		if (prefix!=="") prefix = prefix + "/";
 		rpc.addMethod(prefix+"list", this.list.bind(this));
+		rpc.addMethod(prefix+"listFull", this.listFull.bind(this));
 		rpc.addMethod(prefix+"find/id", this.findById.bind(this));
 		rpc.addMethod(prefix+"find", this.find.bind(this));
 		rpc.addMethod(prefix+"groups", this.getGroups.bind(this));
