@@ -208,6 +208,15 @@ class Persons {
 		});
 	}
 	
+	addGroup(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.id !== 'number') ||
+			(typeof params.group !== 'number')
+		) throw "Invalid parameters";
+		console.log("Stub: add group "+params.group+" to "+params.id);
+	}
+	
 	registerRpcMethods(rpc, prefix="person") {
 		if (prefix!=="") prefix = prefix + "/";
 		rpc.addMethod(prefix+"list", this.list.bind(this));

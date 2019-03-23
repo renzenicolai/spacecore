@@ -103,7 +103,6 @@ class Transactions {
 		var person = persons[0];
 		
 		return this._opts.persons.getRecord(person.id).then(person_record => {
-			//console.log(person_record);
 			
 			var product_amounts = {};
 			var product_stocks = {};
@@ -207,7 +206,6 @@ class Transactions {
 						record.setField("amount", product_amounts[product.id]);
 						transaction_rows.push(record);
 						transaction_total += price*product_amounts[product.id];
-						//console.log("ADD ROW PR", record, price);
 						
 						var blockIfNotInStock = false;
 						
@@ -291,18 +289,12 @@ class Transactions {
 							}
 							transaction_rows.push(otherRecord);
 							transaction_total += params.other[i].price;
-							//console.log("ADD ROW OT", record, params.other[i].price);
 						}
 					}
-					
-					//console.log("ROWS DONE", transaction_rows, transaction_total);
 					
 					transaction.setField("total", transaction_total);
 					var saldo = person_record.getField("saldo");
 					person_record.setField("saldo", saldo - transaction_total);
-					//console.log("Transaction total:", transaction_total);
-					//console.log("New saldo:", saldo - transaction_total);
-										
 					
 					//Complete the transaction
 					return this._opts.database.transaction(person_record.getField("nick_name")).then((dbTransaction) => {

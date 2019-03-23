@@ -185,7 +185,7 @@ class Users {
 
 	changeUsername(session, params) {
 			if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
-			if (typeof params.id !== 'string') return Promise.reject("Invalid params (2)");
+			if (typeof params.id !== 'number') return Promise.reject("Invalid params (2)");
 			if (typeof params.username !== 'string') return Promise.reject("Invalid params (3)");
 			return this.find([params.username]).then( (existingUsers) => {
 				if (existingUsers.length > 0) {
@@ -200,7 +200,7 @@ class Users {
 
 	changePassword(session, params) {
 			if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
-			if (typeof params.id !== 'string') return Promise.reject("Invalid params (2)");
+			if (typeof params.id !== 'number') return Promise.reject("Invalid params (2)");
 			if (typeof params.password !== 'string') return Promise.reject("Invalid params (3)");
 			return this._getUserRecord(params.id).then( (user) => {
 				user.setField('password', crypt(params.password, crypt.createSalt('sha512')));
