@@ -204,7 +204,6 @@ class Transactions {
 						});
 						record.setField("price", price);
 						record.setField("amount", product_amounts[product.id]);
-						transaction_rows.push(record);
 						transaction_total += price*product_amounts[product.id];
 						
 						var blockIfNotInStock = false;
@@ -266,7 +265,7 @@ class Transactions {
 							});
 						}
 						
-						console.log("Get stock from", selectedStock);
+						transaction_rows.push(record);
 					}
 					
 					if ("other" in params) {
@@ -307,7 +306,7 @@ class Transactions {
 							var transaction_id = transaction.getIndex();
 							for (var i in transaction_rows) {
 								transaction_rows[i].setField("transaction_id", transaction_id);
-								promise_rows.push(transaction_rows[i].flush(dbTransaction));
+								promise_rows.push(transaction_rows[i].flush(dbTransaction, true));
 							}
 							return Promise.all(promise_rows).then((resultArray) => {
 								for (var i in resultArray) {

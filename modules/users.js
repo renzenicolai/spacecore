@@ -165,7 +165,7 @@ class Users {
 			if (typeof params.name !== 'string') return reject("Invalid params (name)");
 			if (typeof params.title !== 'string') return reject("Invalid params (title)");
 			console.log("PARAMS OK");
-			return this.find([params.username]).then((existingUsers) => {
+			return this.find(session, [params.username]).then((existingUsers) => {
 				if (existingUsers.length>0) {
 					console.log("USER EXISTS");
 					return reject("A user with the username '"+params.username+"' exists already");
