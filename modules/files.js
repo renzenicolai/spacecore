@@ -15,31 +15,33 @@ class Persons {
 		this._table             = this._opts.database.table(this._opts.table);
 	}
 	
-	getFile(id) {
+	getFileAsRecord(id) {
 		return new Promise((resolve, reject) => {
-			//console.log('File', id);
-			if (id === null) {
-				return resolve({
-					id: null,
-					user_id: null,
-					filename: null,
-					file: null,
-					description: null
-				});
-			}
+			if (id === null) return resolve(null);
 			if(typeof id !== 'number') return reject("Invalid parameter: please provide the id of a file");
 			return this._table.selectRecords({"id":parseInt(id)}).then((records) => {
-				//console.log("FILE RECORDS", records);
+				console.log("SELECT RECORDS RESULT", records);
 				if (records.length > 1) return reject("Duplicate id error!");
-				var result = records[0].getFields();
-				return resolve(result);
+				return resolve(records[0]);
 			}).catch((error) => { return reject(error); });
 		});
+	}
+	
+	async getFileAsBase64(id) {
+		var result = await this.getFileAsRecord(id);
+		if (result === null) return null;
+		result = result.getFields();
+		if (result.file === null) return null;
+		
+		return {
+			data: result.file.toString('base64'),
+			mime: mime.lookup(result.filename.split('.').pop())
+		};
 	}
 
 	registerRpcMethods(rpc, prefix="files") {
 		if (prefix!=="") prefix = prefix + "/";
-		rpc.addMethod(prefix+"get", this.getFile.bind(this));
+		rpc.addMethod(prefix+"get", this.getFileAsBase64.bind(this));
 	}
 }
 

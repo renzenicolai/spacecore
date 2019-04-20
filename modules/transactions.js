@@ -158,7 +158,7 @@ class Transactions {
 						});
 					}
 					var product_id = product_results[product][0]['id'];
-					stock_promises.push(this._opts.products.getStockRecords(session, {'product_id': product_id, 'amount_current':{">":0}}));
+					stock_promises.push(this._opts.products.listStockRecords(session, {'product_id': product_id, 'amount_current':{">":0}}));
 				}
 				
 				return Promise.all(stock_promises).then((stockRecords) => {					
@@ -247,6 +247,7 @@ class Transactions {
 									amountRemaining -= amountInCurrentStock;
 								}
 								requestedStockList[item].setField("amount_current", amountInCurrentStock - amountFromCurrentStock);
+								requestedStockList[item].setFieldDate("timestamp_current"); //Update to current timestamp
 								selectedStock.push(requestedStockList[item]);
 								
 								//This creates the mapping record that links each stock mutation to the transaction row responsible

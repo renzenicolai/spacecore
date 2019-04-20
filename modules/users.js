@@ -45,21 +45,7 @@ class Users {
 					if (crypt(params.password, hash) === hash) {
 						//console.log("PASS CORRECT");
 						return this._getPermissions(records[i].getIndex()).then((permissions) => {
-							return this._getFile(records[i].getField('avatar_id')).then((file) => {
-								//console.log("USER PERMS ADDED TO SESSION");
-
-								console.log("FILES!!", file);
-
-								var avatar = null;
-								if (file !== null) {
-									if (file.file !== null) {
-										avatar = {
-											data: file.file.toString('base64'),
-											mime: mime.lookup(file.filename.split('.').pop())
-										};
-									}
-								}
-
+							return this._opts.files.getFileAsBase64(records[i].getField('avatar_id')).then((avatar) => {
 								session.user = {
 									id: records[i].getIndex(),
 									user_name: records[i].getField('user_name'),
@@ -100,18 +86,12 @@ class Users {
 		return this._table.list(params).then((result) => {
 			var promises = [];
 			for (var i in result) {
-				promises.push(this._getFile(result[i].avatar_id));
+				promises.push(this._opts.files.getFileAsBase64(result[i].avatar_id));
 			}
 			return Promise.all(promises).then((resultArray) => {
 				for (var i in resultArray) {
 					delete result[i].password;
-					result[i].avatar = null;
-					if (resultArray[i].file !== null) {
-						result[i].avatar = {
-							data: resultArray[i].file.toString('base64'),
-							mime: mime.lookup(resultArray[i].filename.split('.').pop())
-						};
-					}
+					result[i].avatar = resultArray[i];
 				}
 				return Promise.resolve(result);
 			});
@@ -130,17 +110,11 @@ class Users {
 				}
 				var promises = [];
 				for (i in result) {
-					promises.push(this._getFile(result[i].avatar_id));
+					promises.push(this._opts.files.getFileAsBase64(result[i].avatar_id));
 				}
 				return Promise.all(promises).then((resultArray) => {
 					for (var i in resultArray) {
-						result[i].avatar = null;
-						if (resultArray[i].file !== null) {
-							result[i].avatar = {
-								data: resultArray[i].file.toString('base64'),
-								mime: mime.lookup(resultArray[i].filename.split('.').pop())
-							};
-						}
+						result[i].avatar = resultArrau[i];
 					}
 					return Promise.resolve(result);
 				});
@@ -220,15 +194,6 @@ class Users {
 		if (typeof params.password !== 'string') return Promise.reject("Invalid params (2)");
 		if (typeof session.user.id !== 'number')  return Promise.reject("There is no user associated with your session");
 		this.changePassword({id: session.user.id, password: params.password});
-	}
-
-	_getFile(id) {
-		if (this._opts.files === null) {
-			return new Promise((resolve, reject) => {
-				return resolve(null);
-			});
-		}
-		return this._opts.files.getFile(id);
 	}
 
 	registerRpcMethods(rpc, prefix="user") {

@@ -24,23 +24,14 @@ class Persons {
 	/* Persons */
 	
 	list(session, params) {
-		/* List, but filters groups out if user does not fit group policy */
 		return this._table.list(params).then((result) => {
 			var promises = [];
 			for (var i in result) {
-				promises.push(this._getFile(result[i].avatar_id));
+				promises.push(this._opts.files.getFileAsBase64(result[i].avatar_id));
 			}
 			return Promise.all(promises).then((resultArray) => {
 				for (var i in resultArray) {
-					result[i].avatar = null;
-					if ("file" in resultArray[i]) {
-						if (resultArray[i].file !== null) {
-							result[i].avatar = {
-								data: resultArray[i].file.toString('base64'),
-								mime: mime.lookup(resultArray[i].filename.split('.').pop())
-							};
-						}
-					}
+					result[i].avatar = resultArray[i];
 				}
 				
 				var promises = [];
@@ -360,17 +351,6 @@ class Persons {
 		await result.destroy(dbTransaction); //Delete the group itself
 		await dbTransaction.commit(); //Commit the full transaction
 		return true;
-	}
-		
-	/* Internal helper functions */
-	
-	_getFile(id) {
-		if (this._opts.files === null) {
-			return new Promise((resolve, reject) => {
-				return resolve(null);
-			});
-		}
-		return this._opts.files.getFile(id);
 	}
 	
 	/* Exported helper functions */

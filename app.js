@@ -17,6 +17,7 @@ const Users            = require('./modules/users.js');
 const Persons          = require('./modules/persons.js');
 const Products         = require('./modules/products.js');
 const Transactions     = require('./modules/transactions.js');
+const Mt940            = require('./modules/mt940.js');
 
 //Verifications
 const VerifySaldo      = require('./verification/saldo.js');
@@ -116,6 +117,10 @@ function start() {
 		persons: persons,
 		products: products
 	});
+	
+	var mt940 = new Mt940({
+		//No options.
+	});
 
 	sessions.registerRpcMethods(rpc);
 	files.registerRpcMethods(rpc);
@@ -124,6 +129,7 @@ function start() {
 	persons.registerRpcMethods(rpc);
 	products.registerRpcMethods(rpc);
 	transactions.registerRpcMethods(rpc);
+	mt940.registerRpcMethods(rpc);
     
 	sessions.addAlwaysAllow('session/create');
     sessions.addAlwaysAllow('user/authenticate');

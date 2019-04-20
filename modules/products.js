@@ -6,6 +6,7 @@ class Products {
 	constructor(opts) {
 		this._opts = Object.assign({
 			database: null,
+			files: null,
 			table: 'products',
 			table_group_mapping: 'product_group_mapping',
 			table_group: 'product_group',
@@ -15,11 +16,15 @@ class Products {
 			table_price: 'product_price',
 			table_stock: 'product_stock',
 			table_identifier: 'product_identifier',
-			table_identifier_type: 'product_identifier_type',
-			files: null
+			table_identifier_type: 'product_identifier_type'
 		}, opts);
 		if (this._opts.database === null) {
 			console.log("The products module can not be started without a database!");
+			process.exit(1);
+		}
+		
+		if (this._opts.files === null) {
+			console.log("The products module can not be started without the files module!");
 			process.exit(1);
 		}
 		this._table                  = this._opts.database.table(this._opts.table);
@@ -39,7 +44,7 @@ class Products {
 		
 		var promises = [];
 		for (var i in products) {
-			promises.push(this._getFileBase64(products[i].picture_id));
+			promises.push(this._opts.files.getFileAsBase64(products[i].picture_id));
 		}
 		var pictures = await Promise.all(promises);
 		
@@ -54,7 +59,7 @@ class Products {
 					
 		promises = [];
 		for (i in products) {
-			promises.push(this._table_stock.selectRecordsRaw("SELECT `id`, `product_id`, `amount_initial`, `amount_current`, UNIX_TIMESTAMP(`timestamp_initial`) AS `timestamp_initial`, UNIX_TIMESTAMP(`timestamp_current`) AS `timestamp_current`, `person_id`, `comment` FROM `product_stock` WHERE `product_id` = ? AND `amount_current` > 0 ORDER BY `timestamp_initial` ASC", [products[i].id], false));
+			promises.push(this._table_stock.selectRecordsRaw("SELECT `id`, `product_id`, `amount_initial`, `amount_current`, `timestamp_initial`, `timestamp_current`, `person_id`, `comment` FROM `product_stock` WHERE `product_id` = ? AND `amount_current` > 0 ORDER BY `timestamp_initial` ASC", [products[i].id], false));
 		}
 		var stock = await Promise.all(promises);
 		for (i in stock) products[i].stock = stock[i];
@@ -107,27 +112,18 @@ class Products {
 		return Promise.resolve(products);
 	}
 	
-	_getFileRecord(id) {
-		if (this._opts.files === null) {
-			return new Promise((resolve, reject) => {
-				return resolve(null);
-			});
-		}
-		return this._opts.files.getFile(id);
+	async add(session, params) {
+		return "Not implemented";
 	}
 	
-	_getFileBase64(id) {
-		return this._getFileRecord(id).then((result) => {
-			if ("file" in result && result.file !== null) {
-				return {
-					data: result.file.toString('base64'),
-					mime: mime.lookup(result.filename.split('.').pop())
-				};
-			}
-			return null;
-		});
+	async edit(session, params) {
+		return "Not implemented";
 	}
 	
+	async remove(session, params) {
+		return "Not implemented";
+	}
+		
 	findByName(session, params) {
 		return this.list(session, {"name": params});
 	}
@@ -146,75 +142,18 @@ class Products {
 	}
 	
 	findByBarcode(session, params) {
-		return this.getIdentifier(session, params).then((result) => {
+		return this.listIdentifiers(session, params).then((result) => {
 			if (result.length < 1) return Promise.resolve([]); //No results, because the barcode was not found.
 			var products = [];
 			for (var i in result) {
-				console.log("RES", result[i]);
 				products.push(result[i].product_id);
 			}
-			var query = {id: products};
-			return this.list(session, query);
+			return this.list(session, {id: products});
 		});
 	}
 	
-	add(session, params) {
-		return Promise.reject("Not implemented");
-	}
-	
-	getIdentifierTypes(session, params) {
-		return this._table_identifier_type.list(params);
-	}
-	
-	async getIdentifier(session, params) {
-		var barcode = null;
-		var type = null;
-		if (typeof params === "object") {
-			console.log("Params is object.");
-			if (!("barcode" in params)) return Promise.reject("Field 'barcode' not set.");
-			barcode = params.barcode;
-			if ("type" in params) type = params.type;
-		} else if (typeof params === "string") {
-			console.log("Params is string.");
-			barcode = params;
-		} else {
-			return Promise.reject("Params should be string or object.");
-		}
-
-		var types =  await this.getIdentifierTypes();
-		
-		var typesById = {};
-		for (var i in types) typesById[types[i].id] = types[i];
-		
-		var typesByName = {};
-		for (i in types) typesByName[types[i].name] = types[i];
-		
-		var query  = {value: barcode};
-		if (typeof type === "string") {
-			if (!(type in typesByName)) return Promise.reject("Unknown type");
-			query.type_id = typesByName[type].id;
-		} else if (typeof type === "number") {
-			query.type_id = type;
-		}
-		return this._table_identifier.list(query);
-	}
-	
-	getLocation(session, params) {
-		var query = null;
-		if (typeof params === "string") {
-			query = {"name": params};
-		} else if (typeof params === "number") {
-			query = {"id": params};
-		} else if (params === null) {
-			//No query.
-		} else {
-			return Promise.reject("Parameter should be either string with name or number with id.");
-		}
-		return this._table_location.list(query);
-	}
-	
 	/*findByLocation(session, params) {
-		return this.getLocation(session, params).then((locations) => {
+		return this.listLocations(session, params).then((locations) => {
 			var location_ids = [];
 			for (var i in locations) location_ids.push(locations[i].id);
 			return this._table_stock.list({"product_location_id": location_ids}).then((mappings) => {
@@ -230,7 +169,98 @@ class Products {
 		});
 	}*/
 	
-	getStock(session, params) {
+	//Identifier types
+		
+	listIdentifierTypes(session, params) {
+		return this._table_identifier_type.list(params);
+	}
+	
+	async addIdentifierType(session, params) {
+		return "Not implemented";
+	}
+	
+	async editIdentifierType(session, params) {
+		return "Not implemented";
+	}
+	
+	async removeIdentifierType(session, params) {
+		return "Not implemented";
+	}
+	
+	//Identifiers
+	
+	async listIdentifiers(session, params) {
+		var barcode = null;
+		var type = null;
+		if (typeof params === "object") {
+			if (!("barcode" in params)) return "Field 'barcode' not set.";
+			barcode = params.barcode;
+			if ("type" in params) type = params.type;
+		} else if (typeof params === "string") {
+			barcode = params;
+		} else {
+			return "Parameter should be string or object.";
+		}
+
+		var types =  await this.listIdentifierTypes();
+		
+		//var typesById = {};
+		//for (var i in types) typesById[types[i].id] = types[i];
+		
+		var typesByName = {};
+		for (var i in types) typesByName[types[i].name] = types[i];
+		
+		var query  = {value: barcode};
+		if (typeof type === "string") {
+			if (!(type in typesByName)) return Promise.reject("Unknown type");
+			query.type_id = typesByName[type].id;
+		} else if (typeof type === "number") {
+			query.type_id = type;
+		}
+		return this._table_identifier.list(query);
+	}
+	
+	async addIdentifier(session, params) {
+		return "Not implemented";
+	}
+	
+	async editIdentifier(session, params) {
+		return "Not implemented";
+	}
+	
+	async removeIdentifier(session, params) {
+		return "Not implemented";
+	}
+	
+	//Locations
+		
+	listLocations(session, params) {
+		var query = null;
+		if (typeof params === "string") {
+			query = {"name": params};
+		} else if (typeof params === "number") {
+			query = {"id": params};
+		} else if (params === null) {
+			//No query.
+		} else {
+			return Promise.reject("Parameter should be either string with name or number with id.");
+		}
+		return this._table_location.list(query);
+	}
+	
+	async addLocation(session, params) {
+		return "Not implemented";
+	}
+	
+	async editLocation(session, params) {
+		return "Not implemented";
+	}
+	
+	async removeLocation(session, params) {
+		return "Not implemented";
+	}
+
+	listStock(session, params) {
 		console.log(params);
 		return this._table_stock.list(params).then((result) => {
 			var location_promises = [];
@@ -247,39 +277,45 @@ class Products {
 			});
 		});
 	}
-	
-	getStockRecords(session, params) {
+			
+	listStockRecords(session, params) {
 		return this._table_stock.selectRecords(params, "ORDER BY `timestamp_initial` ASC");
 	}
 	
-	addStock(session, params) {
+	async addStock(session, params) {
+		if (typeof params !== 'object') {
+			return "Params should be object containing 'product_id' and 'amount'.";
+		}
+		
 		if (!("product_id" in params) && (typeof params.product_id === "number")) {
-			return new Promise((resolve, reject) => {return "Missing product_id param."; });
+			return "Missing product_id parameter.";
 		}
-		/*if (!("location_id" in params) && (typeof params.location_id === "number")) {
-			return new Promise((resolve, reject) => {return "Missing location_id param."; });
-		}*/
+		
 		if (!("amount" in params) && (typeof params.amount === "number")) {
-			return new Promise((resolve, reject) => {return "Missing amount param."; });
+			return "Missing amount parameter.";;
 		}
+		
 		var product = params.product_id;
-		//var location = params.location_id;
 		var amount = params.amount;
 		
-		return this._opts.database.transaction("addStock (Product: "+product+", Amount: "+amount+")").then((dbTransaction) => {
-			var record = this._table_stock.createRecord();
-			record.setField("product_id", product);
-			//record.setField("product_location_id", location);
-			record.setField("amount_initial", amount);
-			record.setField("amount_current", amount);
-			return record.flush(dbTransaction).then((result) => {
-				dbTransaction.commit();
-				return result;
-			}).catch((error) => {
-				dbTransaction.rollback();
-				return error;
-			});
+		var dbTransaction = await this._opts.database.transaction("addStock (Product: "+product+", Amount: "+amount+")");
+		
+		var record = this._table_stock.createRecord();
+		record.setField("product_id", product);
+		record.setField("amount_initial", amount);
+		record.setField("amount_current", amount);
+		
+		return record.flush(dbTransaction).then((result) => {
+			dbTransaction.commit();
+			return result;
+		}).catch((error) => {
+			dbTransaction.rollback();
+			return error;
 		});
+	}
+	
+	async editStock(session, params) {
+		return "Not implemented";
 	}
 	
 	removeStock(session, params) {
@@ -302,7 +338,6 @@ class Products {
 			var newAmount = oldAmount - amount;
 			if (newAmount < 0) newAmount = 0;
 			result[0].setField("amount_current", newAmount);
-			console.log("Flushing...");
 			return result[0].flush();
 		});
 	}
@@ -350,20 +385,42 @@ class Products {
 
 	registerRpcMethods(rpc, prefix="product") {
 		if (prefix!=="") prefix = prefix + "/";
+		
+		/* Products */
 		rpc.addMethod(prefix+"list", this.list.bind(this));
+		rpc.addMethod(prefix+"add", this.add.bind(this));
+		rpc.addMethod(prefix+"edit", this.edit.bind(this));
+		rpc.addMethod(prefix+"remove", this.remove.bind(this));
 		rpc.addMethod(prefix+"find/name", this.findByName.bind(this));
 		rpc.addMethod(prefix+"find/name/like", this.findByNameLike.bind(this));
 		rpc.addMethod(prefix+"find/id", this.findById.bind(this));
 		rpc.addMethod(prefix+"find/barcode", this.findByBarcode.bind(this));
 		//rpc.addMethod(prefix+"find/location", this.findByLocation.bind(this));
-		rpc.addMethod(prefix+"barcode", this.getIdentifier.bind(this));
-		rpc.addMethod(prefix+"barcode/types", this.getIdentifierTypes.bind(this));
-		rpc.addMethod(prefix+"location", this.getLocation.bind(this));
-		rpc.addMethod(prefix+"stock", this.getStock.bind(this));
-		rpc.addMethod(prefix+"stock/add", this.addStock.bind(this));
-		rpc.addMethod(prefix+"stock/remove", this.removeStock.bind(this));
-		rpc.addMethod(prefix+"add", this.add.bind(this));
 		rpc.addMethod(prefix+"price/set", this.setPrice.bind(this))
+		
+		/* Identifier types */
+		rpc.addMethod(prefix+"barcode/type/list", this.listIdentifierTypes.bind(this));
+		rpc.addMethod(prefix+"barcode/type/add", this.addIdentifierType.bind(this));
+		rpc.addMethod(prefix+"barcode/type/edit", this.editIdentifierType.bind(this));
+		rpc.addMethod(prefix+"barcode/type/remove", this.removeIdentifierType.bind(this));
+		
+		/* Identifiers */
+		rpc.addMethod(prefix+"barcode/list", this.listIdentifiers.bind(this));
+		rpc.addMethod(prefix+"barcode/add", this.addIdentifier.bind(this));
+		rpc.addMethod(prefix+"barcode/edit", this.editIdentifier.bind(this));
+		rpc.addMethod(prefix+"barcode/remove", this.removeIdentifier.bind(this));
+		
+		/* Locations */
+		rpc.addMethod(prefix+"location/list", this.listLocations.bind(this));
+		rpc.addMethod(prefix+"location/add", this.addLocation.bind(this));
+		rpc.addMethod(prefix+"location/edit", this.editLocation.bind(this));
+		rpc.addMethod(prefix+"location/remove", this.removeLocation.bind(this));
+		
+		/* Stock */
+		rpc.addMethod(prefix+"stock", this.listStock.bind(this));
+		rpc.addMethod(prefix+"stock/add", this.addStock.bind(this));
+		rpc.addMethod(prefix+"stock/edit", this.editStock.bind(this));
+		rpc.addMethod(prefix+"stock/remove", this.removeStock.bind(this));
 	}
 }
 
