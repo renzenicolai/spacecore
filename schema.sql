@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 06, 2019 at 02:01 PM
+-- Generation Time: Apr 20, 2019 at 06:42 PM
 -- Server version: 10.3.14-MariaDB-log
 -- PHP Version: 7.3.4
 
@@ -21,6 +21,20 @@ SET time_zone = "+00:00";
 --
 -- Database: `datastore`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `bankaccounts`
+--
+
+CREATE TABLE `bankaccounts` (
+  `id` int(11) NOT NULL,
+  `holder` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `iban` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `bic` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `bank` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -49,6 +63,20 @@ CREATE TABLE `persons` (
   `nick_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Anonymous',
   `avatar_id` int(11) DEFAULT NULL,
   `saldo` int(5) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `person_bankaccount`
+--
+
+CREATE TABLE `person_bankaccount` (
+  `id` int(11) NOT NULL,
+  `person_id` int(11) NOT NULL,
+  `iban` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `bic` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -206,8 +234,8 @@ CREATE TABLE `product_stock` (
   `product_id` int(11) NOT NULL,
   `amount_initial` int(11) NOT NULL,
   `amount_current` int(11) NOT NULL,
-  `timestamp_initial` timestamp NOT NULL DEFAULT current_timestamp(),
-  `timestamp_current` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `timestamp_initial` int(11) NOT NULL DEFAULT 0,
+  `timestamp_current` int(11) NOT NULL DEFAULT 0,
   `person_id` int(11) DEFAULT NULL,
   `comment` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -235,7 +263,7 @@ CREATE TABLE `transactions` (
   `id` int(11) NOT NULL,
   `person_id` int(11) NOT NULL,
   `total` int(11) NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT current_timestamp()
+  `timestamp` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -287,6 +315,12 @@ CREATE TABLE `user_permissions` (
 --
 
 --
+-- Indexes for table `bankaccounts`
+--
+ALTER TABLE `bankaccounts`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `files`
 --
 ALTER TABLE `files`
@@ -299,6 +333,13 @@ ALTER TABLE `files`
 ALTER TABLE `persons`
   ADD PRIMARY KEY (`id`),
   ADD KEY `person_file_id_of_avatar` (`avatar_id`);
+
+--
+-- Indexes for table `person_bankaccount`
+--
+ALTER TABLE `person_bankaccount`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `person_id_of_person_bankaccount` (`person_id`);
 
 --
 -- Indexes for table `person_group`
@@ -428,6 +469,12 @@ ALTER TABLE `user_permissions`
 --
 
 --
+-- AUTO_INCREMENT for table `bankaccounts`
+--
+ALTER TABLE `bankaccounts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `files`
 --
 ALTER TABLE `files`
@@ -437,6 +484,12 @@ ALTER TABLE `files`
 -- AUTO_INCREMENT for table `persons`
 --
 ALTER TABLE `persons`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `person_bankaccount`
+--
+ALTER TABLE `person_bankaccount`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -556,6 +609,12 @@ ALTER TABLE `files`
 --
 ALTER TABLE `persons`
   ADD CONSTRAINT `person_file_id_of_avatar` FOREIGN KEY (`avatar_id`) REFERENCES `files` (`id`);
+
+--
+-- Constraints for table `person_bankaccount`
+--
+ALTER TABLE `person_bankaccount`
+  ADD CONSTRAINT `person_id_of_person_bankaccount` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
 
 --
 -- Constraints for table `person_group_mapping`
