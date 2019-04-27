@@ -1,0 +1,6 @@
+Transaction Thu Apr 04 2019 18:06:20 GMT+0200 (Central European Summer Time) - removePerson-66: Created.
+Transaction Thu Apr 04 2019 18:06:20 GMT+0200 (Central European Summer Time) - removePerson-66: Query: 'DELETE FROM `person_group_mapping` WHERE `id` = ?' [98]
+Transaction Thu Apr 04 2019 18:06:20 GMT+0200 (Central European Summer Time) - removePerson-66: Query: 'DELETE FROM `persons` WHERE `id` = ?' [66]
+Transaction Thu Apr 04 2019 18:06:20 GMT+0200 (Central European Summer Time) - removePerson-66: Rollback started.
+Transaction Thu Apr 04 2019 18:06:20 GMT+0200 (Central European Summer Time) - removePerson-66: Rollback completed.
+Transaction Thu Apr 04 2019 18:06:20 GMT+0200 (Central European Summer Time) - removePerson-66: Connection released.

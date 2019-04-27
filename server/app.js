@@ -7,7 +7,7 @@ const Websocketserver  = require('./lib/websocketserver.js');
 const Mqttclient       = require('./lib/mqtt.js');
 const Database         = require('./lib/db.js');
 const fs               = require('fs'); 
-const password         = require('../password.js');
+const password         = require('./password.js');
 
 //Modules
 const Ping             = require('./modules/ping.js');

@@ -1,0 +1,7 @@
+Transaction Sat Mar 30 2019 00:09:50 GMT+0100 (Central European Standard Time) - removeGroup-10: Created.
+Transaction Sat Mar 30 2019 00:09:50 GMT+0100 (Central European Standard Time) - removeGroup-10: Rollback.
+Transaction Sat Mar 30 2019 00:09:59 GMT+0100 (Central European Standard Time) - removeGroup-10: Created.
+Transaction Sat Mar 30 2019 00:09:59 GMT+0100 (Central European Standard Time) - removeGroup-10: Query: 'DELETE FROM `person_group_mapping` WHERE `id` = ?' [93]
+Transaction Sat Mar 30 2019 00:09:59 GMT+0100 (Central European Standard Time) - removeGroup-10: Query: 'DELETE FROM `person_group` WHERE `id` = ?' [10]
+Transaction Sat Mar 30 2019 00:09:59 GMT+0100 (Central European Standard Time) - removeGroup-10: Commit.
+Application interrupted.

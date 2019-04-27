@@ -1,0 +1,5 @@
+Transaction Sat Mar 30 2019 01:03:58 GMT+0100 (Central European Standard Time) - removePerson-66: Created.
+Transaction Sat Mar 30 2019 01:03:58 GMT+0100 (Central European Standard Time) - removePerson-66: Query: 'DELETE FROM `person_group_mapping` WHERE `id` = ?' [96]
+Transaction Sat Mar 30 2019 01:03:58 GMT+0100 (Central European Standard Time) - removePerson-66: Query: 'DELETE FROM `persons` WHERE `id` = ?' [66]
+Transaction Sat Mar 30 2019 01:03:58 GMT+0100 (Central European Standard Time) - removePerson-66: Rollback.
+Application interrupted.

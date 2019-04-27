@@ -1,0 +1,17 @@
+Transaction Wed Mar 27 2019 19:30:20 GMT+0100 (Central European Standard Time) - addPerson (Blahblahdfdsf): Created.
+Transaction Wed Mar 27 2019 19:30:20 GMT+0100 (Central European Standard Time) - addPerson (Blahblahdfdsf): Query: 'INSERT INTO `persons` (`id`, `first_name`, `last_name`, `nick_name`, `avatar_id`, `saldo`) VALUES (?, ?, ?, ?, ?, ?);' [null,"dfkdsfj","dgkjfdskf","Blahblahdfdsf",null,0]
+Transaction Wed Mar 27 2019 19:30:20 GMT+0100 (Central European Standard Time) - addPerson (Blahblahdfdsf): Query: 'INSERT INTO `person_group_mapping` (`id`, `person_id`, `person_group_id`) VALUES (?, ?, ?);' [null,66,1]
+Transaction Wed Mar 27 2019 19:30:20 GMT+0100 (Central European Standard Time) - addPerson (Blahblahdfdsf): Query: 'INSERT INTO `person_group_mapping` (`id`, `person_id`, `person_group_id`) VALUES (?, ?, ?);' [null,66,3]
+Transaction Wed Mar 27 2019 19:30:20 GMT+0100 (Central European Standard Time) - addPerson (Blahblahdfdsf): Query: 'INSERT INTO `person_group_mapping` (`id`, `person_id`, `person_group_id`) VALUES (?, ?, ?);' [null,66,4]
+Transaction Wed Mar 27 2019 19:30:20 GMT+0100 (Central European Standard Time) - addPerson (Blahblahdfdsf): Commit.
+Transaction Wed Mar 27 2019 19:31:58 GMT+0100 (Central European Standard Time) - Blahblahdfdsf: Created.
+Transaction Wed Mar 27 2019 19:31:58 GMT+0100 (Central European Standard Time) - Blahblahdfdsf: Query: 'INSERT INTO `transactions` (`id`, `person_id`, `total`, `timestamp`) VALUES (?, ?, ?, ?);' [null,66,-1000,null]
+Transaction Wed Mar 27 2019 19:31:58 GMT+0100 (Central European Standard Time) - Blahblahdfdsf: Query: 'INSERT INTO `transaction_rows` (`id`, `transaction_id`, `product_id`, `tax_id`, `description`, `price`, `amount`) VALUES (?, ?, ?, ?, ?, ?, ?);' [null,369,null,null,"Deposit",-1000,1]
+Transaction Wed Mar 27 2019 19:31:58 GMT+0100 (Central European Standard Time) - Blahblahdfdsf: Query: 'UPDATE `persons` SET `first_name` = ?, `last_name` = ?, `nick_name` = ?, `avatar_id` = ?, `saldo` = ? WHERE `id` = ?;' ["dfkdsfj","dgkjfdskf","Blahblahdfdsf",null,1000,66]
+Transaction Wed Mar 27 2019 19:31:58 GMT+0100 (Central European Standard Time) - Blahblahdfdsf: Commit.
+Transaction Wed Mar 27 2019 19:32:23 GMT+0100 (Central European Standard Time) - Blahblahdfdsf: Created.
+Transaction Wed Mar 27 2019 19:32:23 GMT+0100 (Central European Standard Time) - Blahblahdfdsf: Query: 'INSERT INTO `transactions` (`id`, `person_id`, `total`, `timestamp`) VALUES (?, ?, ?, ?);' [null,66,60,null]
+Transaction Wed Mar 27 2019 19:32:23 GMT+0100 (Central European Standard Time) - Blahblahdfdsf: Query: 'INSERT INTO `transaction_rows` (`id`, `transaction_id`, `product_id`, `tax_id`, `description`, `price`, `amount`) VALUES (?, ?, ?, ?, ?, ?, ?);' [null,370,22,null,"Croky paprika chips",60,1]
+Transaction Wed Mar 27 2019 19:32:23 GMT+0100 (Central European Standard Time) - Blahblahdfdsf: Query: 'UPDATE `persons` SET `first_name` = ?, `last_name` = ?, `nick_name` = ?, `avatar_id` = ?, `saldo` = ? WHERE `id` = ?;' ["dfkdsfj","dgkjfdskf","Blahblahdfdsf",null,940,66]
+Transaction Wed Mar 27 2019 19:32:23 GMT+0100 (Central European Standard Time) - Blahblahdfdsf: Commit.
+Application interrupted.

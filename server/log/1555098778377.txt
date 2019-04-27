@@ -1,0 +1,17 @@
+Transaction Fri Apr 12 2019 21:53:08 GMT+0200 (Central European Summer Time) - renze: Created.
+Transaction Fri Apr 12 2019 21:53:08 GMT+0200 (Central European Summer Time) - renze: Query: 'INSERT INTO `transactions` (`id`, `person_id`, `total`, `timestamp`) VALUES (?, ?, ?, ?);' [null,47,175,null]
+Transaction Fri Apr 12 2019 21:53:08 GMT+0200 (Central European Summer Time) - renze: Query: 'INSERT INTO `transaction_rows` (`id`, `transaction_id`, `product_id`, `tax_id`, `description`, `price`, `amount`) VALUES (?, ?, ?, ?, ?, ?, ?);' [null,372,1,null,"Club-Mate (fles)",175,1]
+Transaction Fri Apr 12 2019 21:53:08 GMT+0200 (Central European Summer Time) - renze: Query: 'INSERT INTO `product_stock_mapping` (`id`, `transaction_row_id`, `product_stock_id`, `amount`) VALUES (?, ?, ?, ?);' [null,396,13,1]
+Transaction Fri Apr 12 2019 21:53:08 GMT+0200 (Central European Summer Time) - renze: Query: 'UPDATE `product_stock` SET `product_id` = ?, `amount_initial` = ?, `amount_current` = ?, `timestamp_initial` = ?, `timestamp_current` = ?, `person_id` = ?, `comment` = ? WHERE `id` = ?;' [1,24,4,"1970-01-18 22:16:05","1970-01-18 23:58:15",null,"",13]
+Transaction Fri Apr 12 2019 21:53:08 GMT+0200 (Central European Summer Time) - renze: Query: 'UPDATE `persons` SET `first_name` = ?, `last_name` = ?, `nick_name` = ?, `avatar_id` = ?, `saldo` = ? WHERE `id` = ?;' ["renze","","renze",null,-592,47]
+Transaction Fri Apr 12 2019 21:53:08 GMT+0200 (Central European Summer Time) - renze: Commit started.
+Transaction Fri Apr 12 2019 21:53:08 GMT+0200 (Central European Summer Time) - renze: Commit completed.
+Transaction Fri Apr 12 2019 21:53:08 GMT+0200 (Central European Summer Time) - renze: Connection released.
+Transaction Fri Apr 12 2019 21:53:27 GMT+0200 (Central European Summer Time) - renze: Created.
+Transaction Fri Apr 12 2019 21:53:27 GMT+0200 (Central European Summer Time) - renze: Query: 'INSERT INTO `transactions` (`id`, `person_id`, `total`, `timestamp`) VALUES (?, ?, ?, ?);' [null,47,175,null]
+Transaction Fri Apr 12 2019 21:53:27 GMT+0200 (Central European Summer Time) - renze: Query: 'INSERT INTO `transaction_rows` (`id`, `transaction_id`, `product_id`, `tax_id`, `description`, `price`, `amount`) VALUES (?, ?, ?, ?, ?, ?, ?);' [null,373,1,null,"Club-Mate (fles)",175,1]
+Transaction Fri Apr 12 2019 21:53:27 GMT+0200 (Central European Summer Time) - renze: Query: 'INSERT INTO `product_stock_mapping` (`id`, `transaction_row_id`, `product_stock_id`, `amount`) VALUES (?, ?, ?, ?);' [null,397,13,1]
+Transaction Fri Apr 12 2019 21:53:27 GMT+0200 (Central European Summer Time) - renze: Query: 'UPDATE `product_stock` SET `product_id` = ?, `amount_initial` = ?, `amount_current` = ?, `timestamp_initial` = ?, `timestamp_current` = ?, `person_id` = ?, `comment` = ? WHERE `id` = ?;' [1,24,3,"1970-01-01 00:25:45","1970-01-01 00:25:51",null,"",13]
+Transaction Fri Apr 12 2019 21:53:27 GMT+0200 (Central European Summer Time) - renze: Rollback started.
+Transaction Fri Apr 12 2019 21:53:27 GMT+0200 (Central European Summer Time) - renze: Rollback started.
+Transaction Fri Apr 12 2019 21:53:27 GMT+0200 (Central European Summer Time) - renze: Rollback completed.

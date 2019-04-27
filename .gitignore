@@ -1,3 +1,7 @@
 node_modules
 log/*
 *.kate-swp
+*.pyc
+__pycache__
+spacecore-cli.*
+password.js
