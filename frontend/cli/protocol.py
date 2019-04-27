@@ -134,6 +134,9 @@ class RpcClient:
 	
 	def lastTransactions(self, amount):
 		return self._request("transaction/list/last", amount)
+
+	def lastTransactionsOfPerson(self, person, amount):
+		return self._request("transaction/list/last", {"query": {'person_id': person}, "amount": amount})
 	
 	def addPerson(self, name):
 		return self._request("person/add", name)

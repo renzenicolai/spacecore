@@ -1,7 +1,7 @@
 class Spacecore {
 	constructor( opts ) {
 		this._opts = Object.assign({
-			apiUrl: "ws://127.0.0.1/api/"
+			apiUrl: window.location.protocol.replace("http","ws")+"//"+window.location.host+"/api/"
 		}, opts);
 		
 		this.ui = new SpacecoreUI({
@@ -25,7 +25,7 @@ class Spacecore {
 				ui: this.ui,
 				app: this
 			}),
-			new Login({ //Always leave the login module as the last module!
+			new Login({ //Always leave the login module as the last module
 				ui: this.ui,
 				app: this
 			})

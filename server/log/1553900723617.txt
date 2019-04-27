@@ -1,3 +1,0 @@
-Transaction Sat Mar 30 2019 00:05:30 GMT+0100 (Central European Standard Time) - removeGroup-10: Created.
-Transaction Sat Mar 30 2019 00:05:30 GMT+0100 (Central European Standard Time) - removeGroup-10: Query: 'DELETE FROM `person_group` WHERE `id` = ?' [10]
-Application interrupted.

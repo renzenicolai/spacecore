@@ -1,6 +1,0 @@
-Transaction Fri Apr 12 2019 22:25:34 GMT+0200 (Central European Summer Time) - renze: Created.
-Transaction Fri Apr 12 2019 22:25:34 GMT+0200 (Central European Summer Time) - renze: Query: 'INSERT INTO `transactions` (`id`, `id` = ?, `person_id`, `person_id` = ?, `total`, `total` = ?, `timestamp`, `timestamp` = ?) VALUES (?, ?, ?, ?);' [null,47,175,null]
-Transaction Fri Apr 12 2019 22:25:34 GMT+0200 (Central European Summer Time) - renze: Rollback started.
-Transaction Fri Apr 12 2019 22:25:34 GMT+0200 (Central European Summer Time) - renze: Rollback completed.
-Transaction Fri Apr 12 2019 22:25:34 GMT+0200 (Central European Summer Time) - renze: Connection released.
-Application interrupted.

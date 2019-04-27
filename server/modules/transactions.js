@@ -40,9 +40,30 @@ class Transactions {
 		});
 	}
 	
-	listLast(session, params) {
-		if (!typeof params === "number") return new Promise((resolve, reject) => {return reject("Invalid param.");});
-		return this._table.listExtra({}, "ORDER BY `timestamp` DESC LIMIT "+params).then((result) => {
+	async listLast(session, params) {
+		var filter = {};
+		var amount = 5;
+		
+		if (typeof params === 'object') {
+			if ("amount" in params) {
+				if (typeof params.amount === 'number') {
+					amount = params.amount;
+				} else {
+					throw "Amount should be a number!";
+				}
+			}
+			if ("query" in params) {
+				filter = params.query;
+			}
+		} else if (typeof params === 'number') {
+			amount = params;
+		} else {
+			throw "Invalid parameter type!";
+		}
+		
+		console.log("WTF???", filter);
+		
+		return this._table.listExtra(filter, "ORDER BY `timestamp` DESC LIMIT "+amount).then((result) => {
 			var promises = [];
 			for (var i in result) {
 				promises.push(this._table_rows.selectRecords({"transaction_id":result[i].id},"","AND",false));

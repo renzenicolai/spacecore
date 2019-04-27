@@ -1,1 +1,0 @@
-UNHANDLED REJECTION: TypeError: Cannot read property 'bind' of undefined

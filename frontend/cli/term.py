@@ -45,18 +45,18 @@ def getSize():
 	r,c = os.popen('stty size', 'r').read().split()
 	return (int(r),int(c))
 	
-def header(text = "", colorFg=37, colorBg=41, colorStyle=1):
+def header(text = "", colorFg=37, colorBg=41, colorStyle=1, goHome=True):
 	rows, columns = getSize()
 	left = text
-	right = ""#datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-	empty = columns - len(left) - len(right)
-	home()
+	empty = columns - len(left)
+	if goHome:
+		home()
 	color(colorFg, colorBg, colorStyle)
 	print(left,end="")
 	if empty > 0:
 		for i in range(empty):
 			print(" ",end="")
-	print(right)
+	#print(right)
 	color()
 	
 def draw_menu(title, items, selected=0):

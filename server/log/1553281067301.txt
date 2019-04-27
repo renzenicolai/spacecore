@@ -1,6 +1,0 @@
-Transaction Sat Mar 23 2019 13:01:54 GMT+0100 (Central European Standard Time) - renze: Created.
-Transaction Sat Mar 23 2019 13:01:54 GMT+0100 (Central European Standard Time) - renze: Query: 'INSERT INTO `transactions` (`id`, `person_id`, `total`, `timestamp`) VALUES (?, ?, ?, ?);' [null,47,175,null]
-Transaction Sat Mar 23 2019 13:01:54 GMT+0100 (Central European Standard Time) - renze: Query: 'INSERT INTO `transaction_rows` (`id`, `transaction_id`, `product_id`, `tax_id`, `description`, `price`, `amount`) VALUES (?, ?, ?, ?, ?, ?, ?);' [null,368,1,null,"Club-Mate (fles)",175,1]
-Transaction Sat Mar 23 2019 13:01:54 GMT+0100 (Central European Standard Time) - renze: Query: 'UPDATE `persons` SET `first_name` = ?, `last_name` = ?, `nick_name` = ?, `avatar_id` = ?, `saldo` = ? WHERE `id` = ?;' ["renze","","renze",null,-417,47]
-Transaction Sat Mar 23 2019 13:01:54 GMT+0100 (Central European Standard Time) - renze: Commit.
-Application interrupted.

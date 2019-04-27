@@ -1,8 +1,0 @@
-Transaction Fri Apr 12 2019 21:17:20 GMT+0200 (Central European Summer Time) - renze: Created.
-Transaction Fri Apr 12 2019 21:17:20 GMT+0200 (Central European Summer Time) - renze: Query: 'INSERT INTO `transactions` (`id`, `person_id`, `total`, `timestamp`) VALUES (?, ?, ?, ?);' [null,47,175,null]
-Transaction Fri Apr 12 2019 21:17:20 GMT+0200 (Central European Summer Time) - renze: Query: 'INSERT INTO `transaction_rows` (`id`, `transaction_id`, `product_id`, `tax_id`, `description`, `price`, `amount`) VALUES (?, ?, ?, ?, ?, ?, ?);' [null,371,1,null,"Club-Mate (fles)",175,1]
-Transaction Fri Apr 12 2019 21:17:20 GMT+0200 (Central European Summer Time) - renze: Query: 'INSERT INTO `product_stock_mapping` (`id`, `transaction_row_id`, `product_stock_id`, `amount`) VALUES (?, ?, ?, ?);' [null,395,13,1]
-Transaction Fri Apr 12 2019 21:17:20 GMT+0200 (Central European Summer Time) - renze: Query: 'UPDATE `product_stock` SET `product_id` = ?, `amount_initial` = ?, `amount_current` = ?, `timestamp_initial` = ?, `timestamp_current` = ?, `person_id` = ?, `comment` = ? WHERE `id` = ?;' [1,24,4,1548965369,1555095671,null,"",13]
-Transaction Fri Apr 12 2019 21:17:20 GMT+0200 (Central European Summer Time) - renze: Rollback started.
-Transaction Fri Apr 12 2019 21:17:20 GMT+0200 (Central European Summer Time) - renze: Rollback started.
-Transaction Fri Apr 12 2019 21:17:20 GMT+0200 (Central European Summer Time) - renze: Rollback completed.
