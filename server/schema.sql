@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 20, 2019 at 06:42 PM
+-- Generation Time: Apr 28, 2019 at 10:44 PM
 -- Server version: 10.3.14-MariaDB-log
 -- PHP Version: 7.3.4
 
@@ -30,10 +30,11 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `bankaccounts` (
   `id` int(11) NOT NULL,
-  `holder` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `iban` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `bic` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `bank` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL
+  `saldo` int(11) DEFAULT NULL,
+  `internal` tinyint(1) NOT NULL DEFAULT 0,
+  `person_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -44,10 +45,9 @@ CREATE TABLE `bankaccounts` (
 
 CREATE TABLE `files` (
   `id` int(11) NOT NULL,
-  `user_id` int(11) DEFAULT NULL COMMENT 'Uploaded by',
-  `filename` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `file` longblob NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci NOT NULL
+  `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mime` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file` longblob NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -68,15 +68,28 @@ CREATE TABLE `persons` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `person_bankaccount`
+-- Table structure for table `person_address`
 --
 
-CREATE TABLE `person_bankaccount` (
+CREATE TABLE `person_address` (
   `id` int(11) NOT NULL,
   `person_id` int(11) NOT NULL,
-  `iban` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `bic` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL
+  `street` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `housenumber` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `postalcode` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `city` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `person_email`
+--
+
+CREATE TABLE `person_email` (
+  `id` int(11) NOT NULL,
+  `person_id` int(11) NOT NULL,
+  `address` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -102,6 +115,44 @@ CREATE TABLE `person_group_mapping` (
   `id` int(11) NOT NULL,
   `person_id` int(11) NOT NULL,
   `person_group_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `person_phone`
+--
+
+CREATE TABLE `person_phone` (
+  `id` int(11) NOT NULL,
+  `person_id` int(11) NOT NULL,
+  `phonenumber` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `person_token`
+--
+
+CREATE TABLE `person_token` (
+  `id` int(11) NOT NULL,
+  `person_id` int(11) NOT NULL,
+  `type_id` int(11) NOT NULL,
+  `public` varchar(512) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `private` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `person_token_type`
+--
+
+CREATE TABLE `person_token_type` (
+  `id` int(11) NOT NULL,
+  `name` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `method` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -237,7 +288,8 @@ CREATE TABLE `product_stock` (
   `timestamp_initial` int(11) NOT NULL DEFAULT 0,
   `timestamp_current` int(11) NOT NULL DEFAULT 0,
   `person_id` int(11) DEFAULT NULL,
-  `comment` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
+  `comment` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `price` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -318,14 +370,15 @@ CREATE TABLE `user_permissions` (
 -- Indexes for table `bankaccounts`
 --
 ALTER TABLE `bankaccounts`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `iban` (`iban`),
+  ADD KEY `person_id_of_bankaccount` (`person_id`);
 
 --
 -- Indexes for table `files`
 --
 ALTER TABLE `files`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `uploader_of_file` (`user_id`);
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `persons`
@@ -335,11 +388,18 @@ ALTER TABLE `persons`
   ADD KEY `person_file_id_of_avatar` (`avatar_id`);
 
 --
--- Indexes for table `person_bankaccount`
+-- Indexes for table `person_address`
 --
-ALTER TABLE `person_bankaccount`
+ALTER TABLE `person_address`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `person_id_of_person_bankaccount` (`person_id`);
+  ADD KEY `person_id_of_person_address` (`person_id`);
+
+--
+-- Indexes for table `person_email`
+--
+ALTER TABLE `person_email`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `person_id_of_person_email` (`person_id`);
 
 --
 -- Indexes for table `person_group`
@@ -354,6 +414,27 @@ ALTER TABLE `person_group_mapping`
   ADD PRIMARY KEY (`id`),
   ADD KEY `person_id_of_person_group` (`person_id`),
   ADD KEY `person_groups_id_of_person_group` (`person_group_id`);
+
+--
+-- Indexes for table `person_phone`
+--
+ALTER TABLE `person_phone`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `person_id_of_person_phone` (`person_id`);
+
+--
+-- Indexes for table `person_token`
+--
+ALTER TABLE `person_token`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `person_id_of_person_token` (`person_id`),
+  ADD KEY `type_id_of_token` (`type_id`);
+
+--
+-- Indexes for table `person_token_type`
+--
+ALTER TABLE `person_token_type`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `products`
@@ -487,9 +568,15 @@ ALTER TABLE `persons`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `person_bankaccount`
+-- AUTO_INCREMENT for table `person_address`
 --
-ALTER TABLE `person_bankaccount`
+ALTER TABLE `person_address`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `person_email`
+--
+ALTER TABLE `person_email`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -502,6 +589,24 @@ ALTER TABLE `person_group`
 -- AUTO_INCREMENT for table `person_group_mapping`
 --
 ALTER TABLE `person_group_mapping`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `person_phone`
+--
+ALTER TABLE `person_phone`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `person_token`
+--
+ALTER TABLE `person_token`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `person_token_type`
+--
+ALTER TABLE `person_token_type`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -599,10 +704,10 @@ ALTER TABLE `user_permissions`
 --
 
 --
--- Constraints for table `files`
+-- Constraints for table `bankaccounts`
 --
-ALTER TABLE `files`
-  ADD CONSTRAINT `uploader_of_file` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+ALTER TABLE `bankaccounts`
+  ADD CONSTRAINT `person_id_of_bankaccount` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
 
 --
 -- Constraints for table `persons`
@@ -611,10 +716,16 @@ ALTER TABLE `persons`
   ADD CONSTRAINT `person_file_id_of_avatar` FOREIGN KEY (`avatar_id`) REFERENCES `files` (`id`);
 
 --
--- Constraints for table `person_bankaccount`
+-- Constraints for table `person_address`
 --
-ALTER TABLE `person_bankaccount`
-  ADD CONSTRAINT `person_id_of_person_bankaccount` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
+ALTER TABLE `person_address`
+  ADD CONSTRAINT `person_id_of_person_address` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
+
+--
+-- Constraints for table `person_email`
+--
+ALTER TABLE `person_email`
+  ADD CONSTRAINT `person_id_of_person_email` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
 
 --
 -- Constraints for table `person_group_mapping`
@@ -622,6 +733,19 @@ ALTER TABLE `person_bankaccount`
 ALTER TABLE `person_group_mapping`
   ADD CONSTRAINT `person_groups_id_of_person_group` FOREIGN KEY (`person_group_id`) REFERENCES `person_group` (`id`),
   ADD CONSTRAINT `person_id_of_person_group` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
+
+--
+-- Constraints for table `person_phone`
+--
+ALTER TABLE `person_phone`
+  ADD CONSTRAINT `person_id_of_person_phone` FOREIGN KEY (`person_id`) REFERENCES `barsystem`.`barsystem_person` (`id`);
+
+--
+-- Constraints for table `person_token`
+--
+ALTER TABLE `person_token`
+  ADD CONSTRAINT `person_id_of_person_token` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`),
+  ADD CONSTRAINT `type_id_of_token` FOREIGN KEY (`type_id`) REFERENCES `person_token_type` (`id`);
 
 --
 -- Constraints for table `products`
