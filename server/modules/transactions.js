@@ -25,15 +25,32 @@ class Transactions {
 		return this._table.selectRecords(where, extra, separator);
 	}
 
-	list(session, params) {
-		return this._table.list(params).then((result) => {
+	async list(session, params, whereKeySeparator="AND", resolvePersons=false) {
+		return this._table.list(params, whereKeySeparator).then(async (result) => {
 			var promises = [];
 			for (var i in result) {
 				promises.push(this._table_rows.selectRecords({"transaction_id":result[i].id},"","AND",false));
 			}
+			
+			if (resolvePersons) {
+				var personPromises = [];
+				for (var i in result) {
+					personPromises.push(this._opts.persons.list({id: result[i].person_id}));
+				}
+				var persons = await Promise.all(personPromises);
+				for (var i in persons) {
+					if (persons[i].length < 1) {
+						throw "Unknown person in transaction?!";
+					}
+					result[i].person = persons[i][0];
+				}
+			}
+			
 			return Promise.all(promises).then((resultArray) => {
+				
 				for (var i in resultArray) {
 					result[i].rows = resultArray[i];
+					
 				}
 				return result;
 			});
@@ -60,9 +77,7 @@ class Transactions {
 		} else {
 			throw "Invalid parameter type!";
 		}
-		
-		console.log("WTF???", filter);
-		
+				
 		return this._table.listExtra(filter, "ORDER BY `timestamp` DESC LIMIT "+amount).then((result) => {
 			var promises = [];
 			for (var i in result) {
@@ -93,7 +108,6 @@ class Transactions {
 		if (amount != null) {
 			limit = "DESC LIMIT "+amount;
 		}
-		console.log("NOW EXECUTING LIST-QUERY ",query,limit);
 		return this._table.listExtra(query, "ORDER BY `timestamp`"+limit).then((result) => {
 			var promises = [];
 			for (var i in result) {
@@ -103,7 +117,6 @@ class Transactions {
 				for (var i in resultArray) {
 					result[i].rows = resultArray[i];
 				}
-				console.log("DONE");
 				return result;
 			});
 		});
@@ -240,13 +253,11 @@ class Transactions {
 							var request = product_stock_request[product.id];
 							for (var item in request) {
 								if (!(request[item] in stockById)) {
-									console.log("SEARCH", request[item], stockById);
 									return new Promise((resolve, reject) => {
 										reject({code: 2, message: "Can not find requested stock ("+request[item]+")"});
 									});
 								}
 								requestedStockList.push(stockById[request[item]]);
-								console.log("Added",stockById[request[item]].getField("id"),"to requestedStockList.");
 							}
 						} else {
 							requestedStockList = stockList;
@@ -320,7 +331,6 @@ class Transactions {
 					//Complete the transaction
 					return this._opts.database.transaction(person_record.getField("nick_name")).then((dbTransaction) => {
 						return transaction.flush(dbTransaction).then((result) => {
-							//console.log("TRANSACTION", transaction.getFields());
 							if (!result) return new Promise(function(resolve, reject) {
 								return reject("Error: transaction not created?!");
 							});
@@ -378,12 +388,55 @@ class Transactions {
 		});
 	}
 	
+	async analysisStock(session, params) {
+		if (typeof params !== 'object') {
+			throw "Expected a parameter object.";
+		}
+		if (typeof params.operation !== 'string') {
+			throw "Expected an operation.";
+		}
+		
+		if (params.operation === "unknownOrigin") {
+			var rows = await this._table_rows.selectRecordsRaw("SELECT * FROM `transaction_rows` WHERE `id` NOT IN (SELECT transaction_row_id FROM `product_stock_mapping`) AND `price` > 0", [], false);
+			
+			var rowIds = [];
+			var transactionIds = [];
+			
+			for (var i in rows) {
+				var row = rows[i];
+				rowIds.push(row['id']);
+				if (!(row['transaction_id'] in transactionIds)) {
+					transactionIds.push(row['transaction_id']);
+				}
+			}
+			
+			var transactions = await this.list(session, {id: transactionIds}, "OR", true);
+			
+			for (var i in transactions) {
+				for (var j in transactions[i].rows) {
+					var isUnknown = false;
+					var id = transactions[i].rows[j].id;
+					if (rowIds.lastIndexOf(id)>=0) {
+						isUnknown = true;
+					}
+					transactions[i].rows[j]['isUnknown'] = isUnknown;
+				}
+			}
+			
+			return transactions;
+			
+		} else {
+			throw "Unsupported operation.";
+		}
+	}
+	
 	registerRpcMethods(rpc, prefix="transaction") {
 		if (prefix!=="") prefix = prefix + "/";
 		rpc.addMethod(prefix+"list", this.list.bind(this));
 		rpc.addMethod(prefix+"list/last", this.listLast.bind(this));
 		rpc.addMethod(prefix+"list/query", this.listQuery.bind(this));
 		rpc.addMethod(prefix+"execute", this.execute.bind(this));
+		rpc.addMethod(prefix+"analysis/stock", this.analysisStock.bind(this));
 	}
 }
 

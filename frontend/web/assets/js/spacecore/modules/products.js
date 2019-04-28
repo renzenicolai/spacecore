@@ -1,6 +1,6 @@
-class Persons {
+class Products {
 	constructor( opts ) {
-		this.name = 'persons';
+		this.name = 'products';
 		
 		opts = Object.assign({
 			ui: null,
@@ -36,9 +36,9 @@ class Persons {
 	menu(menu='main') {
 		var items = [];
 		if (menu === 'main') {
-			if (this.app.checkPermission('person/list')) items.push({
-				label: "Persons",
-				fe_icon: "user",
+			if (this.app.checkPermission('product/list')) items.push({
+				label: "Products",
+				fe_icon: "box",
 				action: "javascript:spacecore.action('"+this.name+"', null, true);"
 			});
 		}
@@ -47,18 +47,18 @@ class Persons {
 		
 	/* Module */
 	
-	show(reset=true, part="persons") {
+	show(reset=true, part="products") {
 		if (reset) this.reset();
 		this.app.currentModule = this;
 		
-		if (part==="persons") {
+		if (part==="products") {
 			/* These are loaded async and may not be available right after rendering the page */
-			this.app.executeCommand('person/group/list', {}, this._handleGroupsRefresh.bind(this));
+			//this.app.executeCommand('person/group/list', {}, this._handleGroupsRefresh.bind(this));
 			
 			/* Render the page */
-			this.app.executeCommand('person/list', {}, this._handleShow.bind(this));
+			this.app.executeCommand('product/list', {}, this._handleShow.bind(this));
 		} else {
-			console.log("Unhandled part in persons module",part);
+			console.log("Unhandled part in products module",part);
 		}
 	}
 	
@@ -631,21 +631,6 @@ class Persons {
 		var actionFunc = spacecore.currentModule.show;
 		var skip = false;
 		
-		if (form==="addperson-form") {
-			if (err === null) return this.showDetails(res);
-			action = "showDetails("+res+")";
-		}
-		
-		if (form==="editperson-form") {
-			if (err === null) return this.showDetails(res);
-			action = "show()";
-		}
-		
-		if (form==="removeperson-form") {
-			if (err === null) return this.show();
-			action = "show()";
-		}
-		
 		if ((form==="addgrouptoperson-form") || (form==="removegroupfromperson-form")) {
 			if (err === null) return this.showDetails(); //Skip the result if succesfull
 			action = "showDetails()";
@@ -727,14 +712,6 @@ class Persons {
 										name: "last_name",
 										label: "Last name",
 										value: last_name
-									},
-									{
-										type: "file",
-										name: "avatar",
-										label: "Avatar",
-										default: "Select an image to upload...",
-										id: "personAvatarFile",
-										value: ""
 									}
 								],
 								footer: [
@@ -826,7 +803,7 @@ class Persons {
 		});
 	}
 		
-	search(elem='persons-search') {
+	search(elem='products-search') {
 		this.state.searchText = document.getElementById(elem).value;
 		
 		var filtered = this.app.sort(
@@ -838,8 +815,8 @@ class Persons {
 			this.state.sortBy,
 			this.state.sortReverse);
 		
-		var content = this.ui.renderTemplate('table', this._renderPersons(filtered));
-		document.getElementById('table_persons').innerHTML = content;
+		var content = this.ui.renderTemplate('table', this._renderProducts(filtered));
+		document.getElementById('table_products').innerHTML = content;
 	}
 	
 	changeSort(field) {
@@ -864,36 +841,51 @@ class Persons {
 		return "chevron-down";
 	}
 		
-	_renderPersons(res) {		
+	_renderProducts(res) {		
 		var table = {
-			id: "table_persons",
+			id: "table_products",
 			header: [
 				{
-					fe_icon: "user",
+					fe_icon: "image",
 					width: 1,
 					text_center: true,
 					action: "javascript:spacecore.currentModule.changeSort('id');",
 					fe_icon_after: this._getSortIcon('id')
 				},
 				{
-					text: "Nickname",
-					action: "javascript:spacecore.currentModule.changeSort('nick_name');",
-					fe_icon_after: this._getSortIcon('nick_name')
+					text: "Name",
+					action: "javascript:spacecore.currentModule.changeSort('name');",
+					fe_icon_after: this._getSortIcon('name')
 				},
 				{
-					text: "First name",
-					action: "javascript:spacecore.currentModule.changeSort('first_name');",
-					fe_icon_after: this._getSortIcon('first_name')
+					text: "Description",
+					action: "javascript:spacecore.currentModule.changeSort('description');",
+					fe_icon_after: this._getSortIcon('description')
 				},
 				{
-					text: "Last name",
-					action: "javascript:spacecore.currentModule.changeSort('last_name');",
-					fe_icon_after: this._getSortIcon('last_name')
+					text: "Brand",
+					action: "javascript:spacecore.currentModule.changeSort('brand');",
+					fe_icon_after: this._getSortIcon('brand')
 				},
 				{
-					text: "Saldo",
-					action: "javascript:spacecore.currentModule.changeSort('saldo');",
-					fe_icon_after: this._getSortIcon('saldo')
+					text: "Package",
+					action: "javascript:spacecore.currentModule.changeSort('package');",
+					fe_icon_after: this._getSortIcon('package')
+				},
+				{
+					text: "Price",
+					action: "javascript:spacecore.currentModule.changeSort('price');",
+					fe_icon_after: this._getSortIcon('price')
+				},
+				{
+					text: "Stock",
+					action: "javascript:spacecore.currentModule.changeSort('stock');",
+					fe_icon_after: this._getSortIcon('stock')
+				},
+				{
+					text: "Hidden",
+					action: "javascript:spacecore.currentModule.changeSort('hidden');",
+					fe_icon_after: this._getSortIcon('hidden')
 				},
 				{
 					width: 1
@@ -903,29 +895,58 @@ class Persons {
 		};
 		
 		for (var i in res) {
+			var brand = "-";
+			if (res[i].brand_id !== null) brand = res[i].brand.name;
+			var pkg = "-";
+			if (res[i].package !== null) {
+				pkg = res[i].package.name;
+			}
+			var price = "-";
+			if (res[i].price.length > 1) {
+				price = "...";
+			} else if (res[i].price.length === 1) {
+				price = "€ "+(res[i].price[0].amount/100.0).toFixed(2);
+			}
+			var stock = 0;
+			for (var j in res[i].stock) {
+				stock += Number(res[i].stock.amount_current);
+			}
+			
 			table.body.push({
 				id: "person-"+res[i].id,
 				fields: [
 					{
 						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						avatar: res[i].avatar,
+						avatar: res[i].picture,
 						text_center: true
 					},
 					{
 						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: res[i].nick_name
+						text: res[i].name
 					},
 					{
 						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: res[i].first_name
+						text: res[i].description
 					},
 					{
 						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: res[i].last_name
+						text: brand
+					},
+					{
+						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
+						text: pkg
 					},
 				    {
 						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: "€ "+(res[i].saldo/100.0).toFixed(2)
+						text: price
+					},
+					{
+						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
+						text: String(stock)
+					},
+				   {
+						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
+						text: String(res[i].hidden)
 					},
 					{
 						text_center: true,
@@ -985,14 +1006,15 @@ class Persons {
 		
 		this.state.lastData = res;
 		
-		var personsTable = this._renderPersons(
+		var productsTable = this._renderProducts(
 			this.app.sort(
-				this.app.filter(
+				res,
+				/*this.app.filter(
 					res,
 					this.state.searchText,
-					['nick_name', 'first_name', 'last_name'],
+					['name', 'first_name', 'last_name'],
 					false
-				),
+				),*/
 				this.state.sortBy,
 				this.state.sortReverse
 			)
@@ -1000,7 +1022,7 @@ class Persons {
 				
 		this.app.showPage({
 			header: {
-				title: "Persons",
+				title: "Products",
 				options: [
 						{
 							"type":"button",
@@ -1011,9 +1033,9 @@ class Persons {
 						},
 						{
 							type:"text",
-							id: "persons-search",
+							id: "products-search",
 							fe_icon: "search",
-							placeholder: "Search persons...",
+							placeholder: "Search products...",
 							action:  "javascript:spacecore.currentModule.search();",
 							value: this.state.searchText
 						}
@@ -1025,7 +1047,7 @@ class Persons {
 						{
 							type: "card",
 							header: {
-								title: "Persons",
+								title: "Products",
 								options: [
 									{
 										type: "button",
@@ -1035,14 +1057,14 @@ class Persons {
 									}
 								]
 							},
-							table: personsTable
+							table: productsTable
 						}
 					]
 				]
 			]
 		});
 		
-		if (this.state.lastSelected !== null) window.location.href = "#person-"+this.state.lastSelected.id;
+		if (this.state.lastSelected !== null) window.location.href = "#product-"+this.state.lastSelected.id;
 	}
 	
 	/* Person details */

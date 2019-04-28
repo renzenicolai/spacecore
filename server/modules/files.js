@@ -1,8 +1,9 @@
 "use strict";
 
-const mime = require('mime-types');
+//const mime = require('mime-types');
+//mime.lookup(result.filename.split('.').pop())
 
-class Persons {
+class Files {
 	constructor(opts) {
 		this._opts = Object.assign({
 			database: null,
@@ -12,19 +13,12 @@ class Persons {
 			console.log("The files module can not be started without a database!");
 			process.exit(1);
 		}
-		this._table             = this._opts.database.table(this._opts.table);
+		this._table = this._opts.database.table(this._opts.table);
 	}
 	
-	getFileAsRecord(id) {
-		return new Promise((resolve, reject) => {
-			if (id === null) return resolve(null);
-			if(typeof id !== 'number') return reject("Invalid parameter: please provide the id of a file");
-			return this._table.selectRecords({"id":parseInt(id)}).then((records) => {
-				console.log("SELECT RECORDS RESULT", records);
-				if (records.length > 1) return reject("Duplicate id error!");
-				return resolve(records[0]);
-			}).catch((error) => { return reject(error); });
-		});
+	async getFileAsRecord(id) {
+		if (id === null) return null;
+		return (await this._table.selectRecords({"id":id}))[0];
 	}
 	
 	async getFileAsBase64(id) {
@@ -32,17 +26,85 @@ class Persons {
 		if (result === null) return null;
 		result = result.getFields();
 		if (result.file === null) return null;
-		
 		return {
-			data: result.file.toString('base64'),
-			mime: mime.lookup(result.filename.split('.').pop())
+			name: result.name,
+			mime: result.mime,
+			size: result.file.length,
+			data: result.file.toString('base64')
 		};
 	}
+	
+	async createFileFromBuffer(file, transaction=null) {
+		console.log("CreateFile",file);
+		if (typeof file !== 'object') throw 'File parameter should be an object';
+		if (typeof file.mime !== 'string')  throw 'MIME type missing';
+		if (typeof file.name !== 'string')  throw 'Name missing';
+		if (typeof file.data !== 'object')  throw 'Data should be buffer object';
+		if (typeof file.size !== 'number')  throw 'Size missing';
+		if (file.data.length !== file.size) throw "File length mismatch";
+		var fileRecord = this._table.createRecord();
+		fileRecord.setField('name', file.name);
+		fileRecord.setField('mime', file.mime);
+		fileRecord.setField('file', file.data);
+		await fileRecord.flush(transaction);
+		return fileRecord;
+	}
+	
+	async createFileFromBase64(file,transaction=null) {
+		if (typeof file !== 'object') throw 'File parameter should be an object';
+		if (typeof file.data !== 'string') throw 'Data should be a base64 encoded string';
+		file.data = Buffer.from(file.data, 'base64');
+		return this.createFileFromBuffer(file, transaction);
+	}
+	
+	async deleteFile(id, transaction=null) {
+		if (typeof id !== 'number') throw "ID should be number";
+		var file = (await this._table.selectRecords({"id":id}));
+		if (file.length !== 1) throw "File not found";
+		return file[0].destroy(transaction);
+	}
+	
+	methodListFiles(session, params) {
+		return this._table.selectRecordsRaw("SELECT `id`, `name`, `mime` FROM `"+this._opts.table+"` WHERE 1;", [], false);
+	}
+	
+	methodGetFile(session, params) {
+		return this.getFileAsBase64(params);
+	}
+	
+	async methodAddFile(session, params) {
+		var operations = [];
+		if (typeof params !== 'object') throw "Parameter should be object with file list inside";
+		if (!Array.isArray(params.file)) throw "File list should be an array";
+		for (var i in params.file) {
+			operations.push(this.createFileFromBase64(params.file[i]));
+		}
+		return Promise.all(operations);
+	}
+	
+	async methodRemoveFile(session, params) {
+		if (Array.isArray(params)) {
+			var operations = [];
+			for (var i in params) {
+				operations.push(this.deleteFile(params[i]));
+			}
+			return Promise.all(operations);
+		} else {
+			try {
+				return await this.deleteFile(params);
+			} catch (e) {
+				throw "The file can not be removed because it is in use.";
+			}
+		}
+	}
 
-	registerRpcMethods(rpc, prefix="files") {
+	registerRpcMethods(rpc, prefix="file") {
 		if (prefix!=="") prefix = prefix + "/";
-		rpc.addMethod(prefix+"get", this.getFileAsBase64.bind(this));
+		rpc.addMethod(prefix+"list",   this.methodListFiles.bind(this));
+		rpc.addMethod(prefix+"get",    this.methodGetFile.bind(this));
+		rpc.addMethod(prefix+"add",    this.methodAddFile.bind(this));
+		rpc.addMethod(prefix+"remove", this.methodRemoveFile.bind(this));
 	}
 }
 
-module.exports = Persons;
+module.exports = Files;

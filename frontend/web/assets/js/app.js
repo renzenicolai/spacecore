@@ -11,9 +11,11 @@ require.config({
 		'spacecore-persons': [],
 		'spacecore-users': [],
 		'spacecore-login': [],
+		'spacecore-products': [],
 		'spacecore-dashboard': [],
+		'spacecore-files': [],
 		'spacecore-ui': ['handlebars'],
-		'spacecore': ['tabler-core', 'input-mask', 'spacecore-ui', 'spacecore-persons', 'spacecore-users', 'spacecore-login', 'spacecore-dashboard', 'spacecore-mt940'],
+		'spacecore': ['tabler-core', 'input-mask', 'spacecore-ui', 'spacecore-persons', 'spacecore-users', 'spacecore-login', 'spacecore-dashboard', 'spacecore-files', 'spacecore-mt940','spacecore-products'],
 	},
 	paths: {
 		'tabler-core': 'assets/js/vendors/tabler-core',
@@ -33,7 +35,9 @@ require.config({
 		'spacecore-users': 'assets/js/spacecore/modules/users',
 		'spacecore-login': 'assets/js/spacecore/modules/login',
 		'spacecore-dashboard': 'assets/js/spacecore/modules/dashboard',
-		'spacecore-mt940': 'assets/js/spacecore/modules/mt940'
+		'spacecore-mt940': 'assets/js/spacecore/modules/mt940',
+		'spacecore-products': 'assets/js/spacecore/modules/products',
+		'spacecore-files': 'assets/js/spacecore/modules/files',
 	}
 });
 

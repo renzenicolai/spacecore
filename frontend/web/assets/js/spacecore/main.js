@@ -17,11 +17,19 @@ class Spacecore {
 				ui: this.ui,
 				app: this
 			}),
-			new Users({
+			new Products({
 				ui: this.ui,
 				app: this
 			}),
 			new Mt940({
+				ui: this.ui,
+				app: this
+			}),
+			new Users({
+				ui: this.ui,
+				app: this
+			}),
+			new Files({
 				ui: this.ui,
 				app: this
 			}),
@@ -468,9 +476,9 @@ class Spacecore {
 					var data = elem.data[j];
 					files.push({
 						name: data.file.name,
-						type: data.file.type,
+						mime: data.file.type,
 						size: data.file.size,
-						data: data.reader.result
+						data: data.reader.result.split(',')[1]
 					});
 				}
 				argument[name] = files;

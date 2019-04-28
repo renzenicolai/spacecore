@@ -271,7 +271,6 @@ class Table {
 			if (this._index == null) {
 				console.log("Table "+this._opts.table+" has no primary index. A primary index is required for all tables!");
 			}
-			//console.log("[DATABASE] Schema for table '"+this._opts.table+"' loaded.");
 		}).catch(this._opts.db._errorHandler);
 	}
 	
@@ -304,8 +303,6 @@ class Table {
 				
 		return new Promise((resolve, reject) => {
 			var sql = "INSERT INTO "+mysql.escapeId(this._opts.table)+" ("+cols.join(", ")+") VALUES ("+valuePlaceholders.join(", ")+");";
-			console.log(sql);
-			//console.log(values);
 			var query = this._opts.db._executeQuery(sql, values, transaction).then( ([result]) => {
 				return resolve(result.insertId);
 			}).catch( (error) => {
@@ -365,10 +362,7 @@ class Table {
 				
 		return new Promise((resolve, reject) => {
 			var sql = "UPDATE "+mysql.escapeId(this._opts.table)+" SET "+cols.join(", ")+" WHERE "+mysql.escapeId(this._index)+" = ?;";
-			//console.log(sql);
-			//console.log(values);
 			var query = this._opts.db._executeQuery(sql, values, transaction).then( ([result]) => {
-				//console.log(result);
 				return resolve(result);
 			}).catch( (error) => {
 				if (error.code == "ER_NO_SUCH_TABLE") {
@@ -405,8 +399,6 @@ class Table {
 		var whereValues = [];
 		
 		for (var item in whereParams) {
-			//console.log(item);
-			//console.log("Where?",item,whereParams[item], typeof whereParams[item]);
 			if ((typeof whereParams[item] === "string") || (typeof whereParams[item] === "number") || (typeof whereParams[item] === "boolean")) {
 				whereKeys.push(mysql.escapeId(item)+" = ?");
 				whereValues.push(whereParams[item]);
@@ -439,12 +431,9 @@ class Table {
 			for (var i = 0; i < whereKeys.length; i++) {
 				where += whereKeys[i];
 				if (i < whereKeys.length - 1) where += ' '+whereKeysSeparator+' ';
-				//console.log("loop ",i);
 			}
 		}
 		
-		//console.log('where:',whereKeys,whereValues);
-				
 		if (extra!="") extra = " "+extra;
 		
 		
@@ -571,7 +560,6 @@ class Database {
 	table(table) {
 		if (this._tables.length<1) {
 			this._refreshTables();
-			//console.log("DB REFRESH TABLES");
 		}
 		for (var i = 0; i<this._tables.length; i++) {
 			if (this._tables[i].name()==table) return this._tables[i];
