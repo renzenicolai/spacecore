@@ -299,11 +299,8 @@ class Mt940 {
 		if (typeof file !== 'object') throw "Invalid file: should be object.";
 		if (typeof file.name !== 'string') throw "Invalid file: name should be string.";
 		if (typeof file.data !== 'string') throw "Invalid file: data should be string.";
-		
-		var dataParts = file.data.split('base64,');
-		if (dataParts.length !== 2) throw "Error 1 while parsing data.";
-		if (dataParts[0] !== "data:application/octet-stream;") throw "Error 2 while parsing data.";
-		var mt940 = Buffer.from(dataParts[1], 'base64').toString().split('\r').join('');
+		//if (file.mime !== "application/octet-stream") throw "Invalid MIME type";
+		var mt940 = Buffer.from(file.data, 'base64').toString().split('\r').join('');
 		var mt940lines = mt940.split('\n');
 		
 		var swiftMessageParserPromises = [];
