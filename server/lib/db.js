@@ -247,10 +247,10 @@ class Table {
 			this._isNullable = [];
 			for (var i = 0; i < this._columns.length; i++) {
 								
-				var name = this._columns[i]['COLUMN_NAME'];
-				var dataType = this._columns[i]['DATA_TYPE'];
+				var name = this._columns[i].COLUMN_NAME;
+				var dataType = this._columns[i].DATA_TYPE;
 				
-				this._isNullable[name] = (this._columns[i]['IS_NULLABLE'] === 'YES');
+				this._isNullable[name] = (this._columns[i].IS_NULLABLE === 'YES');
 				
 				if (dataType === "timestamp") {
 					this._columnString += "UNIX_TIMESTAMP(`"+name+"`) AS `"+name+"`";
@@ -336,8 +336,8 @@ class Table {
 	
 	_getColumnTypeForColumnName(query) {
 		for (var i in this._columns) {
-			var name = this._columns[i]['COLUMN_NAME'];
-			var dataType = this._columns[i]['DATA_TYPE'];
+			var name = this._columns[i].COLUMN_NAME;
+			var dataType = this._columns[i].DATA_TYPE;
 			if (name === query) return dataType;
 		}
 		return null;
@@ -394,7 +394,7 @@ class Table {
 		});
 	}
 	
-	selectRecords(whereParams,extra="", whereKeysSeparator="AND", asRecord=true) {
+	async selectRecords(whereParams,extra="", whereKeysSeparator="AND", asRecord=true) {
 		var whereKeys = [];
 		var whereValues = [];
 		
@@ -421,16 +421,16 @@ class Table {
 					}
 				}
 			} else {
-				return new Promise((resolve, reject) => { reject("Invalid where value type ["+(typeof whereParams[item])+"]"); });
+				throw "Invalid where value type ["+(typeof whereParams[item])+"]";
 			}
 		}
 		
 		var where = "";
 		if (whereKeys.length>0) {
 			where = "where ";
-			for (var i = 0; i < whereKeys.length; i++) {
-				where += whereKeys[i];
-				if (i < whereKeys.length - 1) where += ' '+whereKeysSeparator+' ';
+			for (var j = 0; j < whereKeys.length; j++) {
+				where += whereKeys[j];
+				if (j < whereKeys.length - 1) where += ' '+whereKeysSeparator+' ';
 			}
 		}
 		

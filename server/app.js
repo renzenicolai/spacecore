@@ -30,14 +30,14 @@ process.on('unhandledRejection', (err) => {
 	console.error('======== UNHANDLED REJECTION ========');
 	console.error(err);
 	process.exit(1);
-})
+});
 
 process.on('uncaughtException', (err) => { 
 	logFile.write("UNCAUGHT EXCEPTION: "+err+"\n");
 	console.error('======== UNCAUGHT EXCEPTION ========');
 	console.error(err);
 	process.exit(1);
-})
+});
 
 process.on('SIGINT', () => {
 	console.log("\n======== APPLICATION INTERRUPTED ========");

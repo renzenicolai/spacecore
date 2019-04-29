@@ -32,4 +32,4 @@ class Tasks {
 	}
 }
 
-module.exports = new Tasks;
+module.exports = new Tasks();

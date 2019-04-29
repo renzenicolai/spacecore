@@ -191,7 +191,7 @@ class Transactions {
 							return reject("Invalid product id provided.");
 						});
 					}
-					var product_id = product_results[product][0]['id'];
+					var product_id = product_results[product][0].id;
 					stock_promises.push(this._opts.products.listStockRecords(session, {'product_id': product_id, 'amount_current':{">":0}}));
 				}
 				
@@ -404,9 +404,9 @@ class Transactions {
 			
 			for (var i in rows) {
 				var row = rows[i];
-				rowIds.push(row['id']);
-				if (!(row['transaction_id'] in transactionIds)) {
-					transactionIds.push(row['transaction_id']);
+				rowIds.push(row.id);
+				if (!(row.transaction_id in transactionIds)) {
+					transactionIds.push(row.transaction_id);
 				}
 			}
 			
@@ -419,7 +419,7 @@ class Transactions {
 					if (rowIds.lastIndexOf(id)>=0) {
 						isUnknown = true;
 					}
-					transactions[i].rows[j]['isUnknown'] = isUnknown;
+					transactions[i].rows[j].isUnknown = isUnknown;
 				}
 			}
 			

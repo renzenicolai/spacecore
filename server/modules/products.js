@@ -40,15 +40,16 @@ class Products {
 	}
 	
 	async list(session, params) {
+		var i = null;
 		var products = await this._table.list(params);
 		
 		var promises = [];
-		for (var i in products) {
+		for (i in products) {
 			promises.push(this._opts.files.getFileAsBase64(products[i].picture_id));
 		}
 		var pictures = await Promise.all(promises);
 		
-		for (var i in pictures) products[i].picture = pictures[i];
+		for (i in pictures) products[i].picture = pictures[i];
 		
 		promises = [];
 		for (i in products) {
@@ -83,7 +84,7 @@ class Products {
 		}
 		
 		promises = [];
-		for (var i in products) {
+		for (i in products) {
 			if (products[i].package_id !== null) {
 				promises.push(this._table_package.selectRecords({id: products[i].package_id}));
 			} else {
@@ -102,7 +103,7 @@ class Products {
 		}
 		
 		var prices = await Promise.all(promises);
-		for (var i in prices) {
+		for (i in prices) {
 			products[i].price = [];
 			for (var j in prices[i]) {
 				products[i].price.push(prices[i][j].getFields());
@@ -265,7 +266,7 @@ class Products {
 		return this._table_stock.list(params).then((result) => {
 			var location_promises = [];
 			for (var i in result) {
-				location_promises.push(this._table_location.list({id: result[i]['product_location_id']}));
+				location_promises.push(this._table_location.list({id: result[i].product_location_id}));
 			}
 			return Promise.all(location_promises).then((locations) => {
 				for (var i in result) {
@@ -292,7 +293,7 @@ class Products {
 		}
 		
 		if (!("amount" in params) && (typeof params.amount === "number")) {
-			return "Missing amount parameter.";;
+			return "Missing amount parameter.";
 		}
 		
 		var product = params.product_id;
@@ -396,7 +397,7 @@ class Products {
 		rpc.addMethod(prefix+"find/id", this.findById.bind(this));
 		rpc.addMethod(prefix+"find/barcode", this.findByBarcode.bind(this));
 		//rpc.addMethod(prefix+"find/location", this.findByLocation.bind(this));
-		rpc.addMethod(prefix+"price/set", this.setPrice.bind(this))
+		rpc.addMethod(prefix+"price/set", this.setPrice.bind(this));
 		
 		/* Identifier types */
 		rpc.addMethod(prefix+"barcode/type/list", this.listIdentifierTypes.bind(this));

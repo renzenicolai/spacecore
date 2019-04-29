@@ -114,7 +114,7 @@ class Users {
 				}
 				return Promise.all(promises).then((resultArray) => {
 					for (var i in resultArray) {
-						result[i].avatar = resultArrau[i];
+						result[i].avatar = resultArray[i];
 					}
 					return Promise.resolve(result);
 				});

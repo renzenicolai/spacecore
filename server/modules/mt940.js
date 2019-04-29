@@ -23,8 +23,8 @@ class Mt940 {
 		//BUNQNL2A for BUNQ
 		
 		var message = {};
-		message['bank'] = bank;
-		message['transactions'] = [];
+		message.bank = bank;
+		message.transactions = [];
 		var numTransactions = 0;
 		
 		var trxBefore = 0;
@@ -38,32 +38,32 @@ class Mt940 {
 			
 			if (code === '20') {
 				//Transaction Reference Number (TRN)
-				message['trn'] = data;
+				message.trn = data;
 			} else if (code === '21') {
 				//Ref to related mess/trans
-				message['ref'] = data;
+				message.ref = data;
 			} else if (code === '25') {
 				//Account number
 				data = data.split(' ');
-				message['account'] = data[0];
-				if (data.length > 1) message['currency'] = data[1];
+				message.account = data[0];
+				if (data.length > 1) message.currency = data[1];
 			} else if ((code === '28') || (code === '28C')) {
 				//Statement number
-				message['statement'] = data;
+				message.statement = data;
 			} else if ((code === '60F') || (code === '60M')) {
 				//Opening balance
-				message['opening'] = {};
+				message.opening = {};
 				if (data[0] === 'C') {
-					message.opening['credit'] = true;
+					message.opening.credit = true;
 				} else if (data[0] === 'D') {
-					message.opening['credit'] = false;
+					message.opening.credit = false;
 				} else {
 					console.log("Opening balance tag contains unknown transaction type", code, data);
 					throw "Unknown transaction type in opening balance tag";
 				}
-				message.opening['date'] = data.slice(1,7);
-				message.opening['currency'] = data.slice(7,10);
-				message.opening['amount'] = Math.round(Number(data.slice(10).replace(',','.'))*100);
+				message.opening.date = data.slice(1,7);
+				message.opening.currency = data.slice(7,10);
+				message.opening.amount = Math.round(Number(data.slice(10).replace(',','.'))*100);
 				
 				if (message.opening.credit) {
 					trxBefore -= message.opening.amount;
@@ -72,18 +72,18 @@ class Mt940 {
 				}
 			} else if ((code === '62F') || (code === '62M')) {
 				//Booked funds
-				message['booked'] = {};
+				message.booked = {};
 				if (data[0] === 'C') {
-					message.booked['credit'] = true;
+					message.booked.credit = true;
 				} else if (data[0] === 'D') {
-					message.booked['credit'] = false;
+					message.booked.credit = false;
 				} else {
 					console.log("Opening balance tag contains unknown transaction type", code, data);
 					throw "Unknown transaction type in opening balance tag";
 				}
-				message.booked['date'] = data.slice(1,7);
-				message.booked['currency'] = data.slice(7,10);
-				message.booked['amount'] = Math.round(Number(data.slice(10).replace(',','.'))*100);
+				message.booked.date = data.slice(1,7);
+				message.booked.currency = data.slice(7,10);
+				message.booked.amount = Math.round(Number(data.slice(10).replace(',','.'))*100);
 				if (message.booked.credit) {
 					trxAfter -= message.booked.amount;
 				} else {
@@ -91,18 +91,18 @@ class Mt940 {
 				}
 			} else if ((code === '64F') || (code === '64M')) {
 				//Available funds
-				message['available'] = {};
+				message.available = {};
 				if (data[0] === 'C') {
-					message.available['credit'] = true;
+					message.available.credit = true;
 				} else if (data[0] === 'D') {
-					message.available['credit'] = false;
+					message.available.credit = false;
 				} else {
 					console.log("Opening balance tag contains unknown transaction type", code, data);
 					throw "Unknown transaction type in opening balance tag";
 				}
-				message.available['date'] = data.slice(1,7);
-				message.available['currency'] = data.slice(7,10);
-				message.available['amount'] = Math.round(Number(data.slice(10).replace(',','.'))*100);
+				message.available.date = data.slice(1,7);
+				message.available.currency = data.slice(7,10);
+				message.available.amount = Math.round(Number(data.slice(10).replace(',','.'))*100);
 				if (message.available.credit) {
 					trxAfter -= message.available.amount;
 				} else {
@@ -110,18 +110,18 @@ class Mt940 {
 				}
 			} else if ((code === '65F') || (code === '65M')) {
 				//Forward available balance
-				message['forward'] = {};
+				message.forward = {};
 				if (data[0] === 'C') {
-					message.forward['credit'] = true;
+					message.forward.credit = true;
 				} else if (data[0] === 'D') {
-					message.forward['credit'] = false;
+					message.forward.credit = false;
 				} else {
 					console.log("Opening balance tag contains unknown transaction type", code, data);
 					throw "Unknown transaction type in opening balance tag";
 				}
-				message.forward['date'] = data.slice(1,7);
-				message.forward['currency'] = data.slice(7,10);
-				message.forward['amount'] = Math.round(Number(data.slice(10).replace(',','.'))*100);
+				message.forward.date = data.slice(1,7);
+				message.forward.currency = data.slice(7,10);
+				message.forward.amount = Math.round(Number(data.slice(10).replace(',','.'))*100);
 				if (message.forward.credit) {
 					trxAfter -= message.forward.amount;
 				} else {
@@ -130,52 +130,52 @@ class Mt940 {
 			} else if (code === '61') {
 				//Statement line
 				var statement = {};
-				statement['date'] = data.slice(0,6);
+				statement.date = data.slice(0,6);
 				var pos = 6;
 				if ((data[6] !== 'C') && (data[6] !== 'D') && (data[6] !== 'R')) {
 					//Entry date in statement
-					statement['entryDate'] = data.slice(6,10);
+					statement.entryDate = data.slice(6,10);
 					pos = 10;
 				}
 				if (data[pos] === 'C') {
-					statement['credit'] = true;
+					statement.credit = true;
 					//statement['r'] = false;
 					pos += 1;
 					if (data[pos] === ' ') pos += 1;
 				} else if (data[pos] === 'D') {
-					statement['credit'] = false;
+					statement.credit = false;
 					//statement['r'] = false;
 					pos += 1;
 					if (data[pos] === ' ') pos += 1;
 				} else if (data[pos] === 'R') {
 					throw "(FOUND TRANSACTION TYPE WITH R, STOP AND CHECK)";
-					//statement['r'] = true;
+					/*//statement['r'] = true;
 					pos += 1;
 					if (data[pos] === 'C') {
-						statement['credit'] = true;
+						statement.credit = true;
 					} else if (data[pos] === 'D') {
-						statement['credit'] = false;
+						statement.credit = false;
 					} else {
 						console.log('Invalid indication in statement (1)!',data);
 						throw "Invalid indication in statement (1).";
 					}
-					pos += 1;
+					pos += 1;*/
 				} else {
 					console.log('Invalid indication in statement (2)!',data);
 					throw "Invalid indication in statement (2).";
 				}
 				
 				if (isNaN(data[pos])) { //Optional 3rd pos. currency code
-					statement['curr'] = data[pos];
+					statement.curr = data[pos];
 					pos += 1;
 				}
 				
 				//This is a guess...
 				var leftovers = data.slice(pos).split('N');
-				statement["amount"] = Number(leftovers.shift().replace(',','.'))*100
+				statement.amount = Number(leftovers.shift().replace(',','.'))*100;
 				leftovers = 'N'+leftovers.join('N');
-				statement["type"] = leftovers.slice(0,4);
-				statement["ref"]= leftovers.slice(4);
+				statement.type = leftovers.slice(0,4);
+				statement.ref= leftovers.slice(4);
 				
 				if (statement.credit) {
 					trxTotalAmount -= statement.amount;
@@ -184,22 +184,24 @@ class Mt940 {
 				}
 				
 				message.transactions[numTransactions] = {};
-				message.transactions[numTransactions]['statement'] = statement;
+				message.transactions[numTransactions].statement = statement;
 				numTransactions += 1;
 			} else if (code === '86') {
 				//Description for transaction
 				if (numTransactions < 1) throw "Description in SEPA message before transaction";
+				var fields = null;
 				if (data.startsWith('/')) {
 					
 					//Workaround for / in NAME and/or REMI
 					var wap1 = data.split("/NAME/");
+					var wap2 = null;
 					if (data.search("/REMI/") < 0) {
-						var wap2 = wap1[1].split("/EREF/");
+						wap2 = wap1[1].split("/EREF/");
 						wap2[0] = wap2[0].replace("/","-");
 						wap1[1] = wap2.join("/EREF/");
 						data = wap1.join("/NAME/");
 					} else {
-						var wap2 = wap1[1].split("/REMI/");
+						wap2 = wap1[1].split("/REMI/");
 						wap2[0] = wap2[0].replace("/","-");
 						wap1[1] = wap2.join("/REMI/");
 						data = wap1.join("/NAME/");
@@ -218,7 +220,7 @@ class Mt940 {
 						data = wap1[0]+"/EREF/"+wap1[1].replace("/","-");
 					}
 					
-					var fields = data.split('/');
+					fields = data.split('/');
 					fields.shift(); //First field is empty
 					
 					if ((fields.length % 2) > 0) {
@@ -244,9 +246,7 @@ class Mt940 {
 					
 					if (typeof pairs.REMI === 'string') {
 						if (pairs.REMI.startsWith('\n')) {
-							var tmp = pairs.REMI.split('\n');
-							tmp.shift();
-							pairs.REMI = tmp.join('\n');
+							pairs.REMI = pairs.REMI.split('\n').shift().join('\n');
 						}
 						pairs.REMI = pairs.REMI.replace('\n',' ');
 						while (pairs.REMI.search('  ') >= 0) {
@@ -254,30 +254,30 @@ class Mt940 {
 						}
 					}
 					
-					message.transactions[numTransactions-1]['fields'] = pairs;
+					message.transactions[numTransactions-1].fields = pairs;
 				} else {
 					var info = data.split('\n');
-					message.transactions[numTransactions-1]['info'] = info;
+					message.transactions[numTransactions-1].info = info;
 					
-					var fields = {};
+					fields = {};
 					
 					//Try to fill out fields using the awefull ABN-AMRO formatted bullshit.
 					
 					if (info[0].search("IBAN: ") >= 0) {
-						var tmp = info[0].split('IBAN: ');
-						fields['IBAN'] = tmp[1];
-						fields['TRTP'] = tmp[0].trim();
+						var tmpIban = info[0].split('IBAN: ');
+						fields.IBAN = tmpIban[1];
+						fields.TRTP = tmpIban[0].trim();
 					}
 					if (info[1].search("NAAM: ") >= 0) {
-						var tmp = info[1].split('NAAM: ');
-						fields['NAME'] = tmp[1];
-						fields['BIC'] = tmp[0].split('BIC: ').join('').trim();
+						var tmpName = info[1].split('NAAM: ');
+						fields.NAME = tmpName[1];
+						fields.BIC = tmpName[0].split('BIC: ').join('').trim();
 					}
 					if (info[2].search('OMSCHRIJVING: ') >= 0) {
-						fields['REMI'] = info[2].split('OMSCHRIJVING: ').join('').trim();
+						fields.REMI = info[2].split('OMSCHRIJVING: ').join('').trim();
 					}
 					
-					message.transactions[numTransactions-1]['fields'] = fields;
+					message.transactions[numTransactions-1].fields = fields;
 				}
 			} else {
 				console.log("Unknown tag!!",code,"->",data);

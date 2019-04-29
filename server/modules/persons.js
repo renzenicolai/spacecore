@@ -143,7 +143,7 @@ class Persons {
 		if (typeof params === 'number') {
 			id = params;
 		} else if ((typeof params === 'object') && (typeof params.id === 'number')) {
-			id = params.id
+			id = params.id;
 		} else {
 			throw "Invalid parameters";
 		}
@@ -229,7 +229,7 @@ class Persons {
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
 			(typeof params.name !== 'string') ||
-			(typeof params.iban !== 'string') ||
+			(typeof params.iban !== 'string')
 		) throw "Invalid parameters";
 		
 		var record = this._table_bankaccount.createRecord();
@@ -371,7 +371,7 @@ class Persons {
 		if (typeof params === 'number') {
 			id = params;
 		} else if ((typeof params === 'object') && (typeof params.id === 'number')) {
-			id = params.id
+			id = params.id;
 			if (typeof params.force === 'boolean') force = params.force;
 		} else {
 			throw "Invalid parameters";
