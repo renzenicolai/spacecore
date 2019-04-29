@@ -64,12 +64,13 @@ class Persons {
 	async list(session, params) {
 		var persons = await this._table.list(params);
 		var tasks = [
-			Tasks.create('avatar',    this._opts.files.getFileAsBase64.bind(this._opts.files), persons, 'avatar_id'),
-			Tasks.create('groups',    this._getGroups.bind(this),                              persons, 'id'),
-			Tasks.create('tokens',    this._getTokens.bind(this),                              persons, 'id'),
-			Tasks.create('addresses', this._getAddresses.bind(this),                           persons, 'id'),
-			Tasks.create('email',     this._getEmail.bind(this),                               persons, 'id'),
-			Tasks.create('phone',     this._getPhone.bind(this),                               persons, 'id')
+			Tasks.create('avatar',       this._opts.files.getFileAsBase64.bind(this._opts.files), persons, 'avatar_id'),
+			Tasks.create('groups',       this._getGroups.bind(this),                              persons, 'id'),
+			Tasks.create('bankaccounts', this._getBankaccounts.bind(this),                        persons, 'id'),
+			Tasks.create('tokens',       this._getTokens.bind(this),                              persons, 'id'),
+			Tasks.create('addresses',    this._getAddresses.bind(this),                           persons, 'id'),
+			Tasks.create('email',        this._getEmail.bind(this),                               persons, 'id'),
+			Tasks.create('phone',        this._getPhone.bind(this),                               persons, 'id')
 		];
 		return Tasks.merge(tasks, persons);
 	}
@@ -217,11 +218,28 @@ class Persons {
 	}
 	
 	async addTokenToPerson(session, params) {
-		throw "Not implemented.";
-	}
-	
-	async removeTokenFromPerson(session, params) {
-		throw "Not implemented.";
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.person !== 'number') ||
+			(typeof params.type   !== 'number') ||
+			(typeof params.public !== 'string')
+		) throw "Invalid parameters";
+		
+		var typeRecords = this._table_token_type.list({id: params.type});
+		
+		if (typeRecords.length !== 1) throw "Invalid token type";
+		
+		var record = this._table_token.createRecord();
+		record.setField("person_id", params.person);
+		record.setField("type_id", typeRecords[0].getIndex());
+		record.setField("public", params.public);
+		if (typeRecords[0].getField(requirePrivate)) {
+			if ((typeof params.private !== 'string') || (params.private.length < 1)) {
+				throw "Private key is required for this type of key!";
+			}
+			record.setField("private", params.private);
+		}
+		return record.flush();
 	}
 	
 	async addBankaccountToPerson(session, params) {
@@ -236,35 +254,88 @@ class Persons {
 		record.setField("person_id", params.person);
 		record.setField("name", params.name);
 		record.setField("iban", params.iban);
+		record.setField("internal", false);
+		return record.flush();
+	}
+		
+	async addAddressToPerson(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.person !== 'number') ||
+			(typeof params.street !== 'string') ||
+			(typeof params.housenumber !== 'string') ||
+			(typeof params.postalcode !== 'string') ||
+			(typeof params.city !== 'string')
+		) throw "Invalid parameters";
+		
+		var record = this._table_address.createRecord();
+		record.setField("person_id", params.person);
+		record.setField("street", params.street);
+		record.setField("housenumber", params.housenumber);
+		record.setField("postalcode", params.postalcode);
+		record.setField("city", params.city);
 		return record.flush();
 	}
 	
-	async removeBankaccountFromPerson(session, params) {
-		throw "Not implemented.";
+	async addEmailToPerson(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.person !== 'number') ||
+			(typeof params.phonenumber !== 'string')
+		) throw "Invalid parameters";
+		
+		var record = this._table_phone.createRecord();
+		record.setField("person_id", params.person);
+		record.setField("phonenumber", params.phonenumber);
+		return record.flush();
 	}
 	
-	async addAddressToPerson(session, params) {
-		throw "Not implemented.";
+	async addPhoneToPerson(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.person !== 'number') ||
+			(typeof params.address !== 'string')
+		) throw "Invalid parameters";
+		
+		var record = this._table_address.createRecord();
+		record.setField("person_id", params.person);
+		record.setField("address", params.address);
+		return record.flush();
+	}
+	
+	async _removeRecordFromPerson(table, params) {
+		if ((typeof params        !== 'object') ||
+			(typeof params.person !== 'number') ||
+			(typeof params.id     !== 'number')
+		) throw "Invalid parameters";
+		
+		var records = await table.selectRecords({person_id: params.person, id: params.id});		
+		if (records.length < 1) return false;
+		
+		for (var i in records) {
+			await records[i].destroy();
+		}
+		return true;
+	}
+	
+	async removeTokenFromPerson(session, params) {
+		return this._removeRecordFromPerson(this._table_token, params);
+	}
+	
+	async removeBankaccountFromPerson(session, params) {
+		return this._removeRecordFromPerson(this._table_bankaccount, params);
 	}
 	
 	async removeAddressFromPerson(session, params) {
-		throw "Not implemented.";
-	}
-	
-	async addEmailToPerson(session, params) {
-		throw "Not implemented.";
+		return this._removeRecordFromPerson(this._table_address, params);
 	}
 	
 	async removeEmailFromPerson(session, params) {
-		throw "Not implemented.";
-	}
-
-	async addPhoneToPerson(session, params) {
-		throw "Not implemented.";
+		return this._removeRecordFromPerson(this._table_email, params);
 	}
 	
 	async removePhoneFromPerson(session, params) {
-		throw "Not implemented.";
+		return this._removeRecordFromPerson(this._table_phone, params);
 	}
 	
 	async addGroupToPerson(session, params) {
@@ -304,6 +375,56 @@ class Persons {
 		var tasks = [];
 		for (var i in results) tasks.push(results[i].destroy());
 		return Promise.all(tasks);
+	}
+	
+	/* Tokens */
+	listTokenTypes(session, params) {
+		return this._table_token_type.list(params);
+	}
+	
+	async addTokenType(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.name !== 'string') ||
+			(typeof params.method !== 'string') ||
+			(typeof params.requirePrivate !== 'boolean')
+		) throw "Invalid parameters";
+		
+		var record = this._table_token_type.createRecord();
+		record.setField("name", params.name);
+		record.setField("method", params.method);
+		record.setField("requirePrivate", params.requirePrivate);
+		return record.flush();
+	}
+	
+	async editTokenType(session, params) {
+		if (typeof params !== 'object') throw "Expected params to be an object";
+		if (typeof params.id !== 'number') throw "Expected the id of a token type as number";
+		var records = this._table_token_type.list({id: params.id});
+		if (records.length !== 1) throw "Not found";
+		var record = records[0];
+		
+		if (typeof params.name           === 'string')  record.setField('name', params.name);
+		if (typeof params.method         === 'string')  record.setField('method', params.method);
+		if (typeof params.requirePrivate === 'boolean') record.setField('requirePrivate', params.requirePrivate);
+		
+		return record.flush();
+	}
+	
+	async removeTokenType(session, params) {
+		if (typeof params !== 'object') throw "Expected params to be an object";
+		if (typeof params.id !== 'number') throw "Expected the id of a token type as number";
+		
+		var force = false;
+		if (typeof params.force === 'boolean') force = params.force;
+		
+		var records = this._table_token_type.selectRecords({id: params.id});
+		if (records.length !== 1) return false;
+		var record = records[0];
+		
+		var records = this._table_token.list({type_id: params.id});
+		if (records.length !== 1) throw "Not found";
+		var record = records[0];
 	}
 	
 	/* Groups */
@@ -426,7 +547,7 @@ class Persons {
 		});
 	}
 		
-	/* Registration */
+	/* RPC function registration */
 	
 	registerRpcMethods(rpc, prefix="person") {
 		if (prefix!=="") prefix = prefix + "/";
@@ -449,6 +570,12 @@ class Persons {
 		rpc.addMethod(prefix+"removePhone", this.removePhoneFromPerson.bind(this));             //Persons: remove a phonenumber from a person
 		rpc.addMethod(prefix+"addGroup", this.addGroupToPerson.bind(this));                     //Persons: add a group to a person
 		rpc.addMethod(prefix+"removeGroup", this.removeGroupFromPerson.bind(this));             //Persons: remove a group from a person
+		
+		/* Tokens */
+		rpc.addMethod(prefix+"token/type/list", this.listTokenTypes.bind(this));                //Tokens: list token type
+		rpc.addMethod(prefix+"token/type/add", this.addTokenType.bind(this));                   //Tokens: add token type
+		rpc.addMethod(prefix+"token/type/edit", this.editTokenType.bind(this));                 //Tokens: edit token type
+		rpc.addMethod(prefix+"token/type/remove", this.removeTokenType.bind(this));             //Tokens: remove token type
 		
 		/* Groups */
 		rpc.addMethod(prefix+"group/list", this.listGroups.bind(this));                         //Groups: list groups matching filter in query
