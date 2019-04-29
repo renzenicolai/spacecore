@@ -216,6 +216,57 @@ class Persons {
 		return this.list(session, {"nick_name": params.toLowerCase()});
 	}
 	
+	async addTokenToPerson(session, params) {
+		throw "Not implemented.";
+	}
+	
+	async removeTokenFromPerson(session, params) {
+		throw "Not implemented.";
+	}
+	
+	async addBankaccountToPerson(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.person !== 'number') ||
+			(typeof params.name !== 'string') ||
+			(typeof params.iban !== 'string') ||
+		) throw "Invalid parameters";
+		
+		var record = this._table_bankaccount.createRecord();
+		record.setField("person_id", params.person);
+		record.setField("name", params.name);
+		record.setField("iban", params.iban);
+		return record.flush();
+	}
+	
+	async removeBankaccountFromPerson(session, params) {
+		throw "Not implemented.";
+	}
+	
+	async addAddressToPerson(session, params) {
+		throw "Not implemented.";
+	}
+	
+	async removeAddressFromPerson(session, params) {
+		throw "Not implemented.";
+	}
+	
+	async addEmailToPerson(session, params) {
+		throw "Not implemented.";
+	}
+	
+	async removeEmailFromPerson(session, params) {
+		throw "Not implemented.";
+	}
+
+	async addPhoneToPerson(session, params) {
+		throw "Not implemented.";
+	}
+	
+	async removePhoneFromPerson(session, params) {
+		throw "Not implemented.";
+	}
+	
 	async addGroupToPerson(session, params) {
 		if (
 			(typeof params !== 'object') ||
@@ -381,19 +432,29 @@ class Persons {
 		if (prefix!=="") prefix = prefix + "/";
 		
 		/* Persons */
-		rpc.addMethod(prefix+"list", this.list.bind(this));                         //Persons: list persons matching filter in query
-		rpc.addMethod(prefix+"add", this.add.bind(this));                           //Persons: add a person
-		rpc.addMethod(prefix+"edit", this.edit.bind(this));                         //Persons: edit a person
-		rpc.addMethod(prefix+"remove", this.remove.bind(this));                     //Persons: remove a person
-		rpc.addMethod(prefix+"find", this.find.bind(this));                         //Persons: find a person (wrapper for list function)
-		rpc.addMethod(prefix+"addGroup", this.addGroupToPerson.bind(this));         //Persons: add a group to a person
-		rpc.addMethod(prefix+"removeGroup", this.removeGroupFromPerson.bind(this)); //Persons: remove a group from a person
+		rpc.addMethod(prefix+"list", this.list.bind(this));                                     //Persons: list persons matching filter in query
+		rpc.addMethod(prefix+"add", this.add.bind(this));                                       //Persons: add a person
+		rpc.addMethod(prefix+"edit", this.edit.bind(this));                                     //Persons: edit a person
+		rpc.addMethod(prefix+"remove", this.remove.bind(this));                                 //Persons: remove a person
+		rpc.addMethod(prefix+"find", this.find.bind(this));                                     //Persons: find a person (wrapper for list function)
+		rpc.addMethod(prefix+"addToken", this.addTokenToPerson.bind(this));                     //Persons: add a token to a person
+		rpc.addMethod(prefix+"removeToken", this.removeTokenFromPerson.bind(this));             //Persons: remove a token from a person
+		rpc.addMethod(prefix+"addBankaccount", this.addBankaccountToPerson.bind(this));         //Persons: add a bankaccount to a person
+		rpc.addMethod(prefix+"removeBankaccount", this.removeBankaccountFromPerson.bind(this)); //Persons: remove a bankaccount from a person
+		rpc.addMethod(prefix+"addAddress", this.addAddressToPerson.bind(this));                 //Persons: add an address to a person
+		rpc.addMethod(prefix+"removeAddress", this.removeAddressFromPerson.bind(this));         //Persons: remove an address from a person
+		rpc.addMethod(prefix+"addEmail", this.addEmailToPerson.bind(this));                     //Persons: add an email address to a person
+		rpc.addMethod(prefix+"removeEmail", this.removeEmailFromPerson.bind(this));             //Persons: remove an email address from a person
+		rpc.addMethod(prefix+"addPhone", this.addPhoneToPerson.bind(this));                     //Persons: add a phonenumber to a person
+		rpc.addMethod(prefix+"removePhone", this.removePhoneFromPerson.bind(this));             //Persons: remove a phonenumber from a person
+		rpc.addMethod(prefix+"addGroup", this.addGroupToPerson.bind(this));                     //Persons: add a group to a person
+		rpc.addMethod(prefix+"removeGroup", this.removeGroupFromPerson.bind(this));             //Persons: remove a group from a person
 		
 		/* Groups */
-		rpc.addMethod(prefix+"group/list", this.listGroups.bind(this));             //Groups: list groups matching filter in query
-		rpc.addMethod(prefix+"group/add", this.addGroup.bind(this));                //Groups: add a group
-		rpc.addMethod(prefix+"group/edit", this.editGroup.bind(this));              //Groups: edit a group
-		rpc.addMethod(prefix+"group/remove", this.removeGroup.bind(this));          //Groups: remove a group
+		rpc.addMethod(prefix+"group/list", this.listGroups.bind(this));                         //Groups: list groups matching filter in query
+		rpc.addMethod(prefix+"group/add", this.addGroup.bind(this));                            //Groups: add a group
+		rpc.addMethod(prefix+"group/edit", this.editGroup.bind(this));                          //Groups: edit a group
+		rpc.addMethod(prefix+"group/remove", this.removeGroup.bind(this));                      //Groups: remove a group
 	}
 }
 
