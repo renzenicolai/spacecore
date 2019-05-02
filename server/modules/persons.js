@@ -75,7 +75,7 @@ class Persons {
 		return Tasks.merge(tasks, persons);
 	}
 	
-	async add(session, params) {
+	async create(session, params) {
 		var nick_name = "";
 		var first_name = "";
 		var last_name = "";
@@ -91,12 +91,24 @@ class Persons {
 			if (typeof params.last_name  === "string") last_name  = params.last_name;
 			if (typeof params.avatar === "object") avatar = params.avatar;
 		} else {
-			throw "Invalid argument.";
+			throw "Invalid parameters supplied";
+		}
+		
+		if ((typeof params.avatar === "object") && (typeof params.avatar_id !== "undefined")) {
+			throw "Supply either a picture as file or the id of an existing picture, but not both";
+		}
+		
+		if (typeof params.avatar_id === "number") {
+			if (this._opts.files.getFileAsBase64(params.avatar_id) === null) {
+				await dbTransaction.rollback();
+				throw "Invalid picture id supplied";
+			}
+			personRecord.setField("avatar_id", params.avatar_id);
 		}
 		
 		var checks = await Promise.all([
 			this.list(session, {nick_name: nick_name}),
-			this._opts.products.findByNameLike(session, nick_name)
+			this._opts.products.find(session, nick_name)
 		]);
 		
 		if (checks[0].length > 0) throw "This nickname exists already!";
@@ -104,7 +116,7 @@ class Persons {
 		
 		var defaultGroups = await this.listGroups(session, {addToNew:1});
 		
-		var dbTransaction = await this._opts.database.transaction("addPerson ("+nick_name+")");
+		var dbTransaction = await this._opts.database.transaction("Add person ("+nick_name+")");
 		
 		var personRecord = this._table.createRecord();
 		
@@ -131,11 +143,11 @@ class Persons {
 			
 			await Promise.all(groupMappingPromises);
 		} catch (e) {
-			dbTransaction.rollback();
+			await dbTransaction.rollback();
 			throw e;
 		}
 		
-		dbTransaction.commit();
+		await dbTransaction.commit();
 		return personRecord.getIndex();
 	}
 	
@@ -214,7 +226,21 @@ class Persons {
 	
 	async find(session, params) {
 		if (typeof params !== 'string') throw "Parameter should be the nickname as a string!";
-		return this.list(session, {"nick_name": params.toLowerCase()});
+		var results = await this.list(session, {nick_name: params.toLowerCase()});
+		if (results.length < 1) return null;
+		if (results.length > 1) throw "Multiple persons with the same nickname found, please check the database.";
+		return results[0];
+	}
+	
+	async findByToken(session, params) {
+		if (typeof params !== 'string') throw "Parameter should be the token as a string!";
+		var tokens = await this._table_token.list({public: params});
+		if (tokens.length < 1) return null;
+		if (tokens.length > 1) throw "Multiple tokens with the same public key found, please check the database.";
+		var results = await this.list(session, {id: tokens[0].person_id});
+		if (results.length < 1) return null;
+		if (results.length > 1) throw "Multiple persons with the same id found, please check the database.";
+		return results[0];
 	}
 	
 	async addTokenToPerson(session, params) {
@@ -225,7 +251,7 @@ class Persons {
 			(typeof params.public !== 'string')
 		) throw "Invalid parameters";
 		
-		var typeRecords = this._table_token_type.list({id: params.type});
+		var typeRecords = await this._table_token_type.selectRecords({id: params.type});
 		
 		if (typeRecords.length !== 1) throw "Invalid token type";
 		
@@ -233,7 +259,7 @@ class Persons {
 		record.setField("person_id", params.person);
 		record.setField("type_id", typeRecords[0].getIndex());
 		record.setField("public", params.public);
-		if (typeRecords[0].getField(requirePrivate)) {
+		if (typeRecords[0].getField("requirePrivate")) {
 			if ((typeof params.private !== 'string') || (params.private.length < 1)) {
 				throw "Private key is required for this type of key!";
 			}
@@ -382,7 +408,7 @@ class Persons {
 		return this._table_token_type.list(params);
 	}
 	
-	async addTokenType(session, params) {
+	async createTokenType(session, params) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.name !== 'string') ||
@@ -418,13 +444,14 @@ class Persons {
 		var force = false;
 		if (typeof params.force === 'boolean') force = params.force;
 		
+		throw "Not implemented";
+		
 		var records = this._table_token_type.selectRecords({id: params.id});
 		if (records.length !== 1) return false;
 		var record = records[0];
 		
-		var records = this._table_token.list({type_id: params.id});
-		if (records.length !== 1) throw "Not found";
-		var record = records[0];
+		await record.destroy();
+		return true;
 	}
 	
 	/* Groups */
@@ -433,7 +460,7 @@ class Persons {
 		return this._table_group.list(params);
 	}
 		
-	async addGroup(session, params) {
+	async createGroup(session, params) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.name !== 'string') ||
@@ -534,6 +561,10 @@ class Persons {
 		return true;
 	}
 	
+	authenticateToken(session, params) {
+		throw "Not implemented";
+	}
+	
 	/* Exported helper functions */
 	
 	select(where={}, extra="", separator="AND") {
@@ -553,35 +584,37 @@ class Persons {
 		if (prefix!=="") prefix = prefix + "/";
 		
 		/* Persons */
-		rpc.addMethod(prefix+"list", this.list.bind(this));                                     //Persons: list persons matching filter in query
-		rpc.addMethod(prefix+"add", this.add.bind(this));                                       //Persons: add a person
-		rpc.addMethod(prefix+"edit", this.edit.bind(this));                                     //Persons: edit a person
-		rpc.addMethod(prefix+"remove", this.remove.bind(this));                                 //Persons: remove a person
-		rpc.addMethod(prefix+"find", this.find.bind(this));                                     //Persons: find a person (wrapper for list function)
-		rpc.addMethod(prefix+"addToken", this.addTokenToPerson.bind(this));                     //Persons: add a token to a person
-		rpc.addMethod(prefix+"removeToken", this.removeTokenFromPerson.bind(this));             //Persons: remove a token from a person
-		rpc.addMethod(prefix+"addBankaccount", this.addBankaccountToPerson.bind(this));         //Persons: add a bankaccount to a person
-		rpc.addMethod(prefix+"removeBankaccount", this.removeBankaccountFromPerson.bind(this)); //Persons: remove a bankaccount from a person
-		rpc.addMethod(prefix+"addAddress", this.addAddressToPerson.bind(this));                 //Persons: add an address to a person
-		rpc.addMethod(prefix+"removeAddress", this.removeAddressFromPerson.bind(this));         //Persons: remove an address from a person
-		rpc.addMethod(prefix+"addEmail", this.addEmailToPerson.bind(this));                     //Persons: add an email address to a person
-		rpc.addMethod(prefix+"removeEmail", this.removeEmailFromPerson.bind(this));             //Persons: remove an email address from a person
-		rpc.addMethod(prefix+"addPhone", this.addPhoneToPerson.bind(this));                     //Persons: add a phonenumber to a person
-		rpc.addMethod(prefix+"removePhone", this.removePhoneFromPerson.bind(this));             //Persons: remove a phonenumber from a person
-		rpc.addMethod(prefix+"addGroup", this.addGroupToPerson.bind(this));                     //Persons: add a group to a person
-		rpc.addMethod(prefix+"removeGroup", this.removeGroupFromPerson.bind(this));             //Persons: remove a group from a person
+		rpc.addMethod(prefix+"list",               this.list.bind(this));                        //Persons: list persons
+		rpc.addMethod(prefix+"create",             this.create.bind(this));                      //Persons: create a person
+		rpc.addMethod(prefix+"edit",               this.edit.bind(this));                        //Persons: edit a person
+		rpc.addMethod(prefix+"remove",             this.remove.bind(this));                      //Persons: remove a person
+		rpc.addMethod(prefix+"find",               this.find.bind(this));                        //Persons: find a person by it's nickname
+		rpc.addMethod(prefix+"findByToken",        this.findByToken.bind(this));                 //Persons: find a person by one of it's tokens
+		rpc.addMethod(prefix+"addToken",           this.addTokenToPerson.bind(this));            //Persons: add a token to a person
+		rpc.addMethod(prefix+"removeToken",        this.removeTokenFromPerson.bind(this));       //Persons: remove a token from a person
+		rpc.addMethod(prefix+"addBankaccount",     this.addBankaccountToPerson.bind(this));      //Persons: add a bankaccount to a person
+		rpc.addMethod(prefix+"removeBankaccount",  this.removeBankaccountFromPerson.bind(this)); //Persons: remove a bankaccount from a person
+		rpc.addMethod(prefix+"addAddress",         this.addAddressToPerson.bind(this));          //Persons: add an address to a person
+		rpc.addMethod(prefix+"removeAddress",      this.removeAddressFromPerson.bind(this));     //Persons: remove an address from a person
+		rpc.addMethod(prefix+"addEmail",           this.addEmailToPerson.bind(this));            //Persons: add an email address to a person
+		rpc.addMethod(prefix+"removeEmail",        this.removeEmailFromPerson.bind(this));       //Persons: remove an email address from a person
+		rpc.addMethod(prefix+"addPhone",           this.addPhoneToPerson.bind(this));            //Persons: add a phonenumber to a person
+		rpc.addMethod(prefix+"removePhone",        this.removePhoneFromPerson.bind(this));       //Persons: remove a phonenumber from a person
+		rpc.addMethod(prefix+"addToGroup",         this.addGroupToPerson.bind(this));            //Persons: add a group to a person
+		rpc.addMethod(prefix+"removeFromGroup",    this.removeGroupFromPerson.bind(this));       //Persons: remove a group from a person
 		
 		/* Tokens */
-		rpc.addMethod(prefix+"token/type/list", this.listTokenTypes.bind(this));                //Tokens: list token type
-		rpc.addMethod(prefix+"token/type/add", this.addTokenType.bind(this));                   //Tokens: add token type
-		rpc.addMethod(prefix+"token/type/edit", this.editTokenType.bind(this));                 //Tokens: edit token type
-		rpc.addMethod(prefix+"token/type/remove", this.removeTokenType.bind(this));             //Tokens: remove token type
+		rpc.addMethod(prefix+"token/type/list",    this.listTokenTypes.bind(this));              //Tokens: list token types
+		rpc.addMethod(prefix+"token/type/create",  this.createTokenType.bind(this));             //Tokens: add a token type
+		rpc.addMethod(prefix+"token/type/edit",    this.editTokenType.bind(this));               //Tokens: edit a token type
+		rpc.addMethod(prefix+"token/type/remove",  this.removeTokenType.bind(this));             //Tokens: remove a token type
+		rpc.addMethod(prefix+"token/authenticate", this.authenticateToken.bind(this));           //Tokens: authenticate a token
 		
 		/* Groups */
-		rpc.addMethod(prefix+"group/list", this.listGroups.bind(this));                         //Groups: list groups matching filter in query
-		rpc.addMethod(prefix+"group/add", this.addGroup.bind(this));                            //Groups: add a group
-		rpc.addMethod(prefix+"group/edit", this.editGroup.bind(this));                          //Groups: edit a group
-		rpc.addMethod(prefix+"group/remove", this.removeGroup.bind(this));                      //Groups: remove a group
+		rpc.addMethod(prefix+"group/list",         this.listGroups.bind(this));                  //Groups: list groups
+		rpc.addMethod(prefix+"group/create",       this.createGroup.bind(this));                 //Groups: create a group
+		rpc.addMethod(prefix+"group/edit",         this.editGroup.bind(this));                   //Groups: edit a group
+		rpc.addMethod(prefix+"group/remove",       this.removeGroup.bind(this));                 //Groups: remove a group
 	}
 }
 

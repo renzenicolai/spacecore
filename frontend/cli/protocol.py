@@ -74,8 +74,14 @@ class RpcClient:
 		except ApiError as e:
 			print(e)
 			return False
+		
+	def getGroups(self, query={}):
+		return self._request("person/group/list", query)
 
 	# PERSONS MODULE
+
+	def addPerson(self, name):
+		return self._request("person/create", name)
 
 	def personList(self, search):
 		return self._request("person/list", search)
@@ -83,40 +89,28 @@ class RpcClient:
 	def personFind(self, search):
 		return self._request("person/find", search)
 
-	def personDetails(self, search):
-		return self._request("person/details", [search])
-
 	# PRODUCTS MODULE
 
 	def productList(self, query):
 		return self._request("product/list", query)
 
 	def productFindByName(self, name):
-		return self._request("product/find/name", name)
-
-	def productFindByNameLike(self, name):
-		return self._request("product/find/name/like", name)
+		return self._request("product/find", name)
 	
-	def productBarcode(self, barcode, type=None):
-		if type == None:
-			return self._request("product/barcode/list", barcode)
-		else:
-			return self._request("product/barcode/list", {"barcode": barcode, "type": type})
-		
-	def productBarcodeTypes(self):
-		return self._request("product/barcode/type/list")
-	
-	def productLocation(self, location=None):
-		return self._request("product/location/list", location)
-	
-	def productFindByBarcode(self, barcode, type=None):
-		if type == None:
-			return self._request("product/find/barcode", barcode)
-		else:
-			return self._request("product/find/barcode", {"barcode": barcode, "type": type})
+	def productFindByIdentifier(self, identifier):
+		return self._request("product/findByIdentifier", identifier)
 		
 	def productSetPrice(self, product, group, price):
 		return self._request("product/price/set", {"product_id":product, "group_id":group, "amount":price})
+		
+	def addStock(self, product, location, amount):
+		return self._request("product/addStock", {"product_id": product, "location_id": location, "amount": amount})
+	
+	def removeStock(self, stock_id, amount):
+		return self._request("product/removeStock", {"id": stock_id, "amount": amount})
+	
+	def getLocations(self, query=None):
+		return self._request("product/location/list", query)
 	
 	# TRANSACTIONS MODULE
 	
@@ -138,9 +132,6 @@ class RpcClient:
 	def lastTransactionsOfPerson(self, person, amount):
 		return self._request("transaction/list/last", {"query": {'person_id': person}, "amount": amount})
 	
-	def addPerson(self, name):
-		return self._request("person/add", name)
-	
 	def transactionExecuteProducts(self, person, products=[]):
 		transaction = {"person_id": person, "products": products}
 		print(transaction)
@@ -156,19 +147,3 @@ class RpcClient:
 	def transactionExecute(self, person, products=[], other=[]):
 		transaction = {"person_id": person, "products": products, "other": other}
 		return self._request("transaction/execute", transaction)
-	
-	def getLocations(self, query=None):
-		return self._request("product/location", query)
-	
-	def addStock(self, product, location, amount):
-		return self._request("product/stock/add", {"product_id": product, "location_id": location, "amount": amount})
-	
-	def getStock(self, product):
-		return self._request("product/stock", {"product_id": product, "amount_current":{">":0}})
-	
-	def removeStock(self, stock_id, amount):
-		return self._request("product/stock/remove", {"id": stock_id, "amount": amount})
-	
-	def getGroups(self, query=None):
-		return self._request("person/group/list", query)
-	

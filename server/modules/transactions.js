@@ -218,17 +218,19 @@ class Transactions {
 						record.setField("description", description);
 						var price = 0xFFFFFFFFFFFFFFFF;
 						var price_valid = false;
-						for (var j in product.price) {
+						console.log("!!!>>>", product.prices);
+						for (var j in product.prices) {
 							var price_available = false;
 							for (var k in person.groups) {
-								if (product.price[j].person_group_id === person.groups[k].id) {
+								console.log(">>>>", person.groups[k], product.prices[j]);
+								if (product.prices[j].person_group_id === person.groups[k].id) {
 									price_available = true;
 									break;
 								}
 							}
 							if (price_available) {
-								if (product.price[j].amount < price) {
-									price = product.price[j].amount;
+								if (product.prices[j].amount < price) {
+									price = product.prices[j].amount;
 									price_valid = true;
 								}
 							}

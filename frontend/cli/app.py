@@ -15,7 +15,7 @@ class Shell(cmd.Cmd):
 		if ((len(arg) == 1) and (len(arg[0])>0)):
 			try:
 				result = client.addPerson(arg[0])
-				msgConfirm(result)
+				msgConfirm("Registered!")
 			except ApiError as e:
 				msgError(e)
 		else:
@@ -348,7 +348,7 @@ def initCompletion():
 
 def product(client, name):
 	global cart, lastProduct
-	results = client.productFindByBarcode(name) + client.productFindByNameLike(name)
+	results = client.productFindByIdentifier(name) + client.productFindByName(name)
 	if len(results) > 0:
 		if len(results) > 1:
 			#sys.stdout.write("\r\n\u001b[31mError: multiple results for query!\u001b[39m\r\n\r\n")
@@ -451,14 +451,8 @@ def printTransaction(transaction, neg=False, noAmount=False):
 	
 def person(client, name, doTransaction=True, showInfo=True):
 	global cart, lastPerson
-	results = client.personFind(name)
-	if (len(results) > 0):
-		if (len(results) > 1):
-			sys.stdout.write("\r\n\u001b[31mError: multiple persons with same nickname!\u001b[39m\r\n\r\n")
-			return True
-
-		person = results[0]
-		
+	person = client.personFind(name)
+	if (person != None):		
 		lastPerson = person
 		
 		if (len(cart)<1) and showInfo:
@@ -540,7 +534,7 @@ def printCart():
 				else:
 					last = ""
 				price = False
-				for entry in product['price']:
+				for entry in product['prices']:
 					if entry['person_group_id'] == group['id']:
 						price = entry['amount']
 				if price:
@@ -571,23 +565,7 @@ def queryLocation(client):
 	except:
 		print("Invalid input.")
 		return -1
-		
-def queryStock(client, product_id):
-	stockEntries = client.getStock(product_id)
-	for i in range(len(stockEntries)):
-		sub = ""
-		if stockEntries[i]['product_location']["sub"]:
-			sub = " (Position "+str(stockEntries[i]['product_location']["sub"])+")"
-		print(str(i)+". "+str(stockEntries[i]['product_location']['name'])+sub+": "+str(stockEntries[i]["amount_current"]))
-	
-	stock = prompt(client, "Row? > ",False,False)
-	try:
-		stock = int(stock)
-		return (stockEntries[stock]["id"], stockEntries[stock]["amount_current"])
-	except:
-		print("Invalid input.")
-		return (-1, 0)
-	
+
 def queryGroup(client):
 	groups = client.getGroups()
 	for group in groups:

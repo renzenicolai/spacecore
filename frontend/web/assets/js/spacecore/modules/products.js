@@ -902,10 +902,10 @@ class Products {
 				pkg = res[i].package.name;
 			}
 			var price = "-";
-			if (res[i].price.length > 1) {
+			if (res[i].prices.length > 1) {
 				price = "...";
-			} else if (res[i].price.length === 1) {
-				price = "€ "+(res[i].price[0].amount/100.0).toFixed(2);
+			} else if (res[i].prices.length === 1) {
+				price = "€ "+(res[i].prices[0].amount/100.0).toFixed(2);
 			}
 			var stock = 0;
 			for (var j in res[i].stock) {

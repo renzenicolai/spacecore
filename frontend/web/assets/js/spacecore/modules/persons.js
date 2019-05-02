@@ -304,7 +304,7 @@ class Persons {
 										},
 										{
 											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('addgroup-form','person/group/add')",
+											action: "javascript:spacecore.currentModule.submitForm('addgroup-form','person/group/create')",
 											fe_icon: "save",
 											value: "Add group",
 											ml: "auto"
@@ -534,7 +534,7 @@ class Persons {
 										},
 										{
 											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('removegroupfromperson-form','person/removeGroup')",
+											action: "javascript:spacecore.currentModule.submitForm('removegroupfromperson-form','person/removeFromGroup')",
 											fe_icon: "trash-2",
 											value: "Remove from group",
 											ml: "auto"
@@ -606,7 +606,7 @@ class Persons {
 										},
 										{
 											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('addgrouptoperson-form','person/addGroup')",
+											action: "javascript:spacecore.currentModule.submitForm('addgrouptoperson-form','person/addToGroup')",
 											fe_icon: "save",
 											value: "Add group",
 											ml: "auto"
@@ -747,7 +747,7 @@ class Persons {
 										},
 										{
 											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('addperson-form','person/add')",
+											action: "javascript:spacecore.currentModule.submitForm('addperson-form','person/create')",
 											fe_icon: "save",
 											value: "Add person",
 											ml: "auto"
