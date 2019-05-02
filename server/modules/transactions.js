@@ -327,8 +327,8 @@ class Transactions {
 					}
 					
 					transaction.setField("total", transaction_total);
-					var saldo = person_record.getField("saldo");
-					person_record.setField("saldo", saldo - transaction_total);
+					var balance = person_record.getField("balance");
+					person_record.setField("balance", balance - transaction_total);
 					
 					//Complete the transaction
 					return this._opts.database.transaction(person_record.getField("nick_name")).then((dbTransaction) => {

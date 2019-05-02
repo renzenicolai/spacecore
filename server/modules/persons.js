@@ -123,7 +123,7 @@ class Persons {
 		personRecord.setField("nick_name", nick_name);
 		personRecord.setField("first_name", first_name);
 		personRecord.setField("last_name", last_name);
-		personRecord.setField("saldo", 0);
+		personRecord.setField("balance", 0);
 		
 		try {
 			if (Array.isArray(avatar) && (avatar.length > 0)) {

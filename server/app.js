@@ -20,7 +20,7 @@ const Transactions     = require('./modules/transactions.js');
 const Mt940            = require('./modules/mt940.js');
 
 //Verifications
-const VerifySaldo      = require('./verification/saldo.js');
+const VerifyBalance    = require('./verification/balance.js');
 
 var now = new Date();
 var logFile = fs.createWriteStream('log/'+now.getTime()+'.txt');
@@ -137,7 +137,7 @@ function start() {
 	
 	var verifications = [];
 	
-	verifications.push(new VerifySaldo({
+	verifications.push(new VerifyBalance({
 		persons: persons,
 		transactions: transactions
 	}));

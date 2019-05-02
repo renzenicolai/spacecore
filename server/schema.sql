@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 28, 2019 at 10:44 PM
+-- Generation Time: May 02, 2019 at 10:22 PM
 -- Server version: 10.3.14-MariaDB-log
 -- PHP Version: 7.3.4
 
@@ -32,7 +32,7 @@ CREATE TABLE `bankaccounts` (
   `id` int(11) NOT NULL,
   `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `iban` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `saldo` int(11) DEFAULT NULL,
+  `balance` int(11) DEFAULT NULL,
   `internal` tinyint(1) NOT NULL DEFAULT 0,
   `person_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -58,11 +58,11 @@ CREATE TABLE `files` (
 
 CREATE TABLE `persons` (
   `id` int(11) NOT NULL,
-  `first_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Henk',
-  `last_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'de Vries',
-  `nick_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Anonymous',
+  `first_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nick_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `avatar_id` int(11) DEFAULT NULL,
-  `saldo` int(5) NOT NULL DEFAULT 0
+  `balance` int(5) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -152,7 +152,8 @@ CREATE TABLE `person_token` (
 CREATE TABLE `person_token_type` (
   `id` int(11) NOT NULL,
   `name` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `method` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
+  `method` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `requirePrivate` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -385,6 +386,7 @@ ALTER TABLE `files`
 --
 ALTER TABLE `persons`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `nick_name` (`nick_name`),
   ADD KEY `person_file_id_of_avatar` (`avatar_id`);
 
 --
@@ -427,6 +429,7 @@ ALTER TABLE `person_phone`
 --
 ALTER TABLE `person_token`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `public` (`public`),
   ADD KEY `person_id_of_person_token` (`person_id`),
   ADD KEY `type_id_of_token` (`type_id`);
 

@@ -434,12 +434,12 @@ def printTransaction(transaction, neg=False, noAmount=False):
 		print("\r\nTransaction total:\t\t€ "+'{0: <6}'.format("{:.2f}".format(transaction['transaction']['total']/100.0)))
 	else:
 		print("")
-	print("Saldo before transaction:\t€ "+'{0: <6}'.format("{:.2f}".format(lastPerson['saldo']/100.0)))
-	print("Saldo after transaction:\t€ "+'{0: <6}'.format("{:.2f}".format(transaction['person']['saldo']/100.0)))
+	print("Balance before transaction:\t€ "+'{0: <6}'.format("{:.2f}".format(lastPerson['balance']/100.0)))
+	print("Balance after transaction:\t€ "+'{0: <6}'.format("{:.2f}".format(transaction['person']['balance']/100.0)))
 	lastTransactionTotal = [
 		("Total",transaction['transaction']['total']/100.0),
-		("Saldo before transaction",lastPerson['saldo']/100.0),
-		("Saldo after transaction",transaction['person']['saldo']/100.0)
+		("Balance before transaction",lastPerson['balance']/100.0),
+		("Balance after transaction",transaction['person']['balance']/100.0)
 		]
 	
 	global printer
@@ -462,7 +462,7 @@ def person(client, name, doTransaction=True, showInfo=True):
 				name = person['first_name']
 			if (person['last_name'] != ""):
 				name += " "+person['last_name']
-			print("Hello "+name+"! Your saldo is "+'{0: <6}'.format("€ "+"{:.2f}".format(person['saldo']/100.0)))
+			print("Hello "+name+"! Your balance is "+'{0: <6}'.format("€ "+"{:.2f}".format(person['balance']/100.0)))
 			print("")
 			printLastTransactionsOfPerson(person['id'], 5)
 

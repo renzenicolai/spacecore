@@ -891,9 +891,9 @@ class Persons {
 					fe_icon_after: this._getSortIcon('last_name')
 				},
 				{
-					text: "Saldo",
-					action: "javascript:spacecore.currentModule.changeSort('saldo');",
-					fe_icon_after: this._getSortIcon('saldo')
+					text: "Balance",
+					action: "javascript:spacecore.currentModule.changeSort('balance');",
+					fe_icon_after: this._getSortIcon('balance')
 				},
 				{
 					width: 1
@@ -925,7 +925,7 @@ class Persons {
 					},
 				    {
 						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: "€ "+(res[i].saldo/100.0).toFixed(2)
+						text: "€ "+(res[i].balance/100.0).toFixed(2)
 					},
 					{
 						text_center: true,
