@@ -1,20 +1,20 @@
 class Persons {
 	constructor( opts ) {
 		this.name = 'persons';
-		
+
 		opts = Object.assign({
 			ui: null,
 			app: null
 		}, opts);
-		
+
 		this.ui = opts.ui;
 		this.app = opts.app;
-		
+
 		this.reset();
-		
+
 		this.groups = {};
 	}
-	
+
 	reset() {
 		this.state = {
 			lastSelected: null,
@@ -22,7 +22,7 @@ class Persons {
 			sortBy: "nick_name",
 			sortReverse: false,
 			lastData: null,
-			
+
 			lastSelectedGroup: null,
 			groupsSearchText: "",
 			groupsSortBy: "name",
@@ -30,9 +30,9 @@ class Persons {
 			groupsLastData: null
 		};
 	}
-		
+
 	/* Menu */
-	
+
 	menu(menu='main') {
 		var items = [];
 		if (menu === 'main') {
@@ -44,39 +44,116 @@ class Persons {
 		}
 		return items;
 	}
-		
+
 	/* Module */
-	
+
 	show(reset=true, part="persons") {
 		if (reset) this.reset();
 		this.app.currentModule = this;
-		
+
 		if (part==="persons") {
 			/* These are loaded async and may not be available right after rendering the page */
 			this.app.executeCommand('person/group/list', {}, this._handleGroupsRefresh.bind(this));
-			
+
 			/* Render the page */
 			this.app.executeCommand('person/list', {}, this._handleShow.bind(this));
 		} else {
 			console.log("Unhandled part in persons module",part);
 		}
 	}
-	
+
+	/* Tokens */
+
+	manageTokens() {
+		this.app.executeCommand('person/token/list', {}, this._handleManageTokens.bind(this));
+	}
+
+	_handleManageTokens(res, err) {
+		if (err !== null) {
+			return this.genericErrorHandler(err);
+		}
+		this.state.tokensLastData = res;
+
+		var tokensTable = this._renderTokens(
+			this.app.sort(
+				this.app.filter(
+					res,
+					this.state.tokensSearchText,
+					['public', 'owner', 'enabled'],
+					false
+				),
+				this.state.tokensSortBy,
+				this.state.tokensSortReverse
+			)
+		);
+
+		this.app.showPage({
+			header: {
+				title: "Persons: tokens",
+				options: [
+						{
+							type:"text",
+							id: "persons-tokens-search",
+							fe_icon: "search",
+							placeholder: "Search tokens...",
+							action:  "javascript:spacecore.currentModule.searchTokens();",
+							value: this.state.groupsSearchText
+						},
+						{
+							"type":"button",
+							"fe_icon": "chevron-left",
+							"action":  "javascript:spacecore.currentModule.show();",
+							"value": "Back",
+							"class": "secondary"
+						}
+					]
+			},
+			body: [
+				[
+					[
+						{
+							type: "card",
+							header: {
+								title: "Tokens",
+								options: [
+									{
+										type: "button",
+										action: "javascript:spacecore.currentModule.tokenAdd();",
+										fe_icon: "plus",
+										small: true
+									}
+								]
+							},
+							table: tokensTable
+						}
+					]
+				]
+			]
+		});
+
+		if (this.state.lastSelectedToken !== null) window.location.href = "#person-token-"+this.state.lastSelectedToken.id;
+	}
+
+	_renderTokens(res) {
+		//TODO
+		return null;
+	}
+
 	/* Groups */
-	
+
 	manageGroups() {
 		this.app.executeCommand('person/group/list', {}, this._handleManageGroups.bind(this));
 	}
-	
+
 	_handleManageGroups(res, err) {
 		if (err !== null) {
 			return this.genericErrorHandler(err);
 		}
-		
+
 		this._handleGroupsRefresh(res, err); //Update cache
-				
+
 		this.state.groupsLastData = res;
-		
+
 		var groupsTable = this._renderGroups(
 			this.app.sort(
 				this.app.filter(
@@ -89,7 +166,7 @@ class Persons {
 				this.state.groupsSortReverse
 			)
 		);
-				
+
 		this.app.showPage({
 			header: {
 				title: "Persons: groups",
@@ -133,11 +210,11 @@ class Persons {
 				]
 			]
 		});
-		
+
 		if (this.state.lastSelectedGroup !== null) window.location.href = "#person-group-"+this.state.lastSelectedGroup.id;
 	}
-	
-	_renderGroups(res) {		
+
+	_renderGroups(res) {
 		var table = {
 			id: "table_groups",
 			header: [
@@ -169,7 +246,7 @@ class Persons {
 			],
 			body: []
 		};
-		
+
 		for (var i in res) {
 			table.body.push({
 				id: "person-group-"+res[i].id,
@@ -216,12 +293,12 @@ class Persons {
 		}
 		return table;
 	}
-	
+
 	searchGroups(elem='persons-groups-search') {
 		this.state.groupsSearchText = document.getElementById(elem).value;
-		
+
 		console.log("SearchGroups", this.state.groupsSearchText, this.state.groupsLastData, this.state.groupsSortBy, this.state.groupsSortReverse);
-		
+
 		var filtered = this.app.sort(
 			this.app.filter(
 				this.state.groupsLastData,
@@ -230,11 +307,11 @@ class Persons {
 				false),
 			this.state.groupsSortBy,
 			this.state.groupsSortReverse);
-		
+
 		var content = this.ui.renderTemplate('table', this._renderGroups(filtered));
 		document.getElementById('table_groups').innerHTML = content;
 	}
-	
+
 	changeGroupsSort(field) {
 		if (this.state.groupsSortBy === field) {
 			this.state.groupsSortReverse = !this.state.groupsSortReverse;
@@ -244,19 +321,19 @@ class Persons {
 		}
 		this.searchGroups();
 	}
-	
+
 	_handleGroupsRefresh(res, err) {
 		if (err) return console.log("Persons _handleGroupsRefresh exception", err);
 		this.groups = res;
 	}
-	
+
 	_getGroupNameById(id) {
 		for (var i in this.groups) {
 			if (this.groups[i].id === id) return this.groups[i].name;
 		}
 		return "";
 	}
-	
+
 	groupAdd(name="", description="", addToNew="") {
 		this.app.showPage({
 			header: {
@@ -317,22 +394,22 @@ class Persons {
 			]
 		});
 	}
-	
+
 	groupRemove(id) {
 		this.app.executeCommand('person/group/list', {id: id}, this._groupRemoveHandler.bind(this));
 	}
-	
+
 	_groupRemoveHandler(res, err) {
 		if (err !== null) {
 			return this.genericErrorHandler(err);
 		}
-		
+
 		if (res.length !== 1) {
 			return this.genericErrorHandler({message: "Group not found!"});
 		}
-		
+
 		var data = res[0];
-		
+
 		this.app.showPage({
 			header: {
 				title: "Persons: groups",
@@ -367,7 +444,7 @@ class Persons {
 										name: "force"
 									}
 								],
-								
+
 								footer: [
 										{
 											type: "button",
@@ -391,22 +468,22 @@ class Persons {
 			]
 		});
 	}
-	
+
 	groupEdit(id) {
 		this.app.executeCommand('person/group/list', {id: id}, this._groupEditHandler.bind(this));
 	}
-	
+
 	_groupEditHandler(res, err) {
 		if (err !== null) {
 			return this.genericErrorHandler(err);
 		}
-		
+
 		if (res.length !== 1) {
 			return this.genericErrorHandler({message: "Group not found!"});
 		}
-		
+
 		var data = res[0];
-		
+
 		this.app.showPage({
 			header: {
 				title: "Persons: groups",
@@ -449,7 +526,7 @@ class Persons {
 										checked: data.addToNew > 0
 									}
 								],
-								
+
 								footer: [
 										{
 											type: "button",
@@ -473,13 +550,13 @@ class Persons {
 			]
 		});
 	}
-	
+
 	/* Persons */
-	
+
 	removeGroupFromPerson(group) {
 		if (typeof this.state.lastSelected !== "object") return console.log("removeGroupFromPerson called without a person selected!", this.state.lastSelected);
 		var id = this.state.lastSelected.id;
-		
+
 		var groupItems = [];
 		for (var i in this.groups) {
 			var item = {
@@ -488,7 +565,7 @@ class Persons {
 			};
 			groupItems.push(item);
 		}
-		
+
 		this.app.showPage({
 			header: {
 				title: "Persons",
@@ -547,7 +624,7 @@ class Persons {
 			]
 		});
 	}
-	
+
 	addGroupToPerson(id, nick_name="") {
 		var groupItems = [];
 		for (var i in this.groups) {
@@ -557,7 +634,7 @@ class Persons {
 			};
 			groupItems.push(item);
 		}
-		
+
 		this.app.showPage({
 			header: {
 				title: "Persons",
@@ -619,44 +696,44 @@ class Persons {
 			]
 		});
 	}
-	
+
 	/* Form handling */
-		
+
 	submitForm(form, method) {
 		spacecore.submitForm(this.submitFormHandler.bind(this, form, method), form, method);
 	}
-	
+
 	submitFormHandler(form, method, res, err) {
 		var action = "show()";
 		var actionFunc = spacecore.currentModule.show;
 		var skip = false;
-		
+
 		if (form==="addperson-form") {
 			if (err === null) return this.showDetails(res);
 			action = "showDetails("+res+")";
 		}
-		
+
 		if (form==="editperson-form") {
 			if (err === null) return this.showDetails(res);
 			action = "show()";
 		}
-		
+
 		if (form==="removeperson-form") {
 			if (err === null) return this.show();
 			action = "show()";
 		}
-		
+
 		if ((form==="addgrouptoperson-form") || (form==="removegroupfromperson-form")) {
 			if (err === null) return this.showDetails(); //Skip the result if succesfull
 			action = "showDetails()";
-			
+
 		}
-		
+
 		if ((form==="addgroup-form") || (form==="editgroup-form") || (form=="removegroup-form")) {
 			if (err === null) return this.manageGroups(); //Skip the result if succesfull
 			action = "manageGroups()";
 		}
-		
+
 		if (err) {
 			this.app.showMessage2(
 				[
@@ -689,9 +766,9 @@ class Persons {
 			);
 		}
 	}
-	
+
 	/* Persons */
-	
+
 	add(nick_name="", first_name="", last_name="") {
 		this.app.showPage({
 			header: {
@@ -760,7 +837,7 @@ class Persons {
 			]
 		});
 	}
-	
+
 	remove(id=null) {
 		if (id !== null) {
 			return this.getDetails(id, (res, err) => {
@@ -769,10 +846,10 @@ class Persons {
 				this.remove();
 			});
 		}
-		
+
 		if (typeof this.state.lastSelected !== "object") return console.log("remove called without a person selected!", this.state.lastSelected);
 		var data = this.state.lastSelected;
-		
+
 		this.app.showPage({
 			header: {
 				title: "Persons",
@@ -825,10 +902,10 @@ class Persons {
 			]
 		});
 	}
-		
+
 	search(elem='persons-search') {
 		this.state.searchText = document.getElementById(elem).value;
-		
+
 		var filtered = this.app.sort(
 			this.app.filter(
 				this.state.lastData,
@@ -837,11 +914,11 @@ class Persons {
 				false),
 			this.state.sortBy,
 			this.state.sortReverse);
-		
+
 		var content = this.ui.renderTemplate('table', this._renderPersons(filtered));
 		document.getElementById('table_persons').innerHTML = content;
 	}
-	
+
 	changeSort(field) {
 		if (this.state.sortBy === field) {
 			this.state.sortReverse = !this.state.sortReverse;
@@ -851,20 +928,20 @@ class Persons {
 		}
 		this.search();
 	}
-	
+
 	_getSortIcon(field) {
 		if (this.state.sortBy !== field) return null;
 		if (this.state.sortReverse) return "chevron-up";
 		return "chevron-down";
 	}
-	
+
 	_getGroupsSortIcon(field) {
 		if (this.state.groupsSortBy !== field) return null;
 		if (this.state.groupsSortReverse) return "chevron-up";
 		return "chevron-down";
 	}
-		
-	_renderPersons(res) {		
+
+	_renderPersons(res) {
 		var table = {
 			id: "table_persons",
 			header: [
@@ -901,7 +978,7 @@ class Persons {
 			],
 			body: []
 		};
-		
+
 		for (var i in res) {
 			table.body.push({
 				id: "person-"+res[i].id,
@@ -952,10 +1029,10 @@ class Persons {
 		}
 		return table;
 	}
-	
+
 	genericErrorHandler(err, action="show()") {
 		var message = "Unknown error!";
-		
+
 		if ((typeof err === 'object') && (typeof err.message === 'string')) {
 			message = err.message;
 		} else if (typeof err === 'string') {
@@ -963,7 +1040,7 @@ class Persons {
 		} else {
 			console.log("Invalid argument supplied to error handler", err);
 		}
-		
+
 		this.app.showMessage2(
 			message,
 			"Persons",
@@ -977,14 +1054,14 @@ class Persons {
 			]
 		);
 	}
-	
+
 	_handleShow(res, err) {
 		if (err !== null) {
 			return this.genericErrorHandler(err);
 		}
-		
+
 		this.state.lastData = res;
-		
+
 		var personsTable = this._renderPersons(
 			this.app.sort(
 				this.app.filter(
@@ -997,11 +1074,18 @@ class Persons {
 				this.state.sortReverse
 			)
 		);
-				
+
 		this.app.showPage({
 			header: {
 				title: "Persons",
 				options: [
+						{
+							"type":"button",
+							"fe_icon": "key",
+							"action":  "javascript:spacecore.currentModule.manageTokens();",
+							"value": "Manage tokens",
+							"class": "secondary"
+						},
 						{
 							"type":"button",
 							"fe_icon": "folder",
@@ -1041,12 +1125,12 @@ class Persons {
 				]
 			]
 		});
-		
+
 		if (this.state.lastSelected !== null) window.location.href = "#person-"+this.state.lastSelected.id;
 	}
-	
+
 	/* Person details */
-		
+
 	edit(id=null) {
 		if (id !== null) {
 			return this.getDetails(id, (res, err) => {
@@ -1055,14 +1139,14 @@ class Persons {
 				this.edit();
 			});
 		}
-		
-		
+
+
 		if (typeof this.state.lastSelected !== "object") {
 			return console.log("edit called without a person selected!", this.state.lastSelected);
 		}
-		
+
 		var data = this.state.lastSelected;
-		
+
 		this.app.showPage({
 			header: {
 				title: "Person details",
@@ -1113,7 +1197,7 @@ class Persons {
 										value: ""
 									}
 								],
-								
+
 								footer: [
 										{
 											type: "button",
@@ -1136,42 +1220,42 @@ class Persons {
 				]
 			]
 		});
-		
+
 	}
-	
+
 	getDetails(id, target) {
 		return this.app.executeCommand('person/list',{id: id},target.bind(this));
 	}
-	
+
 	showDetails(id=null) {
 		if ((id === null) && (typeof this.state.lastSelected === "object")) {
 			id = this.state.lastSelected.id;
 		}
-		
+
 		if (id === null) {
 			this.show();
 		} else {
 			this.getDetails(id, this._handleShowDetails);
 		}
 	}
-	
+
 	_handleShowDetails(res, err) {
 		if (err) {
 			console.log('_handleShowDetails error', err);
 			genericErrorHandler(err);
 		}
-		
+
 		if (res.length < 1) {
 			this.genericErrorHandler({message: "Person not found."});
 			return;
 		}
-		
+
 		res = res[0]; //First result is the only result
-		
+
 		this.state.lastSelected = res;
 		this.app.executeCommand('transaction/list/query', [{person_id: res.id}], this._handleShowDetails2.bind(this, res, err));
 	}
-	
+
 	_handleShowDetails2(res, err, transactionsRes, transactionsErr) {
 		console.log("_handleShowDetails2");
 		if (err !== null) {
@@ -1179,17 +1263,17 @@ class Persons {
 			this.genericErrorHandler(err);
 			return;
 		}
-		
+
 		if (transactionsErr !== null) {
 			console.log("handlePersonDetails transactions error ",err);
 			this.genericErrorHandler(transactionsErr);
 			return;
 		}
-				
+
 		this.app.history.push(this.show.bind(this, false));
-		
+
 		console.log("Person", res);
-		
+
 		var table_groups = {
 			id: "table_person_groups",
 			header: [
@@ -1200,7 +1284,7 @@ class Persons {
 			],
 			body: []
 		};
-		
+
 		for (var i in res.groups) {
 			table_groups.body.push({
 				id: "group-"+res.groups[i].id,
@@ -1221,7 +1305,7 @@ class Persons {
 				]
 			});
 		}
-		
+
 		var table_transactions = {
 			id: "table_transactions",
 			header: [
@@ -1235,10 +1319,10 @@ class Persons {
 			],
 			body: []
 		};
-		
+
 		for (var i in transactionsRes) {
 			var description = "";
-			
+
 			if (transactionsRes[i].rows.length < 1) {
 				description = "Empty transaction";
 			} else if (transactionsRes[i].rows.length === 1) {
@@ -1247,7 +1331,7 @@ class Persons {
 				description = "Transaction contains more than one operation";
 			}
 			var timestamp = new Date(transactionsRes[i].timestamp*1000);
-			var timestring = ((timestamp.getDate()<10)?"0":"")+timestamp.getDate() + "-" + 
+			var timestring = ((timestamp.getDate()<10)?"0":"")+timestamp.getDate() + "-" +
 			                 (((timestamp.getMonth()+1)<10)?"0":"")+(timestamp.getMonth()+1) + "-" +
 			                 timestamp.getFullYear() + " " +
 			                 ((timestamp.getHours()<10)?"0":"")+timestamp.getHours() + ":" +
@@ -1273,7 +1357,216 @@ class Persons {
 				]
 			});
 		}
-				
+
+		var table_addresses = {
+			id: "table_person_addresses",
+			header: [
+				"Street",
+				"#",
+				"Code",
+				"City",
+				{
+					width: 1
+				}
+			],
+			body: []
+		};
+
+		for (var i in res.addresses) {
+			table_addresses.body.push({
+				id: "address-"+res.addresses[i].id,
+				fields: [
+					{
+						text: res.addresses[i].street,
+					},
+					{
+						text: res.addresses[i].housenumber,
+					},
+					{
+						text: res.addresses[i].postalcode,
+					},
+					{
+						text: res.addresses[i].city,
+					},
+					{
+						text_center: true,
+						menu: [
+							{
+								action: "javascript:spacecore.currentModule.editAddress("+res.addresses[i].id+", "+res.id+");",
+								fe_icon: "edit",
+								label: "Edit address"
+							},
+							{
+								action: "javascript:spacecore.currentModule.removeAddressFromPerson("+res.addresses[i].id+");",
+								fe_icon: "trash-2",
+								label: "Remove address"
+							},
+						]
+					}
+				]
+			});
+		}
+
+		var table_bankaccounts = {
+			id: "table_person_bankaccounts",
+			header: [
+				"Name",
+				"IBAN",
+				{
+					width: 1
+				}
+			],
+			body: []
+		};
+
+		for (var i in res.bankaccounts) {
+			table_bankaccounts.body.push({
+				id: "bankaccount-"+res.bankaccounts[i].id,
+				fields: [
+					{
+						text: res.bankaccounts[i].name,
+					},
+					{
+						text: res.bankaccounts[i].iban,
+					},
+					{
+						text_center: true,
+						menu: [
+							{
+								action: "javascript:spacecore.currentModule.editBankaccount("+res.bankaccounts[i].id+", "+res.id+");",
+								fe_icon: "edit",
+								label: "Edit bankaccount"
+							},
+							{
+								action: "javascript:spacecore.currentModule.removeBankaccountFromPerson("+res.bankaccounts[i].id+");",
+								fe_icon: "trash-2",
+								label: "Remove bankaccount"
+							},
+						]
+					}
+				]
+			});
+		}
+
+		var table_phone = {
+			id: "table_person_phone",
+			header: [
+				"Phonenumber",
+				{
+					width: 1
+				}
+			],
+			body: []
+		};
+
+		for (var i in res.phone) {
+			table_phone.body.push({
+				id: "phone-"+res.phone[i].id,
+				fields: [
+					{
+						text: res.phone[i].phonenumber,
+					},
+					{
+						text_center: true,
+						menu: [
+							{
+								action: "javascript:spacecore.currentModule.editPhone("+res.phone[i].id+", "+res.id+");",
+								fe_icon: "edit",
+								label: "Edit phonenumber"
+							},
+							{
+								action: "javascript:spacecore.currentModule.removePhoneFromPerson("+res.phone[i].id+");",
+								fe_icon: "trash-2",
+								label: "Remove phonenumber"
+							},
+						]
+					}
+				]
+			});
+		}
+
+		var table_email = {
+			id: "table_person_email",
+			header: [
+				"Address",
+				{
+					width: 1
+				}
+			],
+			body: []
+		};
+
+		for (var i in res.email) {
+			table_email.body.push({
+				id: "email-"+res.email[i].id,
+				fields: [
+					{
+						text: res.email[i].address,
+					},
+					{
+						text_center: true,
+						menu: [
+							{
+								action: "javascript:spacecore.currentModule.editPhone("+res.email[i].id+", "+res.id+");",
+								fe_icon: "edit",
+								label: "Edit email address"
+							},
+							{
+								action: "javascript:spacecore.currentModule.removePhoneFromPerson("+res.email[i].id+");",
+								fe_icon: "trash-2",
+								label: "Remove email address"
+							},
+						]
+					}
+				]
+			});
+		}
+
+		var table_tokens = {
+			id: "table_person_tokens",
+			header: [
+				"Key",
+				"Enabled",
+				"Type",
+				{
+					width: 1
+				}
+			],
+			body: []
+		};
+
+		for (var i in res.tokens) {
+			table_tokens.body.push({
+				id: "token-"+res.tokens[i].id,
+				fields: [
+					{
+						text: res.tokens[i].public,
+					},
+					{
+						text: res.tokens[i].enabled,
+					},
+					{
+						text: res.tokens[i].type.name,
+					},
+					{
+						text_center: true,
+						menu: [
+							{
+								action: "javascript:spacecore.currentModule.editToken("+res.tokens[i].id+", "+res.id+");",
+								fe_icon: "edit",
+								label: "Edit token"
+							},
+							{
+								action: "javascript:spacecore.currentModule.removeTokenFromPerson("+res.tokens[i].id+");",
+								fe_icon: "trash-2",
+								label: "Remove token"
+							},
+						]
+					}
+				]
+			});
+		}
+
 		this.app.showPage({
 			header: {
 				title: "Person details",
@@ -1329,7 +1622,67 @@ class Persons {
 								]
 							},
 							table: table_groups
-						}
+						},
+						{
+							type: "card",
+							header: {
+								title: "Addresses",
+								options: [
+									{
+										type: "button",
+										action: "javascript:spacecore.currentModule.addAddressToPerson("+res.id+", '"+res.nick_name+"')",
+										fe_icon: "plus",
+										small: true
+									}
+								]
+							},
+							table: table_addresses
+						},
+						{
+							type: "card",
+							header: {
+								title: "Email addresses",
+								options: [
+									{
+										type: "button",
+										action: "javascript:spacecore.currentModule.addEmailToPerson("+res.id+", '"+res.nick_name+"')",
+										fe_icon: "plus",
+										small: true
+									}
+								]
+							},
+							table: table_email
+						},
+						{
+							type: "card",
+							header: {
+								title: "Phonenumbers",
+								options: [
+									{
+										type: "button",
+										action: "javascript:spacecore.currentModule.addPhoneToPerson("+res.id+", '"+res.nick_name+"')",
+										fe_icon: "plus",
+										small: true
+									}
+								]
+							},
+							table: table_phone
+						},
+						{
+							type: "card",
+							header: {
+								title: "Tokens",
+								options: [
+									{
+										type: "button",
+										action: "javascript:spacecore.currentModule.addTokenToPerson("+res.id+", '"+res.nick_name+"')",
+										fe_icon: "plus",
+										small: true
+									}
+								]
+							},
+							table: table_tokens
+						},
 					]
 				},
 				{
