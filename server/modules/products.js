@@ -173,7 +173,7 @@ class Products {
 		var barcodes = await this._listIdentifiers(session, params);
 		if (barcodes.length < 1) return [];
 		var products = [];
-		for (var i in barcodes) producs.push(barcodes[i].product_id);
+		for (var i in barcodes) products.push(barcodes[i].product_id);
 		return this.list(session, {id: products});
 	}
 
