@@ -29,45 +29,40 @@ class Users {
 			console.log("User permissions table not found.");
 			process.exit(1);
 		}
-		//console.log("table",this._table);
 	}
 
-	authenticate(session, params) {
-		return new Promise((resolve, reject) => {
-			if (typeof session !== 'object') return reject("Invalid session");
-			if (typeof params !== 'object') return reject("Invalid params (1)");
-			if (typeof params.username !== 'string') return reject("Invalid params (2)");
-			if (typeof params.password !== 'string') return reject("Invalid params (3)");
-			return this._table.selectRecords({'user_name':params.username, "active":1}).then((records) => {
-				for (var i in records) {
-					records[i].print();
-					var hash = records[i].getField('password');
-					if (crypt(params.password, hash) === hash) {
-						//console.log("PASS CORRECT");
-						return this._getPermissions(records[i].getIndex()).then((permissions) => {
-							return this._opts.files.getFileAsBase64(records[i].getField('avatar_id')).then((avatar) => {
-								session.user = {
-									id: records[i].getIndex(),
-									user_name: records[i].getField('user_name'),
-									full_name: records[i].getField('full_name'),
-									title: records[i].getField('title'),
-									avatar: avatar,
-									permissions: permissions
-								};
-								var result = {
-									user_name: records[i].getField('user_name'),
-									full_name: records[i].getField('full_name'),
-									title: records[i].getField('title'),
-									permissions: permissions
-								};
-								return resolve(result);
-							});
-						});
-					}
-				}
-				return reject("Invalid username / password combination");
-			});
-		});
+	async authenticate(session, params) {
+		if (typeof session !== 'object') throw "Invalid session";
+		if (typeof params !== 'object') throw "Expected an object to be passed for parameters";
+		if (typeof params.username !== 'string') throw "Missing username argument";
+		if ((typeof params.password !== 'undefined') && (typeof params.password !== 'string')) throw "Expected password argument to be a string";
+		
+		var records = await this._table.selectRecords({'user_name':params.username, "active":1});
+		
+		for (var i in records) {
+			var hash = records[i].getField('password');
+			if (((hash === null) && (typeof params.password === 'undefined')) || ((typeof hash === 'string') && (crypt(params.password, hash) === hash))) {
+				var permissions = await this._getPermissions(records[i].getIndex());
+				var avatar = await this._opts.files.getFileAsBase64(records[i].getField('avatar_id'));
+				session.user = {
+					id: records[i].getIndex(),
+					user_name: records[i].getField('user_name'),
+					full_name: records[i].getField('full_name'),
+					title: records[i].getField('title'),
+					avatar: avatar,
+					permissions: permissions
+				};
+				var result = {
+					user_name: records[i].getField('user_name'),
+					full_name: records[i].getField('full_name'),
+					title: records[i].getField('title'),
+					permissions: permissions
+				};
+				return result;
+			}
+		}
+		
+		throw "Invalid username / password combination";
 	}
 
 	_getPermissions(id) {

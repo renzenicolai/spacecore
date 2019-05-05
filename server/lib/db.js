@@ -269,7 +269,7 @@ class Table {
 				}
 			}
 			if (this._index == null) {
-				console.log("Table "+this._opts.table+" has no primary index. A primary index is required for all tables!");
+				throw "Table "+this._opts.table+" has no primary index. A primary index is required for all tables!";
 			}
 		}).catch(this._opts.db._errorHandler);
 	}
@@ -564,6 +564,7 @@ class Database {
 		for (var i = 0; i<this._tables.length; i++) {
 			if (this._tables[i].name()==table) return this._tables[i];
 		}
+		throw "[DATABASE] Error: table '"+table+"' does not exist!";
 		return null;
 	}
 		
