@@ -79,7 +79,10 @@ class Files {
 		for (var i in params.file) {
 			operations.push(this.createFileFromBase64(params.file[i]));
 		}
-		return Promise.all(operations);
+		var files = await Promise.all(operations);
+		var result = [];
+		for (var i = 0; i < files.length; i++) result.push(files[i].getFields());
+		return result;
 	}
 	
 	async methodRemoveFile(session, params) {
