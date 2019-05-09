@@ -19,6 +19,9 @@ class Websocketserver {
 		});
 		
 		this._ws.on('connection', this._onConnect.bind(this));
+		this._ws.on('open', this._onOpen.bind(this));
+		this._ws.on('ping', this._onPing.bind(this));
+		this._ws.on('close', this._onClose.bind(this));
 	}
 	
 	ws() {
@@ -26,17 +29,25 @@ class Websocketserver {
 	}
 	
 	_onConnect(ws) {
-		//console.log("[WS] Connect!");
 		ws.on('message', this._onMessage.bind(this, ws));
 	}
 	
+	_onOpen(ws) {
+		
+	}
+	
+	_onPing(ws) {
+		
+	}
+	
+	_onClose(ws) {
+		
+	}
+	
 	_onMessage(ws, message) {
-		//console.log("[WS] Message",message);
-		this._opts.application.handle(message).then((result) => {
-			//console.log("[WS] result", result);
+		this._opts.application.handle(message, ws).then((result) => {
 			ws.send(result);
 		}).catch((error) => {
-			//console.log("[WS] Error", error);
 			ws.send(error);
 		});
 	}

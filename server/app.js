@@ -6,7 +6,7 @@ const Webserver        = require('./lib/webserver.js');
 const Websocketserver  = require('./lib/websocketserver.js');
 const Mqttclient       = require('./lib/mqtt.js');
 const Database         = require('./lib/db.js');
-const fs               = require('fs'); 
+const fs               = require('fs');
 const password         = require('./password.js');
 
 //Modules
@@ -18,6 +18,7 @@ const Persons          = require('./modules/persons.js');
 const Products         = require('./modules/products.js');
 const Transactions     = require('./modules/transactions.js');
 const Mt940            = require('./modules/mt940.js');
+const Vending          = require('./modules/vending.js');
 
 //Verifications
 const VerifyBalance    = require('./verification/balance.js');
@@ -25,14 +26,14 @@ const VerifyBalance    = require('./verification/balance.js');
 var now = new Date();
 var logFile = fs.createWriteStream('log/'+now.getTime()+'.txt');
 
-process.on('unhandledRejection', (err) => { 
+process.on('unhandledRejection', (err) => {
 	logFile.write("UNHANDLED REJECTION: "+err+"\n");
 	console.error('======== UNHANDLED REJECTION ========');
 	console.error(err);
 	process.exit(1);
 });
 
-process.on('uncaughtException', (err) => { 
+process.on('uncaughtException', (err) => {
 	logFile.write("UNCAUGHT EXCEPTION: "+err+"\n");
 	console.error('======== UNCAUGHT EXCEPTION ========');
 	console.error(err);
@@ -67,7 +68,7 @@ function start() {
 		strict: true,
 		auth: sessions
 	});
-    
+
 	var websocketserver = new Websocketserver({
 		application: rpc
 	});
@@ -81,12 +82,12 @@ function start() {
         ws: websocketserver.ws()
 	});
 
-	/*var mqttclient = new Mqttclient({
+	var mqttclient = new Mqttclient({
 		port: 1883,
-		host: 'tkkrlab.space',
-		topic: 'test/bar',
-		rpc: rpc
-	});*/
+		host: '10.42.1.2',
+		topic: 'tkkrlab/spacecore',
+		rpc: {handle: (request) => { return "RPC over MQTT is disabled!"; } }
+	});
 
 	var ping = new Ping();         //A simple ping endpoint to check connection status
 
@@ -95,7 +96,7 @@ function start() {
 	var files = new Files({
 		database: database
 	});
-	
+
 	var users = new Users({
 		database: database,
 		files: files
@@ -105,21 +106,28 @@ function start() {
 		database: database,
 		files: files
 	});
-	
+
 	var persons = new Persons({
 		database: database,
 		files: files,
 		products: products
 	});
-		
+
 	var transactions = new Transactions({
 		database: database,
 		persons: persons,
 		products: products
 	});
-	
+
 	var mt940 = new Mt940({
 		//No options.
+	});
+
+	var vending = new Vending({
+		database: database,
+		mqtt: mqttclient,
+		sessions: sessions,
+		persons: persons
 	});
 
 	sessions.registerRpcMethods(rpc);
@@ -130,18 +138,19 @@ function start() {
 	products.registerRpcMethods(rpc);
 	transactions.registerRpcMethods(rpc);
 	mt940.registerRpcMethods(rpc);
-    
+    vending.registerRpcMethods(rpc);
+
 	sessions.addAlwaysAllow('session/create');
     sessions.addAlwaysAllow('user/authenticate');
     sessions.addAlwaysAllow('ping');
-	
+
 	var verifications = [];
-	
+
 	verifications.push(new VerifyBalance({
 		persons: persons,
 		transactions: transactions
 	}));
-	
+
 	for (var i in verifications) {
 		verifications[i].verify();
 	}

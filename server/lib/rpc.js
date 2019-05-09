@@ -70,7 +70,7 @@ class Rpc {
 		return list;
 	}
 	
-	_handleRequest(request) {		
+	_handleRequest(request, connection=null) {		
 		return new Promise((resolve, reject) => {
 			var response = {};
 
@@ -91,15 +91,18 @@ class Rpc {
 			if (typeof request.token !== 'string') request.token = "";
 			var session = this._opts.auth.getSession(request.token);
 			
+			if ((session !== null && connection !== null)) {
+				//console.log("[RPC] Added connection to session "+request.token+"!");
+				session.setConnection(connection);
+			}
+			
 			if (typeof request.method === 'string') {
 				
-				console.log("[RPC] Request:",request.method,request.params);
+				//console.log("[RPC] Request:",request.method,request.params);
 				
 				//Authentication
 				var havePermission = this._opts.auth.checkAlwaysAllow(request.method);
-				//console.log("RPC AUTH A", havePermission);
 				if (!havePermission && (session !== null)) havePermission = session.checkPermissionSync(request.method);
-				//console.log("RPC AUTH B", havePermission);
 				if (!havePermission) {
 						response.error = { code: 1, message: "Access denied" };
 						console.log("[RPC] Access denied");
@@ -108,7 +111,6 @@ class Rpc {
 				
 				if (typeof this._functions[request.method] === 'function') {
 					var numArgs = this._functions[request.method].length;
-					//console.log("method",request.method,"args",numArgs);
 					
 					/*if (numArgs===3) {
 						this._functions[request.method](session, request.params, (err,res) => {
@@ -168,7 +170,7 @@ class Rpc {
 		});
 	}
 	
-	handle(data) {
+	handle(data, connection=null) {
 		return new Promise((resolve, reject) => {
 			var requests = null;
 
@@ -195,7 +197,7 @@ class Rpc {
 				var failed = false;
 				
 				for (var index = 0; index<requests.length; index++) {
-					promises.push(this._handleRequest(requests[index]).then( (result) => {
+					promises.push(this._handleRequest(requests[index], connection).then( (result) => {
 						results.push(result);
 					}).catch( (error) => {
 						results.push(error);
@@ -212,7 +214,7 @@ class Rpc {
 				});
 			} else {
 				//A single request
-				this._handleRequest(requests[0]).then( (result) => {
+				this._handleRequest(requests[0], connection).then( (result) => {
 					//console.log('handle: resolve! ',result);
 					return resolve(JSON.stringify(result));
 				}).catch( (error) => {

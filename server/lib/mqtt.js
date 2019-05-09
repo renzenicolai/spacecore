@@ -30,6 +30,8 @@ class Mqttclient {
 		this._client = mqtt.connect(connectOpts);
 		this._client.on('connect', this._connect.bind(this));
 		this._client.on('message', this._handle.bind(this));
+		
+		this.callbacks = {};
 	}
 	
 	_connect() {
@@ -39,29 +41,46 @@ class Mqttclient {
 	}
 	
 	_handle(topic, message) {
-		if (topic.endsWith("/response")) return; //Ignore our own messages
-		var rpcRequest = message.toString('utf8');
-		var returnTopic = topic+"/response";
-		if (this._opts.rpc==null) return false;
-		return this._opts.rpc.handle(rpcRequest).then((result) => {
-			this._client.publish(returnTopic, result);
-			return true;
-		}).catch((err) => {
-			if (typeof err==='string') {
-				this._client.publish(returnTopic, err);
-			} else {
-				console.log(err);
-				this._client.publish(returnTopic, JSON.stringify({
-					id: null,
-					jsonrpc: "2.0",
-					error: { code: -32000, message: "Internal server error" }
-				}));
+		if (topic.startsWith(this._opts.topic)) {
+			if (topic.endsWith("/response")) return; //Ignore our own messages
+			var rpcRequest = message.toString('utf8');
+			var returnTopic = topic+"/response";
+			if (this._opts.rpc==null) return false;
+			return this._opts.rpc.handle(rpcRequest).then((result) => {
+				this._client.publish(returnTopic, result);
+				return true;
+			}).catch((err) => {
+				if (typeof err==='string') {
+					this._client.publish(returnTopic, err);
+				} else {
+					console.log(err);
+					this._client.publish(returnTopic, JSON.stringify({
+						id: null,
+						jsonrpc: "2.0",
+						error: { code: -32000, message: "Internal server error" }
+					}));
+				}
+				return false;
+			});
+		} else {
+			if (topic in this.callbacks) {
+				try {
+					this.callbacks[topic](message);
+				} catch(err) {
+					console.log("Error in MQTT callback for topic '"+topic+"':", err);
+				}
 			}
-			return false;
-		});
+		}
+	}
+	
+	subscribe(topic, callback) {
+		console.log("[MQTT] Subscribed to '"+topic+"'.");
+		this._client.subscribe(topic);
+		this.callbacks[topic] = callback;
 	}
 	
 	send(topic, message) {
+		console.log("[MQTT] Sending '"+message+"' to '"+topic+"'.");
 		this._client.publish(topic, message);
 	}
 }

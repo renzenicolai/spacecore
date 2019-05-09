@@ -1,35 +1,15 @@
-class Spacecore {
+class Application {
 	constructor( opts ) {
 		this._opts = Object.assign({
 			apiUrl: window.location.protocol.replace("http","ws")+"//"+window.location.host+"/api/"
 		}, opts);
 		
-		this.ui = new SpacecoreUI({
+		this.ui = new UI({
 			//...
 		});
 		
 		this.modules = [
-			new Dashboard({ //The first module is shown by default after login
-				ui: this.ui,
-				app: this
-			}),
-			new Persons({
-				ui: this.ui,
-				app: this
-			}),
-			new Products({
-				ui: this.ui,
-				app: this
-			}),
-			new Mt940({
-				ui: this.ui,
-				app: this
-			}),
-			new Users({
-				ui: this.ui,
-				app: this
-			}),
-			new Files({
+			new Candy({
 				ui: this.ui,
 				app: this
 			}),
@@ -45,8 +25,8 @@ class Spacecore {
 		this.sessionId = null;
 		this.state = null;
 
-		this.currentModule = null;
 		this.homeModule = this.modules[0];
+		this.currentModule = null;
 		
 		this.refreshActive = false;
 		
@@ -94,7 +74,7 @@ class Spacecore {
 		var data = {lines: msg};
 		if (title.length>0) data['title'] = title;
 		if (buttons.length>0) data['buttons'] = buttons;
-		this.ui.showTemplate('single', data);
+		this.ui.showTemplate('message', data);
 	}
 	
 	showMessage2(msg, moduleTitle="", title="",buttons=[]) {
@@ -105,7 +85,7 @@ class Spacecore {
 				msg += elems[i]+"<br />";
 			}
 		}
-		this.showPage({
+		/*this.showPage({
 			header: {
 				title: moduleTitle,
 				options: []
@@ -129,7 +109,8 @@ class Spacecore {
 					]
 				]
 			]
-		});
+		});*/
+		this.showMessage(msg, title, buttons);
 	}
 	
 	/* Helper functions for menu */
@@ -220,9 +201,7 @@ class Spacecore {
 		if (typeof callback === 'function') {
 			this._wsCallbacks[uid] = callback.bind(this);
 		}
-		
 		this.ws.send(message);
-		return true;
 	}
 	
 	/* Commands and handling */
@@ -253,7 +232,7 @@ class Spacecore {
 			if (this.sessionId !== null) {
 				this.executeCommand('session/state', null, this.handleRefresh);
 			} else {
-				this.showMessage(["You've triggered a bug in the spacecore frontend. Please contact the developer."]);
+				this.showMessage(["You've triggered a bug in the frontend. Please contact the developer."]);
 				console.log("executeRefresh without session exception!");
 			}
 		} else {
@@ -276,23 +255,14 @@ class Spacecore {
 			if (error.message === "Access denied") {
 				this.showMessage(
 					["The system could not fetch the state of your session.",
-					 "",
-					 "",
-					 "This most likely means that your session has been terminated. Press the restart application button to return to the login screen."
+					 "(The application will be restarted in 5 seconds!)"
 					],
-					"An error occured!",
-					[
-						{
-							type: "button",
-							value:"Restart application",
-							action: "javascript:spacecore.reset()"
-						}
-					]
+					"An error occured!"
 				);
 			} else {
-				this.showMessage(["Session terminated.",error.message]);
+				this.showMessage(["Session terminated.",error.message,"(The application will be restarted in 5 seconds!)"]);
 			}
-			//setTimeout(this.reset.bind(this), 5000);
+			setTimeout(this.reset.bind(this), 5000);
 			return;
 		}
 		
@@ -427,7 +397,7 @@ class Spacecore {
 		}
 		console.log("Error: can not show module", module);
 	}
-	
+			
 	pushSubscribe(subject, callback) {
 		if (!(subject in this._wsPushCallbacks)) {
 			//Need to subscribe
@@ -537,7 +507,7 @@ class Spacecore {
 							value = Number(value);
 						}
 						argument[name] = value;
-						//console.log("Handled RADIO element", name, value);
+						console.log("Handled RADIO element", name, value);
 					}
 				} else if (type=="checkbox") {
 					argument[name] = formElements[i].checked;
@@ -545,7 +515,7 @@ class Spacecore {
 				} else if (type=="file") {
 					argument[name] = "...";
 					var files = formElements[i].files;
-					//console.log("Handled FILE element", name, files);
+					console.log("Handled FILE element", name, files);
 					var data = [];
 					for (var j = 0; j < files.length; j++) {
 						var f = files[j];
@@ -560,7 +530,7 @@ class Spacecore {
 						value = Number(value);
 					}
 					argument[name] = value;
-					//console.log("Handled GENERIC element", name, value);
+					console.log("Handled GENERIC element", name, value);
 				}
 			} else {
 				console.log("Unhandled element", formElements[i]);
@@ -593,5 +563,30 @@ class Spacecore {
 		
 		label.innerText = "";
 		if (elem.files.length > 0) label.innerText = elem.files[0].name;
+	}
+	
+	genericErrorHandler(err, action="show()") {
+		var message = "Unknown error!";
+		
+		if ((typeof err === 'object') && (typeof err.message === 'string')) {
+			message = err.message;
+		} else if (typeof err === 'string') {
+			message = err;
+		} else {
+			console.log("Invalid argument supplied to error handler", err);
+		}
+		
+		this.showMessage2(
+			message,
+			"Persons",
+			"Error",
+			[
+				{
+					type: "button",
+					value: "OK",
+					action: "javascript:spacecore.currentModule."+action+";"
+				}
+			]
+		);
 	}
 }
