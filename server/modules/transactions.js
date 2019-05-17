@@ -282,6 +282,7 @@ class Transactions {
 								}
 								requestedStockList[item].setField("amount_current", amountInCurrentStock - amountFromCurrentStock);
 								requestedStockList[item].setFieldDate("timestamp_current"); //Update to current timestamp
+								selectedStock.print(); //Debug!
 								selectedStock.push(requestedStockList[item]);
 								
 								//This creates the mapping record that links each stock mutation to the transaction row responsible

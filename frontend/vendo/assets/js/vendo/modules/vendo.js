@@ -1,6 +1,6 @@
-class Candy {
+class Vendo {
 	constructor( opts ) {
-		this.name = 'candy';
+		this.name = 'vendo';
 		
 		opts = Object.assign({
 			ui: null,
@@ -47,9 +47,9 @@ class Candy {
 	show(reset=true) {
 		if (reset) this.reset();
 		this.app.currentModule = this;
-		this.app.pushSubscribe('pos/candymachine/state', this._onState.bind(this));
-		this.app.pushSubscribe('pos/candymachine/debug', this._onDebug.bind(this));
-		this.app.pushSubscribe('pos/candymachine/token/person', this._onPerson.bind(this));
+		this.app.pushSubscribe('pos/vendo/state', this._onState.bind(this));
+		this.app.pushSubscribe('pos/vendo/debug', this._onDebug.bind(this));
+		this.app.pushSubscribe('pos/vendo/token/person', this._onPerson.bind(this));
 		this.displayProducts();
 	}
 
@@ -102,13 +102,13 @@ class Candy {
 		this.selectedProduct = null;
 		this.cancelTimeout();
 		this.app.showMessage("Fetching list of products...");
-		this.app.executeCommand("product/location/list", "candymachine", this._handleProducts.bind(this));
+		this.app.executeCommand("product/location/list", "vendo", this._handleProducts.bind(this));
 		this.setLed(false,true,false);
 	}
 	
 	setLed(r=false,g=false,f=false) {
 		console.log("LED", r,g,f);
-		this.app.executeCommand('pos/led', {device: "candymachine", red: r, green: g, fade: f});
+		this.app.executeCommand('pos/led', {device: "vendo", red: r, green: g, fade: f});
 	}
 	
 	displayBusy(reason="") {
@@ -173,7 +173,7 @@ class Candy {
 		this.nudgeCount = 3;
 		this.nudgeSlot = this.selectedProduct.slot;
 		this.app.showMessage("Starting the vending process...");
-		this.app.executeCommand('pos/vend', {device: "candymachine", slot: this.selectedProduct.slot});
+		this.app.executeCommand('pos/vend', {device: "vendo", slot: this.selectedProduct.slot});
 		this.reset();
 	}
 	
@@ -210,24 +210,8 @@ class Candy {
 		if (sub === 11) return 0;
 		if (sub === 12) return 1;
 		if (sub === 13) return 2;
-		if (sub === 21) return 3;
-		if (sub === 22) return 4;
-		if (sub === 23) return 5;
-		if (sub === 31) return 6;
-		if (sub === 32) return 7;
-		if (sub === 33) return 8;
-		if (sub === 41) return 9;
-		if (sub === 42) return 10;
-		if (sub === 43) return 11;
-		if (sub === 51) return 12;
-		if (sub === 52) return 13;
-		if (sub === 53) return 14;
-		if (sub === 54) return 15;
-		if (sub === 55) return 16;
-		if (sub === 56) return 17;
-		if (sub === 61) return 18;
-		if (sub === 62) return 19;
-		if (sub === 63) return 20;
+		if (sub === 14) return 3;
+		if (sub === 15) return 4;
 		return -1;
 	}
 	
@@ -257,7 +241,7 @@ class Candy {
 
 	nudge() {
 		if (this.nudgeCount > 0) {
-			this.app.executeCommand('pos/nudge', {device: "candymachine", slot: this.nudgeSlot});
+			this.app.executeCommand('pos/nudge', {device: "vendo", slot: this.nudgeSlot});
 			this.nudgeCount = this.nudgeCount - 1;
 		} else {
 			this.app.showMessage("Zit je product nog steeds vast? Vraag dan een lid van het bestuur om hulp.");
@@ -273,11 +257,10 @@ class Candy {
 		console.log(res);
 		
 		var items = [];
-		for (var i = 0;  i < 21; i++) items.push({title:"Empty", big: true});
-		for (var i = 12; i < 18; i++) items[i].big = false;
+		for (var i = 0;  i < 30; i++) items.push({title:"Empty "+i, big: false});
 		for (var i = 0;  i < res.length; i++) {
 			var slot = this.subToSlot(res[i].sub);
-			if (slot < 0) continue; //Not a candymachine slot
+			if (slot < 0) continue; //Not in this device
 			if (res[i].products.length > 1) {
 				return this.app.genericErrorHandler("Multiple products assigned to slot "+slot+"!");
 			}
@@ -296,10 +279,10 @@ class Candy {
 			}
 		}
 
-		if (this.nudgeCount >= 0) items.push({
-			title: "Help mijn product zit vast!",
-			action: "javascript:application.currentModule.nudge()"
-		});
+		//if (this.nudgeCount >= 0) items.push({
+		//	title: "Help mijn product zit vast!",
+		//	action: "javascript:application.currentModule.nudge()"
+		//});
 		
 		this.ui.showTemplate("products", {
 			items: items
