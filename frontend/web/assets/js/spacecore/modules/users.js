@@ -57,7 +57,7 @@ class Users {
 		document.getElementById('table_users').innerHTML = content;
 	}
 	
-	changeSort(field) {
+	/*changeSort(field) {
 		if (this.state.sortBy === field) {
 			this.state.sortReverse = !this.state.sortReverse;
 		} else {
@@ -65,12 +65,13 @@ class Users {
 			this.state.sortBy = field;
 		}
 		this.search();
-	}
+	}*/
 	
 	_getSortIcon(field) {
-		if (this.state.sortBy !== field) return null;
+		/*if (this.state.sortBy !== field) return null;
 		if (this.state.sortReverse) return "chevron-up";
-		return "chevron-down";
+		return "chevron-down";*/
+		return "";
 	}
 		
 	_renderUsers(res) {		
@@ -81,22 +82,22 @@ class Users {
 					fe_icon: "user",
 					width: 1,
 					text_center: true,
-					action: "javascript:spacecore.findModule('"+this.name+"', true).changeSort('id');",
+					//action: "javascript:spacecore.findModule('"+this.name+"', true).changeSort('id');",
 					fe_icon_after: this._getSortIcon('id')
 				},
 				{
 					text: "Username",
-					action: "javascript:spacecore.findModule('"+this.name+"', true).changeSort('user_name');",
+					//action: "javascript:spacecore.findModule('"+this.name+"', true).changeSort('user_name');",
 					fe_icon_after: this._getSortIcon('user_name')
 				},
 				{
 					text: "Full name",
-					action: "javascript:spacecore.findModule('"+this.name+"', true).changeSort('full_name');",
+					//action: "javascript:spacecore.findModule('"+this.name+"', true).changeSort('full_name');",
 					fe_icon_after: this._getSortIcon('full_name')
 				},
 				{
 					text: "Title",
-					action: "javascript:spacecore.findModule('"+this.name+"', true).changeSort('title');",
+					//action: "javascript:spacecore.findModule('"+this.name+"', true).changeSort('title');",
 					fe_icon_after: this._getSortIcon('title')
 				},
 				{
@@ -211,7 +212,9 @@ class Users {
 			]
 		});
 		
-		if (this.state.lastSelected !== null) window.location.href = "#person-"+this.state.lastSelected;
+		$(function() { $("#table_users_table").tablesorter(); });
+		
+		if (this.state.lastSelected !== null) window.location.href = "#user-"+this.state.lastSelected;
 	}
 	
 	showDetails(id) {

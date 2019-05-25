@@ -341,8 +341,8 @@ def initCompletion():
 	products = client.productList({})
 	for product in products:
 		clProducts.append(product["name"].lower())
-	persons = client.personList({})
 	print("Please wait, querying list of persons...")
+	persons = client.personList({})
 	for person in persons:
 		clPersons.append(person["nick_name"].lower())
 

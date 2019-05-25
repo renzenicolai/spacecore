@@ -3,10 +3,8 @@ const Handlebars = require('handlebars');
 class SpacecoreUI {
 	constructor( opts ) {
 		this._opts = Object.assign({
-			"copyrightString": 'Copyright &copy; 2019 Renze Nicolai.<br />Theme by codecalm.net'
+			"copyrightString": 'Copyright &copy; 2019 Renze Nicolai<br />Theme by codecalm.net'
 		}, opts);
-		
-		console.log("[UI] Registering helpers...");
 		
 		Handlebars.registerHelper({
 			eq: function (v1, v2) {
@@ -49,38 +47,36 @@ class SpacecoreUI {
 		Handlebars.registerHelper('replaceNewlines', (text) => {
 			if (typeof text === "string") {
 				text = Handlebars.Utils.escapeExpression(text);
-				return new Handlebars.SafeString(text.replace("\n","<br />"));
+				return new Handlebars.SafeString(text.split("\n").join("<br />"));
 			}
 			return text;
 		});
 		
-		console.log("[UI] Registering partials...");
-				
 		this.templates = {};
 										
 		Handlebars.registerPartial('formElement', '{{#if label}}<label class="form-label">{{label}}</label>{{/if}}'
 		
-								 + '{{#if (or (eq type "text") (eq type "password"))}}{{#if fe_icon}}<div class="input-icon ml-2"><span class="input-icon-addon"><i class="fe fe-{{fe_icon}}"></i></span>{{/if}}<input {{#if id}}id="{{id}}"{{/if}} {{#if name}}name="{{name}}"{{/if}} {{#if action}}onchange="{{action}}"{{/if}} class="form-control w-{{#if width}}{{width}}{{else}}10{{/if}}" {{#if placeholder}}placeholder="{{placeholder}}"{{/if}} type="{{type}}" {{#if value}}value="{{value}}"{{/if}}{{#if disabled}} disabled{{/if}}{{#if readonly}} readonly{{/if}}>{{#if fe_icon}}</div>{{/if}}{{/if}}'
+								 + '{{#if (or (eq type "text") (eq type "password"))}}{{#if fe_icon}}<div class="input-icon ml-2"><span class="input-icon-addon"><i class="fe fe-{{fe_icon}}"></i></span>{{/if}}<input {{#if (eq disabled true)}}disabled=true {{/if}}{{#if id}}id="{{id}}"{{/if}} {{#if name}}name="{{name}}"{{/if}} {{#if action}}onchange="{{action}}"{{/if}} class="form-control {{#if (eq convertToNumber true)}}scConvertNumber {{/if}}w-{{#if width}}{{width}}{{else}}10{{/if}}" {{#if placeholder}}placeholder="{{placeholder}}"{{/if}} type="{{type}}" {{#if value}}value="{{value}}"{{/if}}{{#if disabled}} disabled{{/if}}{{#if readonly}} readonly{{/if}}>{{#if fe_icon}}</div>{{/if}}{{/if}}'
 
 								 + '{{#if (eq type "textarea")}}<textarea {{#if action}}onchange="{{action}}"{{/if}} class="form-control" {{#if id}}id="{{id}}"{{/if}} {{#if name}}name="{{name}}"{{/if}} {{#if placeholder}}placeholder="{{placeholder}}"{{/if}}>{{#if value}}{{value}}{{/if}}</textarea>{{/if}}'
 								 
 								 + '{{#if (eq type "button")}}<button type="{{#if (eq action "submit")}}submit{{else if (eq action "reset")}}reset{{else}}button{{/if}}" {{#if (and (ne action "submit") (ne action "reset"))}}onclick="{{action}}"{{/if}} class="btn btn-{{#if class}}{{class}}{{else}}primary{{/if}} {{#if (eq small true)}}btn-sm {{/if}}{{#if ml}}ml-{{ml}} {{/if}}{{#if (eq block true)}}btn-block {{/if}}" {{#if name}}name="{{name}}"{{/if}} {{#if id}}id="{{id}}"{{/if}}>{{#if fe_icon}}<i class="fe fe-{{fe_icon}}"></i>{{/if}}{{#if value}} {{value}}{{/if}}</button>{{/if}}'
 								  
-								 + '{{#if (eq type "select")}}<select class="form-control custom-select" {{#if name}}name="{{name}}"{{/if}} {{#if id}}id="{{id}}"{{/if}}>{{#each options}}<option value="{{value}}" {{#if id}}id="{{id}}"{{/if}}>{{label}}</option>{{/each}}</select>{{/if}}'
+								 + '{{#if (eq type "select")}}<select class="form-control custom-select {{#if (eq convertToNumber true)}}scConvertNumber {{/if}}" {{#if name}}name="{{name}}"{{/if}} {{#if id}}id="{{id}}"{{/if}} {{#if action}}onchange="{{action}}"{{/if}}>{{#each options}}<option value="{{value}}" {{#if id}}id="{{id}}"{{/if}}>{{label}}</option>{{/each}}</select>{{/if}}'
 								 
-								 + '{{#if (eq type "select-buttons")}}<div class="selectgroup selectgroup-vertical w-100">{{#each options}}<label class="selectgroup-item"><input type="radio" name="{{../name}}" value="{{value}}" class="selectgroup-input" {{#if id}}id="{{id}}"{{/if}} {{#if (eq ../selected value)}} checked=""{{/if}}{{#if (eq disabled true)}} disabled{{/if}}><span class="selectgroup-button">{{label}}</span></label>{{/each}}</div>{{/if}}'
+								 + '{{#if (eq type "select-buttons")}}<div class="selectgroup selectgroup-vertical w-100">{{#each options}}<label class="selectgroup-item"><input type="radio" name="{{../name}}" value="{{value}}" class="selectgroup-input {{#if (eq convertToNumber true)}}scConvertNumber {{/if}}" {{#if id}}id="{{id}}"{{/if}} {{#if (eq ../selected value)}} checked=""{{/if}}{{#if (eq disabled true)}} disabled{{/if}}><span class="selectgroup-button">{{label}}</span></label>{{/each}}</div>{{/if}}'
 								 
-								 + '{{#if (eq type "switch-group")}}<div class="custom-switches-stacked">{{#each options}}<label class="custom-switch"><input type="radio" class="custom-switch-input" name="{{../name}}" value="{{value}}"  {{#if (eq ../selected value)}} checked=""{{/if}}{{#if disabled}} disabled{{/if}}><span class="custom-switch-indicator"></span><span class="custom-switch-description">{{label}}</span></label>{{/each}}</div>{{/if}}'
+								 + '{{#if (eq type "switch-group")}}<div class="custom-switches-stacked">{{#each options}}<label class="custom-switch"><input type="radio" class="custom-switch-input {{#if (eq convertToNumber true)}}scConvertNumber {{/if}}" name="{{../name}}" value="{{value}}"  {{#if (eq ../selected value)}} checked=""{{/if}}{{#if disabled}} disabled{{/if}}><span class="custom-switch-indicator"></span><span class="custom-switch-description">{{label}}</span></label>{{/each}}</div>{{/if}}'
 								 
-								 + '{{#if (eq type "radio")}}<div class="custom-controls-stacked">{{#each options}}<label class="custom-control custom-radio"><input type="radio" class="custom-control-input {{#if (eq ../convertToNumber true)}}scConvertNumber{{/if}}" name="{{../name}}" value="{{value}}" {{#if (eq ../selected value)}} checked=""{{/if}}{{#if disabled}} disabled{{/if}}><div class="custom-control-label">{{label}}</div></label>{{/each}}</div>{{/if}}'
+								 + '{{#if (eq type "radio")}}<div class="custom-controls-stacked">{{#each options}}<label class="custom-control custom-radio"><input type="radio" class="custom-control-input {{#if (eq convertToNumber true)}}scConvertNumber {{/if}} {{#if (eq ../convertToNumber true)}}scConvertNumber{{/if}}" name="{{../name}}" value="{{value}}" {{#if (eq ../selected value)}} checked=""{{/if}}{{#if disabled}} disabled{{/if}}><div class="custom-control-label">{{label}}</div></label>{{/each}}</div>{{/if}}'
 								 
 								 + '{{#if (eq type "hidden")}}<input type="hidden" name="{{name}}" value="{{value}}" class="{{#if (eq convertToNumber true)}}scConvertNumber{{/if}}" />{{/if}}'
 								 
 								 + '{{#if (eq type "static")}}<div class="form-control-plaintext">{{value}}</div>{{/if}}'
 								 
-								 + '{{#if (eq type "range")}}<input type="range" class="form-control custom-range" step="{{step}}" min="{{min}}" max="{{max}}" {{#if value}} value="{{value}}"{{/if}}  name="{{name}}">{{/if}}'
+								 + '{{#if (eq type "range")}}<input type="range" class="form-control custom-range {{#if (eq convertToNumber true)}}scConvertNumber {{/if}}" step="{{step}}" min="{{min}}" max="{{max}}" {{#if value}} value="{{value}}"{{/if}}  name="{{name}}">{{/if}}'
 								 
-								 + '{{#if (eq type "checkbox")}}<label class="custom-switch"><input type="checkbox" name="{{name}}" class="custom-switch-input" {{#if (eq checked true)}} checked{{/if}}><span class="custom-switch-indicator"></span><span class="custom-switch-description">{{label}}</span></label>{{/if}}'
+								 + '{{#if (eq type "checkbox")}}<label class="custom-switch"><input type="checkbox" name="{{name}}" class="custom-switch-input {{#if (eq convertToNumber true)}}scConvertNumber {{/if}}" {{#if (eq checked true)}} checked{{/if}}><span class="custom-switch-indicator"></span><span class="custom-switch-description">{{label}}</span></label>{{/if}}'
 								 
 								 + '{{#if (eq type "file")}}<div class="custom-file"><input type="file" class="custom-file-input" id="{{id}}" name="{{name}}" {{#if accept}}accept="{{accept}}"{{/if}} onchange="spacecore.fileOnChangeHelper({{id}});"><label class="custom-file-label" id="{{id}}-label">{{default}}</label></div>{{/if}}'
 								 
@@ -117,14 +113,14 @@ class SpacecoreUI {
 		
 		Handlebars.registerPartial('dropdown', '<div class="item-action dropdown"><a href="javascript:void(0)" data-toggle="dropdown" class="icon"><i class="fe fe-more-vertical"></i></a><div class="dropdown-menu dropdown-menu-right">{{#each this}}{{>dropdownMenuElement}}{{/each}}</div></div>');
 		
-		Handlebars.registerPartial('tableField', '<{{#if (eq header true)}}th{{else}}td{{/if}} {{#if action}}onclick="{{action}}"{{/if}} {{#if width_old}}width="{{width_old}}"{{/if}} class="{{#if (eq text_center true)}}text-center {{/if}}{{#if width}}w-{{width}}{{/if}}{{#if action}} cursor-pointer{{/if}}">{{#if (isset avatar)}}{{>avatar}}{{/if}}{{#if fe_icon}}<i class="fe fe-{{fe_icon}}"></i>{{/if}}{{#if (isset menu)}}{{>dropdown menu}}{{/if}}{{#if text}}{{replaceNewlines text}}{{/if}}{{#if fe_icon_after}}<i class="fe fe-{{fe_icon_after}}"></i>{{/if}}</{{#if (eq header true)}}th{{else}}td{{/if}}>');
+		Handlebars.registerPartial('tableRow', '<{{#if (eq header true)}}th{{else}}td{{/if}} {{#if action}}onclick="{{action}}"{{/if}} {{#if width_old}}width="{{width_old}}"{{/if}} class="{{#if (eq text_center true)}}text-center {{/if}}{{#if width}}w-{{width}}{{/if}}{{#if action}} cursor-pointer{{/if}}">{{#if (isset avatar)}}{{>avatar}}{{/if}}{{#if fe_icon}}<i class="fe fe-{{fe_icon}}"></i>{{/if}}{{#if (isset menu)}}{{>dropdown menu}}{{/if}}{{#if text}}{{replaceNewlines text}}{{/if}}{{#if fe_icon_after}}<i class="fe fe-{{fe_icon_after}}"></i>{{/if}}</{{#if (eq header true)}}th{{else}}td{{/if}}>');
 		
-		Handlebars.registerPartial('table', '<div {{#if id}}id="{{id}}"{{/if}} class="table-responsive"><table class="table table-hover table-outline table-vcenter text-nowrap card-table">'
+		Handlebars.registerPartial('table', '<div {{#if id}}id="{{id}}"{{/if}} class="table-responsive"><table {{#if id}}id="{{id}}_table"{{/if}} class="table table-hover table-outline table-vcenter text-nowrap card-table tablesorter">'
 										  + '<thead><tr>'
-										  + '{{#each header}}{{#if (string this)}}<th>{{this}}</th>{{else}}{{>tableField header=true}}{{/if}}{{/each}}'
+										  + '{{#each header}}{{#if (string this)}}<th>{{this}}</th>{{else}}{{>tableRow header=true}}{{/if}}{{/each}}'
 										  + '</tr></thead>'
 										  + '<tbody>'
-										  + '{{#each body}}{{#if (list this)}}<tr>{{#each this}}{{#if (string this)}}<td>{{this}}</td>{{else}}{{>tableField}}{{/if}}{{/each}}</tr>{{else}}<tr {{#if id}}id="{{id}}"{{/if}}>{{#each fields}}{{#if (string this)}}<td>{{this}}</td>{{else}}{{>tableField}}{{/if}}{{/each}}</tr>{{/if}}{{/each}}'
+										  + '{{#each body}}{{#if (list this)}}<tr>{{#each this}}{{#if (string this)}}<td>{{this}}</td>{{else}}{{>tableRow}}{{/if}}{{/each}}</tr>{{else}}<tr {{#if id}}id="{{id}}"{{/if}}>{{#each fields}}{{#if (string this)}}<td>{{this}}</td>{{else}}{{>tableRow}}{{/if}}{{/each}}</tr>{{/if}}{{/each}}'
 										  + '</tbody>'
 										  + '</table></div>');
 		
@@ -190,10 +186,17 @@ class SpacecoreUI {
 		document.getElementById(elem).innerHTML = html;
 	}
 	
-	showTemplate(template='single', data={}, elem="spacecore") {
+	showTemplate(template='single', data={}, sortableTables=[], elem="spacecore") {
 		if (typeof this.templates[template] === 'undefined') return false;
 		this.show(this.templates[template](data), elem);
+		this.enableSorting(sortableTables);
 		return true;
+	}
+	
+	enableSorting(sortableTables) {
+		for (var i in sortableTables) {
+			$("#"+sortableTables[i]+"_table").tablesorter();
+		}
 	}
 	
 	renderTemplate(template='single', data={}) {

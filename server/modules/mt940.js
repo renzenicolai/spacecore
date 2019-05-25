@@ -5,6 +5,16 @@ class Mt940 {
 		//Nothing to do.
 	}
 	
+	_convertDate(date) {
+		if (typeof date !== 'string') throw "expected date to be a string";
+		if (date.length !== 6) throw "expected date to be 6 characters long";
+		var year = Number(date.slice(0,2))+2000;
+		var month = Number(date.slice(2,4));
+		var day = Number(date.slice(4,6));
+		var date = new Date(year, month, day);
+		return date.getTime()/1000;
+	}
+	
 	_SwiftMessageParser(input) {
 		var parts = input.split('\n:');
 		
@@ -61,7 +71,7 @@ class Mt940 {
 					console.log("Opening balance tag contains unknown transaction type", code, data);
 					throw "Unknown transaction type in opening balance tag";
 				}
-				message.opening.date = data.slice(1,7);
+				message.opening.date = this._convertDate(data.slice(1,7));
 				message.opening.currency = data.slice(7,10);
 				message.opening.amount = Math.round(Number(data.slice(10).replace(',','.'))*100);
 				
@@ -81,7 +91,7 @@ class Mt940 {
 					console.log("Opening balance tag contains unknown transaction type", code, data);
 					throw "Unknown transaction type in opening balance tag";
 				}
-				message.booked.date = data.slice(1,7);
+				message.booked.date = this._convertDate(data.slice(1,7));
 				message.booked.currency = data.slice(7,10);
 				message.booked.amount = Math.round(Number(data.slice(10).replace(',','.'))*100);
 				if (message.booked.credit) {
@@ -100,7 +110,7 @@ class Mt940 {
 					console.log("Opening balance tag contains unknown transaction type", code, data);
 					throw "Unknown transaction type in opening balance tag";
 				}
-				message.available.date = data.slice(1,7);
+				message.available.date = this._convertDate(data.slice(1,7));
 				message.available.currency = data.slice(7,10);
 				message.available.amount = Math.round(Number(data.slice(10).replace(',','.'))*100);
 				if (message.available.credit) {
@@ -119,7 +129,7 @@ class Mt940 {
 					console.log("Opening balance tag contains unknown transaction type", code, data);
 					throw "Unknown transaction type in opening balance tag";
 				}
-				message.forward.date = data.slice(1,7);
+				message.forward.date = this._convertDate(data.slice(1,7));
 				message.forward.currency = data.slice(7,10);
 				message.forward.amount = Math.round(Number(data.slice(10).replace(',','.'))*100);
 				if (message.forward.credit) {
@@ -130,7 +140,7 @@ class Mt940 {
 			} else if (code === '61') {
 				//Statement line
 				var statement = {};
-				statement.date = data.slice(0,6);
+				statement.date = this._convertDate(data.slice(0,6));
 				var pos = 6;
 				if ((data[6] !== 'C') && (data[6] !== 'D') && (data[6] !== 'R')) {
 					//Entry date in statement

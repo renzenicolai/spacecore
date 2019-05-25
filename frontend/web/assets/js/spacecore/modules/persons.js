@@ -13,21 +13,22 @@ class Persons {
 		this.reset();
 
 		this.groups = {};
+		this.tokenTypes = [];
 	}
 
 	reset() {
 		this.state = {
 			lastSelected: null,
 			searchText: "",
-			sortBy: "nick_name",
-			sortReverse: false,
 			lastData: null,
 
 			lastSelectedGroup: null,
 			groupsSearchText: "",
-			groupsSortBy: "name",
-			groupsSortReverse: false,
-			groupsLastData: null
+			groupsLastData: null,
+			
+			lastSelectedToken: null,
+			tokensSearchText: "",
+			tokensLastData: null
 		};
 	}
 
@@ -51,9 +52,12 @@ class Persons {
 		if (reset) this.reset();
 		this.app.currentModule = this;
 
+		window.location.href = "#";
+		
 		if (part==="persons") {
 			/* These are loaded async and may not be available right after rendering the page */
 			this.app.executeCommand('person/group/list', {}, this._handleGroupsRefresh.bind(this));
+			this.app.executeCommand('person/token/type/list', {}, this._handleTokenTypesRefresh.bind(this));
 
 			/* Render the page */
 			this.app.executeCommand('person/list', {}, this._handleShow.bind(this));
@@ -67,25 +71,37 @@ class Persons {
 	manageTokens() {
 		this.app.executeCommand('person/token/list', {}, this._handleManageTokens.bind(this));
 	}
+	
+	getPersonName(person) {
+		var name = person.nick_name;
+		if (person.first_name.length > 0) {
+			name = person.first_name;
+			if (person.last_name.length > 0) {
+				name += " "+person.last_name;
+			}
+		} else {
+			if (person.last_name.length > 0) {
+				name += person.last_name;
+			}
+		}
+		return name;
+	}
 
 	_handleManageTokens(res, err) {
-		if (err !== null) {
-			return this.genericErrorHandler(err);
+		if (err !== null) return this.genericErrorHandler(err);
+		
+		for (var i in res) {
+			res[i].owner = "";
+			if (typeof res[i].person === 'object') {
+				res[i].owner = this.getPersonName(res[i].person);
+				console.log("Owner",res[i]);
+			} else {
+				console.log("No owner",res[i]);
+			}
 		}
+		
 		this.state.tokensLastData = res;
-
-		var tokensTable = this._renderTokens(
-			this.app.sort(
-				this.app.filter(
-					res,
-					this.state.tokensSearchText,
-					['public', 'owner', 'enabled'],
-					false
-				),
-				this.state.tokensSortBy,
-				this.state.tokensSortReverse
-			)
-		);
+		var tokensTable = this._renderTokens(this.app.filter(res, this.state.tokensSearchText, ['public', 'owner', 'enabled'], false));
 
 		this.app.showPage({
 			header: {
@@ -129,14 +145,188 @@ class Persons {
 					]
 				]
 			]
-		});
+		}, ['table_tokens']);
 
 		if (this.state.lastSelectedToken !== null) window.location.href = "#person-token-"+this.state.lastSelectedToken.id;
 	}
 
 	_renderTokens(res) {
-		//TODO
-		return null;
+		var table = {
+			id: "table_tokens",
+			header: [
+				{
+					fe_icon: "key",
+					width: 1,
+					text_center: true
+				},
+				{
+					text: "Public"
+				},
+				{
+					text: "Owner"
+				},
+				{
+					text: "Enabled"
+				},
+				{
+					text: "Type"
+				},
+				{
+					width: 1
+				}
+			],
+			body: []
+		};
+
+		for (var i in res) {
+			table.body.push({
+				id: "person-token-"+res[i].id,
+				fields: [
+					{
+						action: "javascript:spacecore.currentModule.tokenEdit("+res[i].id+");",
+						text: res[i].id,
+						text_center: true
+					},
+					{
+						action: "javascript:spacecore.currentModule.tokenEdit("+res[i].id+");",
+						text: res[i].public
+					},
+					{
+						action: "javascript:spacecore.currentModule.tokenEdit("+res[i].id+");",
+						text: res[i].owner
+					},
+					{
+						action: "javascript:spacecore.currentModule.tokenEdit("+res[i].id+");",
+						fe_icon: res[i].enabled ? "check" : "x"
+					},
+					{
+						text: res[i].type.name
+					},
+					{
+						text_center: true,
+						menu: [
+							{
+								action: "javascript:spacecore.currentModule.tokenEdit("+res[i].id+");",
+								fe_icon: "command",
+								label: "Edit"
+							},
+							{
+								action: "javascript:spacecore.currentModule.tokenRemove("+res[i].id+");",
+								fe_icon: "trash-2",
+								label: "Remove"
+							}
+						]
+					}
+				]
+			});
+		}
+		return table;
+	}
+	
+	searchTokens(elem='persons-tokens-search') {
+		this.state.tokensSearchText = document.getElementById(elem).value;
+
+		console.log("SearchTokens", this.state.tokensSearchText, this.state.tokensLastData);
+
+		var filtered = this.app.filter(
+			this.state.tokensLastData,
+			this.state.tokensSearchText,
+			['public', 'owner', 'enabled'],
+			false
+		);
+
+		var content = this.ui.renderTemplate('table', this._renderTokens(filtered));
+		document.getElementById('table_tokens').innerHTML = content;
+		this.ui.enableSorting(['table_tokens']);
+	}
+	
+	tokenAdd() {		
+		var typeOptions = [];
+		for (var i in this.tokenTypes) typeOptions.push({id: i, value: this.tokenTypes[i].name});
+		
+		//var typeAction = function() { document.getElementById("privateKeyField") };
+		
+		this.app.showPage({
+			header: {
+				title: "Persons: tokens",
+				options: []
+			},
+			body: [
+				[
+					[
+						{
+							type: "card",
+							width: ['lg-8', 'md-12'],
+							header: {
+								title: "Add token"
+							},
+							form: {
+								id: "addtoken-form",
+								elements: [
+									{
+										type: "select-buttons",
+										name: "type",
+										label: "Type",
+										options: typeOptions
+									},
+									{
+										type: "text",
+										name: "public",
+										label: "Public key"
+									},
+									{
+										type: "text",
+										name: "public",
+										label: "Private key",
+										id: "privateKeyField"
+									},
+									{
+										type: "checkbox",
+										name: "enabled",
+										label: "Enabled",
+										checked: true
+									}
+								],
+								footer: [
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.manageTokens();",
+											fe_icon: "x",
+											value: "Cancel",
+											class: "secondary"
+										},
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.submitForm('addtoken-form','person/token/create')",
+											fe_icon: "save",
+											value: "Add token",
+											ml: "auto"
+										}
+									]
+							}
+						}
+					]
+				]
+			]
+		});
+	}
+	
+	tokenEdit(id) {
+		this.app.executeCommand('person/token/list', {id: id}, this._tokenEditHandler.bind(this));
+	}
+	
+	_tokenEditHandler(res, err) {
+		alert("Not implemented");
+		this.manageTokens();
+	}
+	
+	tokenRemove(id) {
+		this.app.executeCommand('person/token/list', {id: id}, this._tokenRemoveHandler.bind(this));
+	}
+	
+	_tokenRemoveHandler(res, err) {
+		alert("Not implemented");
+		this.manageTokens();
 	}
 
 	/* Groups */
@@ -146,26 +336,10 @@ class Persons {
 	}
 
 	_handleManageGroups(res, err) {
-		if (err !== null) {
-			return this.genericErrorHandler(err);
-		}
-
+		if (err !== null) return this.genericErrorHandler(err);
 		this._handleGroupsRefresh(res, err); //Update cache
-
 		this.state.groupsLastData = res;
-
-		var groupsTable = this._renderGroups(
-			this.app.sort(
-				this.app.filter(
-					res,
-					this.state.groupsSearchText,
-					['name', 'description', 'addToNew'],
-					false
-				),
-				this.state.groupsSortBy,
-				this.state.groupsSortReverse
-			)
-		);
+		var groupsTable = this._renderGroups(this.app.filter(res, this.state.groupsSearchText, ['name', 'description', 'addToNew'], false));
 
 		this.app.showPage({
 			header: {
@@ -209,7 +383,7 @@ class Persons {
 					]
 				]
 			]
-		});
+		}, ['table_groups']);
 
 		if (this.state.lastSelectedGroup !== null) window.location.href = "#person-group-"+this.state.lastSelectedGroup.id;
 	}
@@ -221,24 +395,16 @@ class Persons {
 				{
 					fe_icon: "user",
 					width: 1,
-					text_center: true,
-					action: "javascript:spacecore.currentModule.changeGroupsSort('id');",
-					fe_icon_after: this._getGroupsSortIcon('id')
+					text_center: true
 				},
 				{
-					text: "Name",
-					action: "javascript:spacecore.currentModule.changeGroupsSort('name');",
-					fe_icon_after: this._getGroupsSortIcon('name')
+					text: "Name"
 				},
 				{
-					text: "Description",
-					action: "javascript:spacecore.currentModule.changeGroupsSort('description');",
-					fe_icon_after: this._getGroupsSortIcon('description')
+					text: "Description"
 				},
 				{
-					text: "Default",
-					action: "javascript:spacecore.currentModule.changeGroupsSort('addToNew');",
-					fe_icon_after: this._getGroupsSortIcon('addToNew')
+					text: "Default"
 				},
 				{
 					width: 1
@@ -271,11 +437,6 @@ class Persons {
 					{
 						text_center: true,
 						menu: [
-							/*{
-								action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-								fe_icon: "info",
-								label: "Details"
-							},*/
 							{
 								action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
 								fe_icon: "command",
@@ -297,34 +458,28 @@ class Persons {
 	searchGroups(elem='persons-groups-search') {
 		this.state.groupsSearchText = document.getElementById(elem).value;
 
-		console.log("SearchGroups", this.state.groupsSearchText, this.state.groupsLastData, this.state.groupsSortBy, this.state.groupsSortReverse);
+		console.log("SearchGroups", this.state.groupsSearchText, this.state.groupsLastData);
 
-		var filtered = this.app.sort(
-			this.app.filter(
-				this.state.groupsLastData,
-				this.state.groupsSearchText,
-				['name', 'description', 'addToNew'],
-				false),
-			this.state.groupsSortBy,
-			this.state.groupsSortReverse);
+		var filtered = this.app.filter(
+			this.state.groupsLastData,
+			this.state.groupsSearchText,
+			['name', 'description', 'addToNew'],
+			false
+		);
 
 		var content = this.ui.renderTemplate('table', this._renderGroups(filtered));
 		document.getElementById('table_groups').innerHTML = content;
-	}
-
-	changeGroupsSort(field) {
-		if (this.state.groupsSortBy === field) {
-			this.state.groupsSortReverse = !this.state.groupsSortReverse;
-		} else {
-			this.state.groupsSortReverse = false;
-			this.state.groupsSortBy = field;
-		}
-		this.searchGroups();
+		this.ui.enableSorting(['table_groups']);
 	}
 
 	_handleGroupsRefresh(res, err) {
 		if (err) return console.log("Persons _handleGroupsRefresh exception", err);
 		this.groups = res;
+	}
+	
+	_handleTokenTypesRefresh(res, err) {
+		if (err) return console.log("Persons _handleTokenTypesRefresh exception", err);
+		this.tokenTypes = res;
 	}
 
 	_getGroupNameById(id) {
@@ -550,6 +705,69 @@ class Persons {
 			]
 		});
 	}
+	
+	_removeItemFromPersonForm(typeName, typeFieldName, itemName, itemId, endpoint) {
+		if (typeof this.state.lastSelected !== "object") return console.log("removeItemFromPersonForm called without a person selected!", this.state.lastSelected);
+		var id = this.state.lastSelected.id;
+
+		this.app.showPage({
+			header: {
+				title: "Persons",
+				options: []
+			},
+			body: [
+				[
+					[
+						{
+							type: "card",
+							width: ['lg-8', 'md-12'],
+							header: {
+								title: "Remove "+typeName+" from "+this.getPersonName(this.state.lastSelected)
+							},
+							form: {
+								id: "removeitemfromperson-form",
+								elements: [
+									{
+										type: "hidden",
+										name: "person",
+										value: id,
+										convertToNumber: true
+									},
+									{
+										type: "hidden",
+										name: typeFieldName,
+										value: itemId,
+										convertToNumber: true
+									},
+									{
+										type: "static",
+										label: "Are you sure?",
+										value: "You are about to remove "+typeName+" "+itemName+" from "+this.getPersonName(this.state.lastSelected)+"."
+									}
+								],
+								footer: [
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.showDetails();",
+											fe_icon: "x",
+											value: "Cancel",
+											class: "secondary"
+										},
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.submitForm('removeitemfromperson-form','"+endpoint+"')",
+											fe_icon: "trash-2",
+											value: "Remove",
+											ml: "auto"
+										}
+									]
+							}
+						}
+					]
+				]
+			]
+		});
+	}
 
 	/* Persons */
 
@@ -598,7 +816,7 @@ class Persons {
 									{
 										type: "static",
 										label: "Are you sure?",
-										value: "You are about to remove '"+this.state.lastSelected.nick_name+"' from group '"+this._getGroupNameById(group)+"'."
+										value: "You are about to remove '"+this.getPersonName(this.state.lastSelected)+"' from group '"+this._getGroupNameById(group)+"'."
 									}
 								],
 								footer: [
@@ -625,7 +843,7 @@ class Persons {
 		});
 	}
 
-	addGroupToPerson(id, nick_name="") {
+	addGroupToPerson(id, person_name="") {
 		var groupItems = [];
 		for (var i in this.groups) {
 			var item = {
@@ -661,7 +879,7 @@ class Persons {
 									{
 										type: "static",
 										label: "Person",
-										value: nick_name,
+										value: person_name,
 										ng: true
 									},
 									{
@@ -696,6 +914,352 @@ class Persons {
 			]
 		});
 	}
+	
+	addAddressToPerson(id, person_name="") {
+		this.app.showPage({ header: { title: "Persons", options: [] },
+			body: [
+				[
+					[
+						{
+							type: "card",
+							width: ['lg-8', 'md-12'],
+							header: {
+								title: "Add address to "+person_name
+							},
+							form: {
+								id: "addaddresstoperson-form",
+								elements: [
+									{
+										type: "hidden",
+										name: "person",
+										value: id,
+										convertToNumber: true
+									},
+									{
+										type: "text",
+										name: "street",
+										label: "Street"
+									},
+									{
+										type: "text",
+										name: "housenumber",
+										label: "Housenumber"
+									},
+									{
+										type: "text",
+										name: "postalcode",
+										label: "Postal code"
+									},
+									{
+										type: "text",
+										name: "city",
+										label: "City"
+									}
+								],
+								footer: [
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.showDetails("+id+");",
+											fe_icon: "x",
+											value: "Cancel",
+											class: "secondary"
+										},
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.submitForm('addaddresstoperson-form','person/addAddress')",
+											fe_icon: "save",
+											value: "Add address",
+											ml: "auto"
+										}
+									]
+							}
+						}
+					]
+				]
+			]
+		});
+	}
+	
+	_getAddressByIdFromLastSelected(id) {
+		var addresses = spacecore.currentModule.state.lastSelected.addresses;
+		for (var i in addresses) if (addresses[i].id===id) return addresses[i];
+		return null;
+	}
+	
+	removeAddressFromPerson(id, person_id) {
+		var address = this._getAddressByIdFromLastSelected(id);
+		var desc = "'"+address.street+" "+address.housenumber+", "+address.postalcode+" "+address.city+"'";
+		this._removeItemFromPersonForm("address", "id", desc, id, "person/removeAddress");
+	}
+	
+	editAddress(id, person_id) {
+		alert("Not implemented: edit address "+id+" of "+person_id);
+	}
+	
+	addEmailToPerson(id, person_name="") {
+		this.app.showPage({ header: { title: "Persons", options: [] },
+			body: [
+				[
+					[
+						{
+							type: "card",
+							width: ['lg-8', 'md-12'],
+							header: {
+								title: "Add e-mail address to "+person_name
+							},
+							form: {
+								id: "addemailtoperson-form",
+								elements: [
+									{
+										type: "hidden",
+										name: "person",
+										value: id,
+										convertToNumber: true
+									},
+									{
+										type: "text",
+										name: "address",
+										label: "E-mail address"
+									}
+								],
+								footer: [
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.showDetails("+id+");",
+											fe_icon: "x",
+											value: "Cancel",
+											class: "secondary"
+										},
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.submitForm('addemailtoperson-form','person/addEmail')",
+											fe_icon: "save",
+											value: "Add e-mail address",
+											ml: "auto"
+										}
+									]
+							}
+						}
+					]
+				]
+			]
+		});
+	}
+	
+	removeEmailFromPerson(id, person_id) {
+		alert("Not implemented: remove email "+id+" from "+person_id);
+	}
+	
+	editEmail(id, person_id) {
+		alert("Not implemented: edit email "+id+" of "+person_id);
+	}
+	
+	addPhoneToPerson(id, person_name="") {
+		this.app.showPage({ header: { title: "Persons", options: [] },
+			body: [
+				[
+					[
+						{
+							type: "card",
+							width: ['lg-8', 'md-12'],
+							header: {
+								title: "Add phonenumber to "+person_name
+							},
+							form: {
+								id: "addphonetoperson-form",
+								elements: [
+									{
+										type: "hidden",
+										name: "person",
+										value: id,
+										convertToNumber: true
+									},
+									{
+										type: "text",
+										name: "phonenumber",
+										label: "Phonenumber"
+									}
+								],
+								footer: [
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.showDetails("+id+");",
+											fe_icon: "x",
+											value: "Cancel",
+											class: "secondary"
+										},
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.submitForm('addphonetoperson-form','person/addPhone')",
+											fe_icon: "save",
+											value: "Add phonenumber",
+											ml: "auto"
+										}
+									]
+							}
+						}
+					]
+				]
+			]
+		});
+	}
+	
+	removePhoneFromPerson(id, person_id) {
+		alert("Not implemented: remove phone "+id+" from "+person_id);
+	}
+	
+	editPhone(id, person_id) {
+		alert("Not implemented: edit phone "+id+" of "+person_id);
+	}
+	
+	addBankaccountToPerson(id, person_name="") {
+		this.app.showPage({ header: { title: "Persons", options: [] },
+			body: [
+				[
+					[
+						{
+							type: "card",
+							width: ['lg-8', 'md-12'],
+							header: {
+								title: "Add bankaccount to "+person_name
+							},
+							form: {
+								id: "addbankaccounttoperson-form",
+								elements: [
+									{
+										type: "hidden",
+										name: "person",
+										value: id,
+										convertToNumber: true
+									},
+									{
+										type: "text",
+										name: "iban",
+										label: "IBAN"
+									},
+									{
+										type: "text",
+										name: "name",
+										label: "Account holder"
+									}
+								],
+								footer: [
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.showDetails("+id+");",
+											fe_icon: "x",
+											value: "Cancel",
+											class: "secondary"
+										},
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.submitForm('addbankaccounttoperson-form','person/addBankaccount')",
+											fe_icon: "save",
+											value: "Add bankaccount",
+											ml: "auto"
+										}
+									]
+							}
+						}
+					]
+				]
+			]
+		});
+	}
+	
+	removeBankaccountFromPerson(id, person_id) {
+		alert("Not implemented: remove bankaccount "+id+" from "+person_id);
+	}
+	
+	editBankaccount(id, person_id) {
+		alert("Not implemented: edit bankaccount "+id+" of "+person_id);
+	}
+	
+	addTokenToPerson(id, person_name="") {
+		var typeOptions = [];
+		for (var i in this.tokenTypes) typeOptions.push({value: i, label: this.tokenTypes[i].name});
+		this.tokenTypeAction = function() {
+			var currentType = parseInt(document.getElementById("typeField").value);
+			document.getElementById("privateKeyField").disabled = !this.tokenTypes[currentType].requirePrivate;
+		};
+		
+		this.app.showPage({ header: { title: "Persons", options: [] },
+			body: [
+				[
+					[
+						{
+							type: "card",
+							width: ['lg-8', 'md-12'],
+							header: {
+								title: "Add token to "+person_name
+							},
+							form: {
+								id: "addtokentoperson-form",
+								elements: [
+									{
+										type: "hidden",
+										name: "person",
+										value: id,
+										convertToNumber: true
+									},
+									{
+										type: "select",
+										name: "type",
+										label: "Type",
+										options: typeOptions,
+										action: "spacecore.currentModule.tokenTypeAction()",
+										id: "typeField",
+										convertToNumber: true
+									},
+									{
+										type: "text",
+										name: "public",
+										label: "Public key / identifier"
+									},
+									{
+										type: "text",
+										name: "private",
+										label: "Private key / secret",
+										id: "privateKeyField",
+										disabled: (!this.tokenTypes[0].requirePrivate)
+									},
+									{
+										type: "checkbox",
+										name: "enabled",
+										label: "Enabled"
+									}
+								],
+								footer: [
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.showDetails("+id+");",
+											fe_icon: "x",
+											value: "Cancel",
+											class: "secondary"
+										},
+										{
+											type: "button",
+											action: "javascript:spacecore.currentModule.submitForm('addtokentoperson-form','person/addToken')",
+											fe_icon: "save",
+											value: "Add token",
+											ml: "auto"
+										}
+									]
+							}
+						}
+					]
+				]
+			]
+		});
+	}
+	
+	removeTokenFromPerson(id, person_id) {
+		alert("Not implemented: remove token "+id+" from "+person_id);
+	}
+	
+	editToken(id, person_id) {
+		alert("Not implemented: edit token "+id+" of "+person_id);
+	}
 
 	/* Form handling */
 
@@ -723,7 +1287,15 @@ class Persons {
 			action = "show()";
 		}
 
-		if ((form==="addgrouptoperson-form") || (form==="removegroupfromperson-form")) {
+		if (
+			(form==="addgrouptoperson-form") ||
+			(form==="removegroupfromperson-form") ||
+			(form==="addaddresstoperson-form") ||
+			(form==="addemailtoperson-form") ||
+			(form==="addphonetoperson-form") ||
+			(form==="addbankaccounttoperson-form") ||
+			(form==="addtokentoperson-form")
+		) {
 			if (err === null) return this.showDetails(); //Skip the result if succesfull
 			action = "showDetails()";
 
@@ -876,7 +1448,7 @@ class Persons {
 									{
 										type: "static",
 										label: "Are you sure?",
-										value: "You are about to remove person '"+this.state.lastSelected.nick_name+"' from the system."
+										value: "You are about to remove person '"+this.getPersonName(this.state.lastSelected)+"' from the system."
 									}
 								],
 								footer: [
@@ -906,39 +1478,16 @@ class Persons {
 	search(elem='persons-search') {
 		this.state.searchText = document.getElementById(elem).value;
 
-		var filtered = this.app.sort(
-			this.app.filter(
-				this.state.lastData,
-				this.state.searchText,
-				['nick_name', 'first_name', 'last_name'],
-				false),
-			this.state.sortBy,
-			this.state.sortReverse);
+		var filtered = this.app.filter(
+			this.state.lastData,
+			this.state.searchText,
+			['nick_name', 'first_name', 'last_name'],
+			false
+		);
 
 		var content = this.ui.renderTemplate('table', this._renderPersons(filtered));
 		document.getElementById('table_persons').innerHTML = content;
-	}
-
-	changeSort(field) {
-		if (this.state.sortBy === field) {
-			this.state.sortReverse = !this.state.sortReverse;
-		} else {
-			this.state.sortReverse = false;
-			this.state.sortBy = field;
-		}
-		this.search();
-	}
-
-	_getSortIcon(field) {
-		if (this.state.sortBy !== field) return null;
-		if (this.state.sortReverse) return "chevron-up";
-		return "chevron-down";
-	}
-
-	_getGroupsSortIcon(field) {
-		if (this.state.groupsSortBy !== field) return null;
-		if (this.state.groupsSortReverse) return "chevron-up";
-		return "chevron-down";
+		this.ui.enableSorting(['table_persons']);
 	}
 
 	_renderPersons(res) {
@@ -948,29 +1497,19 @@ class Persons {
 				{
 					fe_icon: "user",
 					width: 1,
-					text_center: true,
-					action: "javascript:spacecore.currentModule.changeSort('id');",
-					fe_icon_after: this._getSortIcon('id')
+					text_center: true
 				},
 				{
-					text: "Nickname",
-					action: "javascript:spacecore.currentModule.changeSort('nick_name');",
-					fe_icon_after: this._getSortIcon('nick_name')
+					text: "Nickname"
 				},
 				{
-					text: "First name",
-					action: "javascript:spacecore.currentModule.changeSort('first_name');",
-					fe_icon_after: this._getSortIcon('first_name')
+					text: "First name"
 				},
 				{
-					text: "Last name",
-					action: "javascript:spacecore.currentModule.changeSort('last_name');",
-					fe_icon_after: this._getSortIcon('last_name')
+					text: "Last name"
 				},
 				{
-					text: "Balance",
-					action: "javascript:spacecore.currentModule.changeSort('balance');",
-					fe_icon_after: this._getSortIcon('balance')
+					text: "Balance"
 				},
 				{
 					width: 1
@@ -1054,7 +1593,7 @@ class Persons {
 			]
 		);
 	}
-
+	
 	_handleShow(res, err) {
 		if (err !== null) {
 			return this.genericErrorHandler(err);
@@ -1063,15 +1602,11 @@ class Persons {
 		this.state.lastData = res;
 
 		var personsTable = this._renderPersons(
-			this.app.sort(
-				this.app.filter(
-					res,
-					this.state.searchText,
-					['nick_name', 'first_name', 'last_name'],
-					false
-				),
-				this.state.sortBy,
-				this.state.sortReverse
+			this.app.filter(
+				res,
+				this.state.searchText,
+				['nick_name', 'first_name', 'last_name'],
+				false
 			)
 		);
 
@@ -1124,8 +1659,8 @@ class Persons {
 					]
 				]
 			]
-		});
-
+		}, ['table_persons']);
+		
 		if (this.state.lastSelected !== null) window.location.href = "#person-"+this.state.lastSelected.id;
 	}
 
@@ -1307,7 +1842,7 @@ class Persons {
 		}
 
 		var table_transactions = {
-			id: "table_transactions",
+			id: "table_person_transactions",
 			header: [
 				"ID",
 				"Details",
@@ -1328,7 +1863,12 @@ class Persons {
 			} else if (transactionsRes[i].rows.length === 1) {
 				description = transactionsRes[i].rows[0].amount+"x "+transactionsRes[i].rows[0].description;
 			} else {
-				description = "Transaction contains more than one operation";
+				//description = "Transaction contains more than one operation";
+				description = '';
+				for (var j in transactionsRes[i].rows) {
+					if (description !== '') description += "\n";
+					description += transactionsRes[i].rows[j].amount+"x "+transactionsRes[i].rows[j].description+" (€ "+(transactionsRes[i].rows[j].price*transactionsRes[i].rows[j].amount/100.0).toFixed(2)+")";
+				}
 			}
 			var timestamp = new Date(transactionsRes[i].timestamp*1000);
 			var timestring = ((timestamp.getDate()<10)?"0":"")+timestamp.getDate() + "-" +
@@ -1397,7 +1937,7 @@ class Persons {
 								label: "Edit address"
 							},
 							{
-								action: "javascript:spacecore.currentModule.removeAddressFromPerson("+res.addresses[i].id+");",
+								action: "javascript:spacecore.currentModule.removeAddressFromPerson("+res.addresses[i].id+", "+res.id+");",
 								fe_icon: "trash-2",
 								label: "Remove address"
 							},
@@ -1438,7 +1978,7 @@ class Persons {
 								label: "Edit bankaccount"
 							},
 							{
-								action: "javascript:spacecore.currentModule.removeBankaccountFromPerson("+res.bankaccounts[i].id+");",
+								action: "javascript:spacecore.currentModule.removeBankaccountFromPerson("+res.bankaccounts[i].id+", "+res.id+");",
 								fe_icon: "trash-2",
 								label: "Remove bankaccount"
 							},
@@ -1475,7 +2015,7 @@ class Persons {
 								label: "Edit phonenumber"
 							},
 							{
-								action: "javascript:spacecore.currentModule.removePhoneFromPerson("+res.phone[i].id+");",
+								action: "javascript:spacecore.currentModule.removePhoneFromPerson("+res.phone[i].id+", "+res.id+");",
 								fe_icon: "trash-2",
 								label: "Remove phonenumber"
 							},
@@ -1512,7 +2052,7 @@ class Persons {
 								label: "Edit email address"
 							},
 							{
-								action: "javascript:spacecore.currentModule.removePhoneFromPerson("+res.email[i].id+");",
+								action: "javascript:spacecore.currentModule.removePhoneFromPerson("+res.email[i].id+", "+res.id+");",
 								fe_icon: "trash-2",
 								label: "Remove email address"
 							},
@@ -1543,7 +2083,7 @@ class Persons {
 						text: res.tokens[i].public,
 					},
 					{
-						text: res.tokens[i].enabled,
+						fe_icon: res.tokens[i].enabled ? "check" : "x"
 					},
 					{
 						text: res.tokens[i].type.name,
@@ -1557,7 +2097,7 @@ class Persons {
 								label: "Edit token"
 							},
 							{
-								action: "javascript:spacecore.currentModule.removeTokenFromPerson("+res.tokens[i].id+");",
+								action: "javascript:spacecore.currentModule.removeTokenFromPerson("+res.tokens[i].id+", "+res.id+");",
 								fe_icon: "trash-2",
 								label: "Remove token"
 							},
@@ -1615,7 +2155,7 @@ class Persons {
 								options: [
 									{
 										type: "button",
-										action: "javascript:spacecore.currentModule.addGroupToPerson("+res.id+", '"+res.nick_name+"')",
+										action: "javascript:spacecore.currentModule.addGroupToPerson("+res.id+", '"+this.getPersonName(res)+"')",
 										fe_icon: "plus",
 										small: true
 									}
@@ -1630,7 +2170,7 @@ class Persons {
 								options: [
 									{
 										type: "button",
-										action: "javascript:spacecore.currentModule.addAddressToPerson("+res.id+", '"+res.nick_name+"')",
+										action: "javascript:spacecore.currentModule.addAddressToPerson("+res.id+", '"+this.getPersonName(res)+"')",
 										fe_icon: "plus",
 										small: true
 									}
@@ -1645,7 +2185,7 @@ class Persons {
 								options: [
 									{
 										type: "button",
-										action: "javascript:spacecore.currentModule.addEmailToPerson("+res.id+", '"+res.nick_name+"')",
+										action: "javascript:spacecore.currentModule.addEmailToPerson("+res.id+", '"+this.getPersonName(res)+"')",
 										fe_icon: "plus",
 										small: true
 									}
@@ -1660,7 +2200,7 @@ class Persons {
 								options: [
 									{
 										type: "button",
-										action: "javascript:spacecore.currentModule.addPhoneToPerson("+res.id+", '"+res.nick_name+"')",
+										action: "javascript:spacecore.currentModule.addPhoneToPerson("+res.id+", '"+this.getPersonName(res)+"')",
 										fe_icon: "plus",
 										small: true
 									}
@@ -1671,11 +2211,26 @@ class Persons {
 						{
 							type: "card",
 							header: {
+								title: "Bankaccounts",
+								options: [
+									{
+										type: "button",
+										action: "javascript:spacecore.currentModule.addBankaccountToPerson("+res.id+", '"+this.getPersonName(res)+"')",
+										fe_icon: "plus",
+										small: true
+									}
+								]
+							},
+							table: table_bankaccounts
+						},
+						{
+							type: "card",
+							header: {
 								title: "Tokens",
 								options: [
 									{
 										type: "button",
-										action: "javascript:spacecore.currentModule.addTokenToPerson("+res.id+", '"+res.nick_name+"')",
+										action: "javascript:spacecore.currentModule.addTokenToPerson("+res.id+", '"+this.getPersonName(res)+"')",
 										fe_icon: "plus",
 										small: true
 									}
@@ -1699,7 +2254,7 @@ class Persons {
 					]
 				}]
 			]
-		});
+		}, ['table_person_addresses', 'table_person_bankaccounts', 'table_person_email', 'table_person_groups', 'table_person_phone', 'table_person_tokens', 'table_person_transactions']);
 		this.app.jumpToTop();
 	}
 };

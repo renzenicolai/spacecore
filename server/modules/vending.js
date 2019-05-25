@@ -89,12 +89,32 @@ class Pos {
 		if (!device.isReady()) throw "Device is busy";
 		return device.led(red, green, fade);
 	}
+	
+	async frontpanelLed(session, params) {
+		if (typeof params !== 'object') throw "Expected object";
+		if (typeof params.device !== 'string') throw "Missing device parameter";
+		if (typeof params.led !== 'number') throw "Expected led to be a number!";
+		var device = this.findDeviceByName(params.device);
+		if (device === null) throw "Device not found";
+		return device.frontpanelLed(params.led);
+	}
+	
+	async coinLed(session, params) {
+		if (typeof params !== 'object') throw "Expected object";
+		if (typeof params.device !== 'string') throw "Missing device parameter";
+		if (typeof params.led !== 'number') throw "Expected led to be a number!";
+		var device = this.findDeviceByName(params.device);
+		if (device === null) throw "Device not found";
+		return device.coinLed(params.led);
+	}
 
 	registerRpcMethods(rpc, prefix="pos") {
 		if (prefix!=="") prefix = prefix + "/";
 		rpc.addMethod(prefix+"vend", this.vend.bind(this));
 		rpc.addMethod(prefix+"nudge", this.nudge.bind(this));
 		rpc.addMethod(prefix+"led", this.led.bind(this));
+		rpc.addMethod(prefix+"frontpanel/led", this.frontpanelLed.bind(this));
+		rpc.addMethod(prefix+"coin/led", this.coinLed.bind(this));
 		//rpc.addMethod(prefix+"state", this.getState.bind(this));
 	}
 }
@@ -147,6 +167,16 @@ class PosDevice {
 		this._opts.mqtt.send(this._opts.topic+'/ibutton/led', String(value));
 		return true;
 	}
+	
+	async frontpanelLed(value) {
+		this._opts.mqtt.send(this._opts.topic+'/frontpanel/led', String(params));
+		return true;
+	}
+	
+	async coinLed(value) {
+		this._opts.mqtt.send(this._opts.topic+'/coin/led', String(params));
+		return true;
+	}
 
 	_onDevice(message) {
 		console.log("[POS] "+this._opts.name+") Debug: "+message);
@@ -181,7 +211,7 @@ class PosDevice {
 
 	_onState(message) {
 		message = String(message);
-		console.log("[POS] onState: "+message);
+		console.log("[POS] onState: " + message);
 		var data = JSON.parse(message);
 		this.state[data.id] = data.state;
 		var sessions = this._opts.sessions.getSessions();
@@ -189,11 +219,31 @@ class PosDevice {
 			sessions[i].pushIfSubscribed("pos/"+this._opts.name+"/state", {id: data.id, state: data.state});
 		}
 	}
+	
+	_onFrontpanelButton(message) {
+		message = Number(message);
+		console.log("[POS] onFrontpanelButton: " + message);
+		var sessions = this._opts.sessions.getSessions();
+		for (var i = 0; i < sessions.length; i++) {
+			sessions[i].pushIfSubscribed("pos/"+this._opts.name+"/frontpanel/button", message);
+		}
+	}
+	
+	_onCoin(message) {
+		message = Number(message);
+		console.log("[POS] onCoin: " + message);
+		var sessions = this._opts.sessions.getSessions();
+		for (var i = 0; i < sessions.length; i++) {
+			sessions[i].pushIfSubscribed("pos/"+this._opts.name+"/coin", message);
+		}
+	}
 
 	_registerMqttCallbacks() {
 		this._opts.mqtt.subscribe(this._opts.topic+"/device", this._onDevice.bind(this));
 		this._opts.mqtt.subscribe(this._opts.topic+"/state", this._onState.bind(this));
 		this._opts.mqtt.subscribe(this._opts.topic+"/ibutton", this._onIbutton.bind(this));
+		this._opts.mqtt.subscribe(this._opts.topic+"/frontpanel/buttons", this._onFrontpanelButton.bind(this));
+		this._opts.mqtt.subscribe(this._opts.topic+"/coin", this._onCoin.bind(this));
 	}
 
 

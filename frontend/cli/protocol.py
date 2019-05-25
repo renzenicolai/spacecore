@@ -1,4 +1,12 @@
-import requests, json, time
+import requests, time
+
+try:
+	import ujson as json
+	print("(Using ujson)")
+except:
+	print("(Please install ujson! Falling back on the slow built in json library)")
+	time.sleep(2)
+	import json
 
 class ApiError(Exception):
 	def __init__(self, error):
@@ -27,7 +35,9 @@ class RpcClient:
 		if self._session != None:
 			data["token"] = self._session
 		request = requests.post(self._uri, json=data)
+		print("JSON LOADS")
 		data = json.loads(request.text)
+		print("OK")
 		if (not 'id' in data) or (data['id']!=id):
 			print("DEBUG",data)
 			raise ApiError("API returned incorrect id!")

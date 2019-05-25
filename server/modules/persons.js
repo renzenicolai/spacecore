@@ -1,6 +1,7 @@
 "use strict";
 
 const Tasks = require('../lib/tasks.js');
+const Tokens = require('../lib/tokens.js');
 
 class Persons {
 	constructor(opts) {
@@ -10,7 +11,6 @@ class Persons {
 			table_group:         'person_group',
 			table_group_mapping: 'person_group_mapping',
 			table_token:         'person_token',
-			table_token_type:    'person_token_type',
 			table_address:       'person_address',
 			table_email:         'person_email',
 			table_phone:         'person_phone',
@@ -28,7 +28,6 @@ class Persons {
 		this._table_group         = this._opts.database.table(this._opts.table_group);          //Groups
 		this._table_group_mapping = this._opts.database.table(this._opts.table_group_mapping);  //Mapping between persons and groups
 		this._table_token         = this._opts.database.table(this._opts.table_token);          //Tokens
-		this._table_token_type    = this._opts.database.table(this._opts.table_token_type);     //Token types
 		this._table_bankaccount   = this._opts.database.table(this._opts.table_bankaccount);    //Bankaccounts (Warning: this table is shared with other modules)
 		this._table_address       = this._opts.database.table(this._opts.table_address);        //Addresses
 		this._table_email         = this._opts.database.table(this._opts.table_email);          //Email addresses
@@ -44,7 +43,7 @@ class Persons {
 	async _getTokens(person_id) {
 		var persons = await this._table_token.list({person_id: person_id});
 		var tasks = [
-			Tasks.create('type', this._getTokenType.bind(this), persons, 'type_id')
+			Tasks.create('type', this._getTokenType.bind(this), persons, 'type')
 		];
 		return Tasks.merge(tasks, persons);
 	}
@@ -85,8 +84,8 @@ class Persons {
 		return this._getPersons(persons);
 	}
 
-	_getTokenType(token_type_id) {
-		return this._table_token_type.list({id: token_type_id});
+	async _getTokenType(token_type) {
+		return Tokens.getType(token_type);
 	}
 
 	async list(session, params) {
@@ -276,18 +275,22 @@ class Persons {
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
 			(typeof params.type   !== 'number') ||
-			(typeof params.public !== 'string')
+			(typeof params.public !== 'string') ||
+			(typeof params.enabled !== 'boolean')
 		) throw "Invalid parameters";
 
-		var typeRecords = await this._table_token_type.selectRecords({id: params.type});
+		var type = await Tokens.getType(params.type);
+		
+		console.log("TOKENTYPE", type);
 
-		if (typeRecords.length !== 1) throw "Invalid token type";
+		if (typeof type !== 'object') throw "Invalid token type";
 
 		var record = this._table_token.createRecord();
 		record.setField("person_id", params.person);
-		record.setField("type_id", typeRecords[0].getIndex());
+		record.setField("type", params.type);
 		record.setField("public", params.public);
-		if (typeRecords[0].getField("requirePrivate")) {
+		record.setField("enabled", params.enabled);
+		if (type.requirePrivate) {
 			if ((typeof params.private !== 'string') || (params.private.length < 1)) {
 				throw "Private key is required for this type of key!";
 			}
@@ -313,6 +316,7 @@ class Persons {
 	}
 
 	async addAddressToPerson(session, params) {
+		console.log("ADDR", params);
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
@@ -335,12 +339,12 @@ class Persons {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
-			(typeof params.phonenumber !== 'string')
+			(typeof params.address !== 'string')
 		) throw "Invalid parameters";
 
-		var record = this._table_phone.createRecord();
+		var record = this._table_email.createRecord();
 		record.setField("person_id", params.person);
-		record.setField("phonenumber", params.phonenumber);
+		record.setField("address", params.address);
 		return record.flush();
 	}
 
@@ -348,12 +352,12 @@ class Persons {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
-			(typeof params.address !== 'string')
+			(typeof params.phonenumber !== 'string')
 		) throw "Invalid parameters";
 
-		var record = this._table_address.createRecord();
+		var record = this._table_phone.createRecord();
 		record.setField("person_id", params.person);
-		record.setField("address", params.address);
+		record.setField("phonenumber", params.phonenumber);
 		return record.flush();
 	}
 
@@ -432,54 +436,8 @@ class Persons {
 	}
 
 	/* Tokens */
-	listTokenTypes(session, params) {
-		return this._table_token_type.list(params);
-	}
-
-	async createTokenType(session, params) {
-		if (
-			(typeof params !== 'object') ||
-			(typeof params.name !== 'string') ||
-			(typeof params.method !== 'string') ||
-			(typeof params.requirePrivate !== 'boolean')
-		) throw "Invalid parameters";
-
-		var record = this._table_token_type.createRecord();
-		record.setField("name", params.name);
-		record.setField("method", params.method);
-		record.setField("requirePrivate", params.requirePrivate);
-		return record.flush();
-	}
-
-	async editTokenType(session, params) {
-		if (typeof params !== 'object') throw "Expected params to be an object";
-		if (typeof params.id !== 'number') throw "Expected the id of a token type as number";
-		var records = this._table_token_type.list({id: params.id});
-		if (records.length !== 1) throw "Not found";
-		var record = records[0];
-
-		if (typeof params.name           === 'string')  record.setField('name', params.name);
-		if (typeof params.method         === 'string')  record.setField('method', params.method);
-		if (typeof params.requirePrivate === 'boolean') record.setField('requirePrivate', params.requirePrivate);
-
-		return record.flush();
-	}
-
-	async removeTokenType(session, params) {
-		if (typeof params !== 'object') throw "Expected params to be an object";
-		if (typeof params.id !== 'number') throw "Expected the id of a token type as number";
-
-		var force = false;
-		if (typeof params.force === 'boolean') force = params.force;
-
-		throw "Not implemented";
-
-		var records = this._table_token_type.selectRecords({id: params.id});
-		if (records.length !== 1) return false;
-		var record = records[0];
-
-		await record.destroy();
-		return true;
+	async listTokenTypes(session, params) {
+		return Tokens.listTypes();
 	}
 
 	/* Groups */
@@ -597,7 +555,7 @@ class Persons {
 		var tokens = await this._table_token.list(params);
 		var tasks = [
 			Tasks.create('person', this._getSinglePerson.bind(this), tokens, 'person_id'),
-			Tasks.create('type',   this._getTokenType.bind(this),    tokens, 'type_id')
+			Tasks.create('type',   this._getTokenType.bind(this),    tokens, 'type')
 		];
 		return Tasks.merge(tasks, tokens);
 	}
@@ -648,9 +606,6 @@ class Persons {
 		rpc.addMethod(prefix+"token/list",         this.listTokens.bind(this));                  //Tokens: list tokens
 		rpc.addMethod(prefix+"token/authenticate", this.authenticateToken.bind(this));           //Tokens: authenticate a token
 		rpc.addMethod(prefix+"token/type/list",    this.listTokenTypes.bind(this));              //Tokens: list token types
-		rpc.addMethod(prefix+"token/type/create",  this.createTokenType.bind(this));             //Tokens: add a token type
-		rpc.addMethod(prefix+"token/type/edit",    this.editTokenType.bind(this));               //Tokens: edit a token type
-		rpc.addMethod(prefix+"token/type/remove",  this.removeTokenType.bind(this));             //Tokens: remove a token type
 
 		/* Groups */
 		rpc.addMethod(prefix+"group/list",         this.listGroups.bind(this));                  //Groups: list groups

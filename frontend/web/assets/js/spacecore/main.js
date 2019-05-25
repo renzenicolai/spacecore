@@ -394,20 +394,20 @@ class Spacecore {
 		return output;
 	}
 	
-	showMain(content) {
+	showMain(content, sortableTables=[]) {
 		this.ui.showTemplate("dashboard", {
 			menu: this.generateMenu("main"),
 			user: this.generateUser(),
 			raw: content
-		});
+		}, sortableTables);
 	}
 	
-	showPage(content) {
+	showPage(content, sortableTables=[]) {
 		this.ui.showTemplate("dashboard", {
 			menu: this.generateMenu("main"),
 			user: this.generateUser(),
 			content: content
-		});
+		}, sortableTables);
 	}
 	
 	action(module=null, part=null, reset=false) {
@@ -513,7 +513,7 @@ class Spacecore {
 				argument[name] = files;
 			}
 			this.showMessage2("Processing...", "", "Busy");
-			console.log("Submit form with files ",method,argument);
+			//console.log("Submit form with files ",method,argument);
 			this.executeCommand(method, argument, handler);
 		}
 	}
@@ -571,7 +571,7 @@ class Spacecore {
 			this.submitFormFileHandler(method, argument, handler, fileReaders);
 		} else {
 			if (showStatusMessage) this.showMessage2("Processing...", "", "Busy");
-			console.log("Submit form ",method,argument);
+			//console.log("Submit form ",method,argument);
 			this.executeCommand(method, argument, handler);
 		}
 	}

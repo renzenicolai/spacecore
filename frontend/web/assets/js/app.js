@@ -14,7 +14,7 @@ require.config({
 		'spacecore-products': [],
 		'spacecore-dashboard': [],
 		'spacecore-files': [],
-		'spacecore-ui': ['handlebars'],
+		'spacecore-ui': ['handlebars', 'tablesorter'],
 		'spacecore': ['tabler-core', 'input-mask', 'spacecore-ui', 'spacecore-persons', 'spacecore-users', 'spacecore-login', 'spacecore-dashboard', 'spacecore-files', 'spacecore-mt940','spacecore-products'],
 	},
 	paths: {
