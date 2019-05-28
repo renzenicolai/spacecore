@@ -12,8 +12,17 @@ class Tokens {
 				name: "iButton (SHA1)",
 				authMethod: this.authIbuttonSha1.bind(this),
 				requirePrivate: true
-			}
+			},
+			{
+				name: "Generic NFC tag",
+				authMethod: this.authNone.bind(this),
+				requirePrivate: true
+			},
 		];
+		
+		for (var i = 0; i < this.types.length; i++) {
+			this.types[i].id = i;
+		}
 	}
 	
 	listTypes() {

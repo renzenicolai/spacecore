@@ -281,8 +281,6 @@ class Persons {
 
 		var type = await Tokens.getType(params.type);
 		
-		console.log("TOKENTYPE", type);
-
 		if (typeof type !== 'object') throw "Invalid token type";
 
 		var record = this._table_token.createRecord();
@@ -297,6 +295,25 @@ class Persons {
 			record.setField("private", params.private);
 		}
 		return record.flush();
+	}
+	
+	async editTokenOfPerson(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.id !== 'number')
+		) throw "Invalid parameters";
+		var record = await this._table_token.selectRecords({id: params.id});
+		if (record.length !== 1) throw "Token not found.";
+		record = record[0];
+		if (typeof params.type    === 'number')  record.setField("type",    params.type);
+		if (typeof params.public  === 'string')  record.setField("public",  params.public);
+		if (typeof params.private === 'string')  record.setField("private", params.private);
+		if (typeof params.enabled === 'boolean') record.setField("enabled", params.enabled);
+		return record.flush();
+	}
+	
+	async removeTokenFromPerson(session, params) {
+		return this._removeRecordFromPerson(this._table_token, params);
 	}
 
 	async addBankaccountToPerson(session, params) {
@@ -314,9 +331,26 @@ class Persons {
 		record.setField("internal", false);
 		return record.flush();
 	}
+	
+	async editBankaccountOfPerson(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.id !== 'number')
+		) throw "Invalid parameters";
+		var record = await this._table_bankaccount.selectRecords({id: params.id});
+		if (record.length !== 1) throw "Bankaccount not found.";
+		record = record[0];
+		if (record.getField("internal")) throw "Database error: this is not a persons bankaccount!";
+		if (typeof params.iban === 'string') record.setField("iban", params.iban);
+		if (typeof params.name === 'string') record.setField("name", params.name);
+		return record.flush();
+	}
+	
+	async removeBankaccountFromPerson(session, params) {
+		return this._removeRecordFromPerson(this._table_bankaccount, params);
+	}
 
 	async addAddressToPerson(session, params) {
-		console.log("ADDR", params);
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
@@ -334,7 +368,26 @@ class Persons {
 		record.setField("city", params.city);
 		return record.flush();
 	}
-
+	
+	async editAddressOfPerson(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.id !== 'number')
+		) throw "Invalid parameters";
+		var record = await this._table_address.selectRecords({id: params.id});
+		if (record.length !== 1) throw "Address not found.";
+		record = record[0];
+		if (typeof params.street      === 'string') record.setField("street",      params.street);
+		if (typeof params.housenumber === 'string') record.setField("housenumber", params.housenumber);
+		if (typeof params.postalcode  === 'string') record.setField("postalcode",  params.postalcode);
+		if (typeof params.city        === 'string') record.setField("city",        params.city);
+		return record.flush();
+	}
+	
+	async removeAddressFromPerson(session, params) {
+		return this._removeRecordFromPerson(this._table_address, params);
+	}
+	
 	async addEmailToPerson(session, params) {
 		if (
 			(typeof params !== 'object') ||
@@ -347,7 +400,23 @@ class Persons {
 		record.setField("address", params.address);
 		return record.flush();
 	}
-
+	
+	async editEmailOfPerson(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.id !== 'number')
+		) throw "Invalid parameters";
+		var record = await this._table_email.selectRecords({id: params.id});
+		if (record.length !== 1) throw "Email address not found.";
+		record = record[0];
+		if (typeof params.address === 'string') record.setField("address", params.address);
+		return record.flush();
+	}
+	
+	async removeEmailFromPerson(session, params) {
+		return this._removeRecordFromPerson(this._table_email, params);
+	}
+	
 	async addPhoneToPerson(session, params) {
 		if (
 			(typeof params !== 'object') ||
@@ -360,7 +429,23 @@ class Persons {
 		record.setField("phonenumber", params.phonenumber);
 		return record.flush();
 	}
-
+	
+	async editPhoneOfPerson(session, params) {
+		if (
+			(typeof params !== 'object') ||
+			(typeof params.id !== 'number')
+		) throw "Invalid parameters";
+		var record = await this._table_phone.selectRecords({id: params.id});
+		if (record.length !== 1) throw "Phonenumber not found.";
+		record = record[0];
+		if (typeof params.phonenumber === 'string') record.setField("phonenumber", params.phonenumber);
+		return record.flush();
+	}
+	
+	async removePhoneFromPerson(session, params) {
+		return this._removeRecordFromPerson(this._table_phone, params);
+	}
+	
 	async _removeRecordFromPerson(table, params) {
 		if ((typeof params        !== 'object') ||
 			(typeof params.person !== 'number') ||
@@ -376,26 +461,6 @@ class Persons {
 		return true;
 	}
 
-	async removeTokenFromPerson(session, params) {
-		return this._removeRecordFromPerson(this._table_token, params);
-	}
-
-	async removeBankaccountFromPerson(session, params) {
-		return this._removeRecordFromPerson(this._table_bankaccount, params);
-	}
-
-	async removeAddressFromPerson(session, params) {
-		return this._removeRecordFromPerson(this._table_address, params);
-	}
-
-	async removeEmailFromPerson(session, params) {
-		return this._removeRecordFromPerson(this._table_email, params);
-	}
-
-	async removePhoneFromPerson(session, params) {
-		return this._removeRecordFromPerson(this._table_phone, params);
-	}
-
 	async addGroupToPerson(session, params) {
 		if (
 			(typeof params !== 'object') ||
@@ -403,10 +468,12 @@ class Persons {
 			(typeof params.group !== 'number')
 		) throw "Invalid parameters";
 
-		if (await this._table_group_mapping.list({
+		var existingRecords = await this._table_group_mapping.list({
 			person_id: params.person,
 			person_group_id: params.group
-		}) > 0) {
+		});
+		
+		if (existingRecords.length > 0) {
 			throw "The person is already in the group!";
 		}
 
@@ -587,18 +654,30 @@ class Persons {
 		rpc.addMethod(prefix+"create",             this.create.bind(this));                      //Persons: create a person
 		rpc.addMethod(prefix+"edit",               this.edit.bind(this));                        //Persons: edit a person
 		rpc.addMethod(prefix+"remove",             this.remove.bind(this));                      //Persons: remove a person
+		
 		rpc.addMethod(prefix+"find",               this.find.bind(this));                        //Persons: find a person by it's nickname
 		rpc.addMethod(prefix+"findByToken",        this.findByToken.bind(this));                 //Persons: find a person by one of it's tokens
+		
 		rpc.addMethod(prefix+"addToken",           this.addTokenToPerson.bind(this));            //Persons: add a token to a person
+		rpc.addMethod(prefix+"editToken",          this.editTokenOfPerson.bind(this));           //Persons: edit a token of a person
 		rpc.addMethod(prefix+"removeToken",        this.removeTokenFromPerson.bind(this));       //Persons: remove a token from a person
+		
 		rpc.addMethod(prefix+"addBankaccount",     this.addBankaccountToPerson.bind(this));      //Persons: add a bankaccount to a person
+		rpc.addMethod(prefix+"editBankaccount",    this.editBankaccountOfPerson.bind(this));     //Persons: edit a bankaccount of a person
 		rpc.addMethod(prefix+"removeBankaccount",  this.removeBankaccountFromPerson.bind(this)); //Persons: remove a bankaccount from a person
+		
 		rpc.addMethod(prefix+"addAddress",         this.addAddressToPerson.bind(this));          //Persons: add an address to a person
+		rpc.addMethod(prefix+"editAddress",        this.editAddressOfPerson.bind(this));         //Persons: edit an addresss of a person
 		rpc.addMethod(prefix+"removeAddress",      this.removeAddressFromPerson.bind(this));     //Persons: remove an address from a person
+		
 		rpc.addMethod(prefix+"addEmail",           this.addEmailToPerson.bind(this));            //Persons: add an email address to a person
+		rpc.addMethod(prefix+"editEmail",          this.editEmailOfPerson.bind(this));           //Persons: edit an email address of a person
 		rpc.addMethod(prefix+"removeEmail",        this.removeEmailFromPerson.bind(this));       //Persons: remove an email address from a person
+		
 		rpc.addMethod(prefix+"addPhone",           this.addPhoneToPerson.bind(this));            //Persons: add a phonenumber to a person
+		rpc.addMethod(prefix+"editPhone",          this.editPhoneOfPerson.bind(this));           //Persons: edit a phonenumber of a person
 		rpc.addMethod(prefix+"removePhone",        this.removePhoneFromPerson.bind(this));       //Persons: remove a phonenumber from a person
+		
 		rpc.addMethod(prefix+"addToGroup",         this.addGroupToPerson.bind(this));            //Persons: add a group to a person
 		rpc.addMethod(prefix+"removeFromGroup",    this.removeGroupFromPerson.bind(this));       //Persons: remove a group from a person
 
