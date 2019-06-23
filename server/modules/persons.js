@@ -6,7 +6,7 @@ const Tokens = require('../lib/tokens.js');
 class Persons {
 	constructor(opts) {
 		this._opts = Object.assign({
-			database: null,
+			database:            null,
 			table:               'persons',
 			table_group:         'person_group',
 			table_group_mapping: 'person_group_mapping',

@@ -5,20 +5,21 @@ const Tasks = require('../lib/tasks.js');
 class Products {
 	constructor(opts) {
 		this._opts = Object.assign({
-			database: null,
-			files: null,
-			table: 'products',
-			table_group: 'product_group',
-			table_group_mapping: 'product_group_mapping',
-			table_location: 'product_location',
+			database:                null,
+			files:                   null,
+			table:                  'products',
+			table_group:            'product_group',
+			table_group_mapping:    'product_group_mapping',
+			table_location:         'product_location',
 			table_location_mapping: 'product_location_mapping',
-			table_brand: 'product_brand',
-			table_package: 'product_package',
-			table_price: 'product_price',
-			table_stock: 'product_stock',
-			table_identifier: 'product_identifier',
-			table_identifier_type: 'product_identifier_type'
+			table_brand:            'product_brand',
+			table_package:          'product_package',
+			table_price:            'product_price',
+			table_stock:            'product_stock',
+			table_identifier:       'product_identifier',
+			table_identifier_type:  'product_identifier_type'
 		}, opts);
+		
 		if (this._opts.database === null) {
 			console.log("The products module can not be started without a database!");
 			process.exit(1);
@@ -28,62 +29,25 @@ class Products {
 			console.log("The products module can not be started without the files module!");
 			process.exit(1);
 		}
-		this._table                  = this._opts.database.table(this._opts.table);
-		this._table_group            = this._opts.database.table(this._opts.table_group);
-		this._table_group_mapping    = this._opts.database.table(this._opts.table_group_mapping);
-		this._table_location         = this._opts.database.table(this._opts.table_location);
-		this._table_location_mapping = this._opts.database.table(this._opts.table_location_mapping);
-		this._table_brand            = this._opts.database.table(this._opts.table_brand);
-		this._table_package          = this._opts.database.table(this._opts.table_package);
-		this._table_price            = this._opts.database.table(this._opts.table_price);
-		this._table_stock            = this._opts.database.table(this._opts.table_stock);
-		this._table_identifier       = this._opts.database.table(this._opts.table_identifier);
-		this._table_identifier_type  = this._opts.database.table(this._opts.table_identifier_type);
+		
+		/* Tables */
+		this._table                  = this._opts.database.table(this._opts.table);                  //Products
+		this._table_group            = this._opts.database.table(this._opts.table_group);            //Product groups
+		this._table_group_mapping    = this._opts.database.table(this._opts.table_group_mapping);    //Mapping between products and product groups
+		this._table_location         = this._opts.database.table(this._opts.table_location);         //Product locations
+		this._table_location_mapping = this._opts.database.table(this._opts.table_location_mapping); //Mapping between products and product locations
+		this._table_brand            = this._opts.database.table(this._opts.table_brand);            //Product brands
+		this._table_package          = this._opts.database.table(this._opts.table_package);          //Product packages
+		this._table_price            = this._opts.database.table(this._opts.table_price);            //Product prices
+		this._table_stock            = this._opts.database.table(this._opts.table_stock);            //Product stock
+		this._table_identifier       = this._opts.database.table(this._opts.table_identifier);       //Product identifiers
+		this._table_identifier_type  = this._opts.database.table(this._opts.table_identifier_type);  //Types of product identifiers
 	}
-
-	_getGroups(product_id) {
-		return this._table_group_mapping.selectRecordsRaw("SELECT mapping.id as 'mapping_id', group.id, group.name, group.description FROM `"+this._opts.table_group_mapping+"` AS `mapping` INNER JOIN `"+this._opts.table_group+"` AS `group` ON mapping.product_group_id = group.id WHERE `product_id` = ?", [product_id], false);
-	}
-
-	_getStock(product_id) {
-		return this._table_stock.selectRecordsRaw("SELECT `id`, `product_id`, `amount_initial`, `amount_current`, `timestamp_initial`, `timestamp_current`, `person_id`, `comment` FROM `"+this._opts.table_stock+"` WHERE `product_id` = ? AND `amount_current` > 0 ORDER BY `timestamp_initial` ASC", [product_id], false);
-	}
-
-	_getIdentifiers(product_id) {
-		return this._table_identifier.list({product_id: product_id});
-	}
-
-	async _getBrand(brand_id, asRecord=false) {
-		if (brand_id === null) return null;
-		var brands = await this._table_brand.selectRecords({"id":brand_id});
-		if (brands.length !== 1) return null;
-		if (asRecord) return brands[0];
-		return brands[0].getFields();
-	}
-
-	async _getPackage(package_id, asRecord=false) {
-		if (package_id === null) return null;
-		var packages = await this._table_package.selectRecords({"id":package_id});
-		if (packages.length !== 1) return null;
-		if (asRecord) return packages[0];
-		return packages[0].getFields();
-	}
-
-	_getPrices(product_id) {
-		return this._table_price.list({product_id: product_id});
-	}
-
-	async _getProductsAtLocation(product_location_id) {
-		var mapping = await this._table_location_mapping.list({product_location_id : product_location_id});
-		var products = [];
-		for (var i in mapping) products.push(mapping[i].product_id);
-		if (products.length < 1) return [];
-		return this.list(null, {id: products});
-	}
-
+	
+	/* Products */
+	
 	async list(session, params) {
 		var products = await this._table.list(params);
-
 		var tasks = [
 			Tasks.create('picture',      this._opts.files.getFileAsBase64.bind(this._opts.files), products, 'picture_id'),
 			Tasks.create('groups',       this._getGroups.bind(this),                              products, 'id'),
@@ -93,10 +57,9 @@ class Products {
 			Tasks.create('package',      this._getPackage.bind(this),                             products, 'package_id'),
 			Tasks.create('prices',       this._getPrices.bind(this),                              products, 'id')
 		];
-
 		return Tasks.merge(tasks, products);
 	}
-
+	
 	async create(session, params) {
 		if (typeof params !== 'object')                                                              throw "Expected parameter to be an object";
 		if (typeof params.name !== 'string')                                                         throw "Missing required property 'name'";
@@ -104,64 +67,106 @@ class Products {
 		if ((typeof params.hidden !== 'undefined') && (typeof params.hidden !== 'boolean'))          throw "Expected hidden to be a boolean";
 		if ((typeof params.brand_id !== 'undefined') && (typeof params.brand_id !== 'number'))       throw "Expected brand_id to be a number";
 		if ((typeof params.picture_id !== 'undefined') && (typeof params.picture_id !== 'number'))   throw "Expected picture_id to be a number";
-		if ((typeof params.picture_id !== 'undefined') && (typeof params.picture !== 'undefined'))   throw "Supply either a picture as file or the id of an existing picture, but not both";
 		if ((typeof params.package_id !== 'undefined') && (typeof params.package_id !== 'number'))   throw "Expected package_id to be a number";
-
 		var dbTransaction = await this._opts.database.transaction("Add product ("+params.name+")");
-		var record = this._table.createRecord();
-
-		record.setField("name", params.name);
-		if (typeof params.description === "string") {
-			record.setField("description", params.description);
-		} else {
-			record.setField("description", "");
-		}
-		if (typeof params.hidden === "boolean") {
-			record.setField("hidden", params.hidden);
-		}
-		if (typeof params.brand_id === "number") {
-			if (this._getBrand(params.brand_id) === null) {
-				await dbTransaction.rollback();
-				throw "Invalid brand id supplied";
-			}
-			record.setField("brand_id", params.brand_id);
-		}
-		if (typeof params.picture_id === "number") {
-			if (this._opts.files.getFileAsBase64(params.picture_id) === null) {
-				await dbTransaction.rollback();
-				throw "Invalid picture id supplied";
-			}
-			record.setField("picture_id", params.picture_id);
-		}
-		if (typeof params.package_id === "number") {
-			if (this._getPackage(params.package_id) === null) {
-				await dbTransaction.rollback();
-				throw "Invalid package id supplied";
-			}
-			record.setField("package_id", params.package_id);
-		}
-
+		var product = this._table.createRecord();
 		try {
-			if ((typeof params.picture === "object") && Array.isArray(params.picture) && (params.picture.length > 0)) {
-				var pictureRecord = await this._opts.files.createFileFromBase64(params.picture[0], dbTransaction);
-				record.setField('picture_id', pictureRecord.getIndex());
-			}
-			await record.flush(dbTransaction);
-		} catch (e) {
-			await dbTransaction.rollback();
+			await this.fillProductRecord(product, params, dbTransaction);
+		} catch(e) {
+			dbTransaction.rollback();
 			throw e;
 		}
-
+		await product.flush(dbTransaction);
 		await dbTransaction.commit();
-		return record.getIndex();
+		return product.getIndex();
 	}
-
+	
 	async edit(session, params) {
-		return "Not implemented";
+		var product = await this._findById(params);
+		var dbTransaction = await this._opts.database.transaction("Edit product #"+product.getIndex);
+		try {
+			await this.fillProductRecord(product, params, dbTransaction);
+		} catch(e) {
+			dbTransaction.rollback();
+			throw e;
+		}
+		await product.flush(dbTransaction);
+		await dbTransaction.commit();
+		return product.getIndex();
+	}
+	
+	async fillProductRecord(product, params, transaction=null) {
+		product.setField("name", params.name);
+		
+		if (typeof params.description !== "string") params.description = "";
+		product.setField("description", params.description);
+		
+		if (typeof params.hidden === "boolean") {
+			product.setField("hidden", params.hidden);
+		} else {
+			product.setField("hidden", false);
+		}
+		
+		if (typeof params.brand_id === "number") {
+			if (this._getBrand(params.brand_id) === null) throw "Invalid brand id supplied";
+			product.setField("brand_id", params.brand_id);
+		}
+		
+		if (typeof params.picture === "number") {
+			var picture = await this._opts.files.getFileAsBase64(params.picture_id);
+			if (picture === null) throw "Invalid file id supplied";
+			product.setField("picture_id", params.picture_id);
+		}
+	
+		if ((typeof params.picture === "object") && Array.isArray(params.picture) && (params.picture.length > 0)) {
+			var picture = await this._opts.files.createFileFromBase64(params.picture[0], transaction);
+			product.setField('picture_id', picture.getIndex());
+		}
+			
+		if (typeof params.package_id === "number") {
+			if (this._getPackage(params.package_id) === null) throw "Invalid package id supplied";
+			product.setField("package_id", params.package_id);
+		}
+	}
+	
+	async _findById(params) {
+		var id = null;
+		if (typeof params === 'number') {
+			id = params;
+		} else if ((typeof params === 'object') && (typeof params.id === 'number')) {
+			id = params.id;
+		} else {
+			throw "Invalid parameters";
+		}
+
+		var result = await this._table.selectRecords({id: id});
+		if (result.length !== 1) throw "Product not found.";
+
+		return result[0];
+	}
+	
+	async _removeAll(product, table, transaction = null) {
+		var records = await table.selectRecords({product_id: product.getIndex()});
+		var operations = [];
+		for (var i in records) operations.push(records[i].destroy(transaction));
+		return Promise.all(operations);
 	}
 
 	async remove(session, params) {
-		return "Not implemented";
+		var product = await this._findById(params);
+		var dbTransaction = await this._opts.database.transaction("Remove product #"+product.getIndex());
+		try {
+			await this._removeAll(product, this._table_group_mapping, dbTransaction);    //Delete all group associations
+			await this._removeAll(product, this._table_location_mapping, dbTransaction); //Delete all location associations
+			await this._removeAll(product, this._table_identifier, dbTransaction);       //Delete all identifiers
+			await product.destroy(dbTransaction);                                        //Delete the product itself
+		} catch (e) {
+			await dbTransaction.rollback();                                              //Cancel the transaction
+			console.log("Could not remove product:",e);
+			throw e;
+		}
+		await dbTransaction.commit();                                                    //Commit the transaction
+		return true;
 	}
 
 	async find(session, params) {
@@ -175,6 +180,62 @@ class Products {
 		var products = [];
 		for (var i in barcodes) products.push(barcodes[i].product_id);
 		return this.list(session, {id: products});
+	}
+	
+	
+	
+	/* Product groups */
+
+	_getGroups(product_id) {
+		return this._table_group_mapping.selectRecordsRaw("SELECT mapping.id as 'mapping_id', group.id, group.name, group.description FROM `"+this._opts.table_group_mapping+"` AS `mapping` INNER JOIN `"+this._opts.table_group+"` AS `group` ON mapping.product_group_id = group.id WHERE `product_id` = ?", [product_id], false);
+	}
+	
+	/* Product stock */
+
+	_getStock(product_id) {
+		return this._table_stock.selectRecordsRaw("SELECT `id`, `product_id`, `amount_initial`, `amount_current`, `timestamp_initial`, `timestamp_current`, `person_id`, `comment` FROM `"+this._opts.table_stock+"` WHERE `product_id` = ? AND `amount_current` > 0 ORDER BY `timestamp_initial` ASC", [product_id], false);
+	}
+	
+	/* Product identifiers */
+
+	_getIdentifiers(product_id) {
+		return this._table_identifier.list({product_id: product_id});
+	}
+	
+	/* Product brands */
+
+	async _getBrand(brand_id, asRecord=false) {
+		if (brand_id === null) return null;
+		var brands = await this._table_brand.selectRecords({"id":brand_id});
+		if (brands.length !== 1) return null;
+		if (asRecord) return brands[0];
+		return brands[0].getFields();
+	}
+	
+	/* Product packages */
+
+	async _getPackage(package_id, asRecord=false) {
+		if (package_id === null) return null;
+		var packages = await this._table_package.selectRecords({"id":package_id});
+		if (packages.length !== 1) return null;
+		if (asRecord) return packages[0];
+		return packages[0].getFields();
+	}
+	
+	/* Product prices */
+
+	_getPrices(product_id) {
+		return this._table_price.list({product_id: product_id});
+	}
+	
+	/* Product locations */
+
+	async _getProductsAtLocation(product_location_id) {
+		var mapping = await this._table_location_mapping.list({product_location_id : product_location_id});
+		var products = [];
+		for (var i in mapping) products.push(mapping[i].product_id);
+		if (products.length < 1) return [];
+		return this.list(null, {id: products});
 	}
 
 	//Identifier types
