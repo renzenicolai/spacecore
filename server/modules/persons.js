@@ -24,14 +24,95 @@ class Persons {
 		}
 
 		/* Tables */
-		this._table               = this._opts.database.table(this._opts.table);                //Persons
-		this._table_group         = this._opts.database.table(this._opts.table_group);          //Groups
-		this._table_group_mapping = this._opts.database.table(this._opts.table_group_mapping);  //Mapping between persons and groups
-		this._table_token         = this._opts.database.table(this._opts.table_token);          //Tokens
-		this._table_bankaccount   = this._opts.database.table(this._opts.table_bankaccount);    //Bankaccounts (Warning: this table is shared with other modules)
-		this._table_address       = this._opts.database.table(this._opts.table_address);        //Addresses
-		this._table_email         = this._opts.database.table(this._opts.table_email);          //Email addresses
-		this._table_phone         = this._opts.database.table(this._opts.table_phone);          //Phonenumbers
+		this._table               = this._opts.database.table(this._opts.table, {
+			columns: {
+				id: false,
+				user_name: true,
+				full_name: false,
+				title: false,
+				password: true,
+				active: false,
+				avatar_id: true
+			},
+			index: "id"
+		}); //Persons
+		
+		this._table_group         = this._opts.database.table(this._opts.table_group, {
+			columns: {
+				id: false,
+				name: false,
+				description: false,
+				addToNew: false
+			},
+			index: "id"
+		}); //Groups
+		
+		this._table_group_mapping = this._opts.database.table(this._opts.table_group_mapping, {
+			columns: {
+				id: false,
+				name: false,
+				description: false,
+				addToNew: false
+			},
+			index: "id"
+		}); //Mapping between persons and groups
+		
+		this._table_token         = this._opts.database.table(this._opts.table_token, {
+			columns: {
+				id: false,
+				person_id: false,
+				type: false,
+				enabled: false,
+				public: false,
+				private: true
+			},
+			index: "id"
+		}); //Tokens
+		
+		this._table_bankaccount   = this._opts.database.table(this._opts.table_bankaccount, {
+			columns: {
+				id: false,
+				person_id: false,
+				type: false,
+				enabled: false,
+				public: false,
+				private: true
+			},
+			index: "id"
+		}); //Bankaccounts (Warning: this table is shared with other modules)
+		
+		this._table_address       = this._opts.database.table(this._opts.table_address, {
+			columns: {
+				id: false,
+				name: false,
+				iban: false,
+				balance: true,
+				internal: false,
+				person_id: true
+			},
+			index: "id"
+		}); //Addresses
+		
+		this._table_email         = this._opts.database.table(this._opts.table_email, {
+			columns: {
+				id: false,
+				person_id: false,
+				street: false,
+				housenumber: false,
+				postalcode: false,
+				city: false
+			},
+			index: "id"
+		}); //Email addresses
+		
+		this._table_phone         = this._opts.database.table(this._opts.table_phone, {
+			columns: {
+				id: false,
+				person_id: false,
+				phonenumber: false
+			},
+			index: "id"
+		}); //Phonenumbers
 	}
 
 	/* Persons */
@@ -89,6 +170,7 @@ class Persons {
 	}
 
 	async list(session, params) {
+		console.log("List persons", params);
 		var persons = await this._table.list(params);
 		var tasks = [
 			Tasks.create('avatar',       this._opts.files.getFileAsBase64.bind(this._opts.files), persons, 'avatar_id'),
@@ -195,6 +277,8 @@ class Persons {
 	}
 
 	async edit(session, params) {
+		if (typeof params !== 'object') throw "Invalid parameters";
+		
 		var person = await this._findById(params);
 
 		if (typeof params.first_name === 'string') {
@@ -242,12 +326,12 @@ class Persons {
 			await this._removeAll(person, this._table_email,         dbTransaction); //Delete all email addresses
 			await this._removeAll(person, this._table_phone,         dbTransaction); //Delete all phonenumbers
 			await person.destroy(dbTransaction);                                     //Delete the person itself
+			await dbTransaction.commit();                                            //Commit the transaction
 		} catch (e) {
 			await dbTransaction.rollback();                                          //Cancel the transaction
 			console.log("Could not remove person:",e);
 			throw "Can not remove this person!";
 		}
-		await dbTransaction.commit();                                                //Commit the transaction
 		return true;
 	}
 

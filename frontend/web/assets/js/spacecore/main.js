@@ -13,10 +13,7 @@ class Spacecore {
 				ui: this.ui,
 				app: this
 			}),
-			new Persons({
-				ui: this.ui,
-				app: this
-			}),
+			new Persons(),
 			new Products({
 				ui: this.ui,
 				app: this
@@ -219,8 +216,7 @@ class Spacecore {
 		});
 		if (typeof callback === 'function') {
 			this._wsCallbacks[uid] = callback.bind(this);
-		}
-		
+		}		
 		this.ws.send(message);
 		return true;
 	}
@@ -297,7 +293,7 @@ class Spacecore {
 		}
 		
 		this.state = state;
-		console.log("State reloaded. New state: ",state);
+		//console.log("State reloaded. New state: ",state);
 		this.action();
 	}
 		
@@ -336,7 +332,7 @@ class Spacecore {
 		
 
 	filter(data, query, fields, caseSensitive=false) {
-		console.log("Filter",data,"-",query,"-",fields);
+		//console.log("Filter",data,"-",query,"-",fields);
 		query = query.split(' ');
 		
 		var output = [];
@@ -346,7 +342,7 @@ class Spacecore {
 			matched:
 			for (var j in query) {
 				for (var k in fields) {
-					console.log("Matching ",query[j], fields[k]);
+					//console.log("Matching ",query[j], fields[k]);
 					if (typeof data[i][fields[k]] === 'undefined') {
 							console.log("Invalid field", k, fields[k]);
 					} else {
@@ -527,6 +523,7 @@ class Spacecore {
 		var argument = {};
 		var fileReaders = [];
 		for (var i in formElements) {
+			if (i === 'length') continue;
 			var name = formElements[i].name;
 			var value = formElements[i].value;
 			var type = formElements[i].type;
@@ -576,7 +573,6 @@ class Spacecore {
 		}
 	}
 	
-
 	fileOnChangeHelper(id=null) {
 		if (id === null) return;
 		console.log("fileOnChangeHelper called for",id);
@@ -593,5 +589,18 @@ class Spacecore {
 		
 		label.innerText = "";
 		if (elem.files.length > 0) label.innerText = elem.files[0].name;
+	}
+	
+	/* Search */
+	
+	_updateTable(id, content) {
+		document.getElementById(id).innerHTML = this.ui.renderTemplate('table', content);
+		this.ui.enableSorting([id]);
+	}
+	
+	search(dataType) {
+		this.currentModule.state[dataType].searchText = document.getElementById(this.currentModule.state[dataType].searchId).value;
+		var filtered = spacecore.filter(this.currentModule.state[dataType].lastData, this.currentModule.state[dataType].searchText, this.currentModule.state[dataType].filterFields, false);
+		this.currentModule._updateTable(this.currentModule.state[dataType].tableId, this.currentModule.state[dataType].render(filtered));
 	}
 }

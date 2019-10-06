@@ -1,6 +1,7 @@
 "use strict";
 
-const crypt = require('crypt3/sync');
+const shacrypt = require('shacrypt');
+const crypto = require('crypto');
 const mime  = require('mime-types');
 
 class Users {
@@ -17,8 +18,26 @@ class Users {
 			process.exit(1);
 		}
 
-		this._table             = this._opts.database.table(this._opts.table_users);
-		this._tablePermissions  = this._opts.database.table(this._opts.table_permissions);
+		this._table             = this._opts.database.table(this._opts.table_users, {
+			columns: {
+				id: false,
+				user_name: true,
+				full_name: false,
+				title: false,
+				password: true,
+				active: false,
+				avatar_id: true
+			},
+			index: "id"
+		});
+		this._tablePermissions  = this._opts.database.table(this._opts.table_permissions, {
+			columns: {
+				id: false,
+				user_id: true,
+				endpoint: true
+			},
+			index: "id"
+		});
 
 		if (this._table === null) {
 			console.log("Users table not found.");
@@ -29,6 +48,15 @@ class Users {
 			console.log("User permissions table not found.");
 			process.exit(1);
 		}
+	}
+	
+	_hash(password) {
+		const salt = '$6$' + crypto.randomBytes(64).toString('base64');
+		return shacrypt.sha512crypt(password, salt);
+	}
+
+	_validate(enteredPassword, savedPassword) {
+		return savedPassword === shacrypt.sha512crypt(enteredPassword, savedPassword);
 	}
 
 	async authenticate(session, params) {
@@ -41,7 +69,7 @@ class Users {
 		
 		for (var i in records) {
 			var hash = records[i].getField('password');
-			if (((hash === null) && (typeof params.password === 'undefined')) || ((typeof hash === 'string') && (crypt(params.password, hash) === hash))) {
+			if (((hash === null) && (typeof params.password === 'undefined')) || ((typeof hash === 'string') && (this._validate(params.password, hash)))) {
 				var permissions = await this._getPermissions(records[i].getIndex());
 				var avatar = await this._opts.files.getFileAsBase64(records[i].getField('avatar_id'));
 				session.user = {
@@ -142,7 +170,7 @@ class Users {
 					console.log("CREATING USER");
 					var record = this._table.createRecord();
 					record.setField('user_name', params.username);
-					record.setField('password', crypt(params.password, crypt.createSalt('sha512')));
+					record.setField('password', this._hash(params.password));
 					record.setField('full_name', params.name);
 					record.setField('title', params.title);
 					record.setField('active', 1);
@@ -162,7 +190,7 @@ class Users {
 				}
 				return this._getUserRecord(params.id).then( (user) => {
 					user.setField('user_name', params.username);
-					Promise.resolve(user.flush());
+					return user.flush();
 				});
 			});
 	}
@@ -172,8 +200,8 @@ class Users {
 			if (typeof params.id !== 'number') return Promise.reject("Invalid params (2)");
 			if (typeof params.password !== 'string') return Promise.reject("Invalid params (3)");
 			return this._getUserRecord(params.id).then( (user) => {
-				user.setField('password', crypt(params.password, crypt.createSalt('sha512')));
-				Promise.resolve(user.flush());
+				user.setField('password', this._hash(params.password));
+				return user.flush();
 			});
 	}
 

@@ -32,20 +32,22 @@ class Shell(cmd.Cmd):
 			msgWarning("Usage: deposit <amount in €> <nickname>")
 			return
 			
-		if not person(client, name, False, False):
+		person = findPerson(client, name, False, False)
+		
+		if not person:
 			msgError("Error: could not find your account, have you spelled your nickname correctly?")
 			return
 		
 		global lastPerson
 		
 		try:
-			transaction = client.transactionExecute(
-				lastPerson["id"],
+			transaction = client.invoiceExecute(
+				person['id'],
 				[],
 				[{"description":"Deposit", "price":-amount, "amount":1}]
 			)
 			
-			printTransaction(transaction, True, True)
+			printTransaction(transaction, True, True, person)
 			
 			msgConfirm("Deposit completed!")
 		except ApiError as e:
@@ -111,6 +113,7 @@ class Shell(cmd.Cmd):
 	def do_abort(self, arg):
 		global cart
 		cart = {}
+		self.emptyline()
 		headerError("Transaction canceled!")
 		print("Cart is now empty.")
 		
@@ -149,7 +152,7 @@ class Shell(cmd.Cmd):
 			waitForConnection()
 
 			if (len(line)>0):
-				if not person(client, line):
+				if not findPerson(client, line):
 					if not product(client, line):
 						print("\u001b[31mError: unknown command, user or product.\u001b[39m")
 						showHeader = False
@@ -187,7 +190,15 @@ class Shell(cmd.Cmd):
 		print("")
 		if (len(cart) == 0):
 			term.clear()
+			headerConfirm("")
 			headerConfirm("The cart is empty. Scan a product to add it to the cart!")
+			headerConfirm("")
+			print("")
+		else:
+			term.clear()
+			headerWarning("")
+			headerWarning("The cart is contains products. Enter your name to confirm the transaction!")
+			headerWarning("")
 			print("")
 		usage()
 
@@ -294,7 +305,7 @@ def main():
 	except:
 		halt("Configuration error", "Could read password file.")
 
-	msgWarning("Connecting to server...")
+	msgWarning("Connecting to server ({})...".format(uri))
 
 	client = RpcClient(uri)
 	
@@ -320,6 +331,7 @@ def main():
 	initCompletion()	
 	shell = Shell()
 	setPrompt()
+	shell.do_clear("")
 	shell.cmdloop()
 
 pp = pprint.PrettyPrinter(indent=4)
@@ -379,7 +391,8 @@ def product(client, name):
 		productsToCart(client, [result])
 		
 		#usage()
-		printCart()
+		#printCart()
+		shell.do_clear("")
 		
 		#print("\u001b[32mAdded\u001b[39m "+result['name']+"\u001b[32m to your cart.\u001b[39m")
 				
@@ -394,11 +407,9 @@ def executeTransaction(client, person):
 	
 	for cartRow in cart:
 		data = {"id": cart[cartRow]["product"]["id"], "amount": cart[cartRow]["amount"]}
-		if "stock" in cart[cartRow] and cart[cartRow]["stock"] != None:
-			data["stock"] = cart[cartRow]["stock"]["id"]
 		product_rows.append(data)
 	
-	transaction = client.transactionExecute(
+	transaction = client.invoiceExecute(
 		person["id"],
 		product_rows,
 		[]
@@ -411,7 +422,7 @@ def executeTransaction(client, person):
 	printTransaction(transaction)
 
 
-def printTransaction(transaction, neg=False, noAmount=False):
+def printTransaction(transaction, neg=False, noAmount=False, person=None):
 	global lastPerson, lastTransaction, lastTransactionTotal
 	
 	lastTransaction = []
@@ -420,6 +431,9 @@ def printTransaction(transaction, neg=False, noAmount=False):
 		neg = -1
 	else:
 		neg = 1
+		
+	if not person:
+		person = lastPerson
 	
 	headerConfirm("TRANSACTION RECEIPT")
 	print("")
@@ -431,14 +445,14 @@ def printTransaction(transaction, neg=False, noAmount=False):
 		lastTransaction.append((row["description"], row["amount"], neg*round(row["price"]*row["amount"]/100.0,2)))
 
 	if not neg:
-		print("\r\nTransaction total:\t\t€ "+'{0: <6}'.format("{:.2f}".format(transaction['transaction']['total']/100.0)))
+		print("\r\nTransaction total:\t\t€ "+'{0: <6}'.format("{:.2f}".format(transaction['invoice']['total']/100.0)))
 	else:
 		print("")
-	print("Balance before transaction:\t€ "+'{0: <6}'.format("{:.2f}".format(lastPerson['balance']/100.0)))
+	print("Balance before transaction:\t€ "+'{0: <6}'.format("{:.2f}".format(person['balance']/100.0)))
 	print("Balance after transaction:\t€ "+'{0: <6}'.format("{:.2f}".format(transaction['person']['balance']/100.0)))
 	lastTransactionTotal = [
-		("Total",transaction['transaction']['total']/100.0),
-		("Balance before transaction",lastPerson['balance']/100.0),
+		("Total",transaction['invoice']['total']/100.0),
+		("Balance before transaction",person['balance']/100.0),
 		("Balance after transaction",transaction['person']['balance']/100.0)
 		]
 	
@@ -449,12 +463,10 @@ def printTransaction(transaction, neg=False, noAmount=False):
 	print("")
 
 	
-def person(client, name, doTransaction=True, showInfo=True):
+def findPerson(client, name, doTransaction=True, showInfo=True):
 	global cart, lastPerson
 	person = client.personFind(name)
-	if (person != None):		
-		lastPerson = person
-		
+	if (person != None):
 		if (len(cart)<1) and showInfo:
 			print("")
 			name = person['nick_name']
@@ -467,18 +479,19 @@ def person(client, name, doTransaction=True, showInfo=True):
 			printLastTransactionsOfPerson(person['id'], 5)
 
 		if (len(cart)>0) and doTransaction:
+			lastPerson = person
 			executeTransaction(client, person)
-		return True
-	return False
+		return person
+	return None
 
 def printLastTransactionsOfPerson(person, amount):
 	global client
-	lastTransactions = client.lastTransactionsOfPerson(person, amount)
+	lastTransactions = client.lastInvoicesOfPerson(person, amount)
 	for transaction in lastTransactions:
-		when = datetime.fromtimestamp(transaction['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+		when = datetime.fromtimestamp(transaction['timestamp']).strftime('%Y-%m-%d %H:%M:%S')+" (€ {0: <8})".format("{:.2f}".format(transaction['total']/100.0))
 		for row in transaction['rows']:
 			product = '{0: >4}'.format(str(row['amount']))+"x "+'{0: <25}'.format(row['description'])
-			print('{0: <20}'.format(when)+product)
+			print('{0: <25}'.format(when)+product)
 			when = ""
 	
 
@@ -488,31 +501,10 @@ def productsToCart(client, products):
 		product_id = i["id"]
 		if not product_id in cart:
 			cart[product_id] = {"product": i, "amount": 1}
-			stockToCart(client, product_id, i['stock'])
 		else:
 			item = cart[product_id]
 			item["amount"]+=1
 			cart[product_id] = item
-
-def stockToCart(client, product, stock):
-	global cart
-	if not product in cart:
-		headerWarning("Warning: Product is not in the cart!")
-	else:
-		if len(stock) > 0:
-			if (len(stock)<2):
-				cart[product]["stock"] = stock[0]
-				print("Taking stock from '"+str(stock[0]["id"])+"' ("+str(stock[0]["amount_current"])+")")
-			else:
-				oldestStock = stock[0]
-				for stockRecord in stock:
-					if stockRecord["timestamp_initial"] < oldestStock["timestamp_initial"]:
-						oldestStock = stockRecord
-				cart[product]["stock"] = oldestStock
-				print("Taking stock from '"+str(oldestStock["id"])+"' ("+str(oldestStock["amount_current"])+")")
-		else:
-			msgWarning("Warning: "+cart[product]['product']['name']+" is not available in the quantity you put in your cart!")
-			cart[product]["stock"] = None
 
 def printCart():
 	global cart, client
@@ -522,7 +514,6 @@ def printCart():
 		for i in cart:
 			product = cart[i]["product"]
 			amount = cart[i]["amount"]
-			inStock = cart[i]["stock"] != None
 			line = '{0: >4}'.format(str(amount))+"x "+'{0: <25}'.format(product['name'])
 			line += "\t"
 			groups = client.getGroups()
@@ -539,11 +530,7 @@ def printCart():
 						price = entry['amount']
 				if price:
 					price = "€ "+'{0: <6}'.format("{:.2f}".format(price*amount/100.0))
-					#print(group['name']+": "+'{0: <6}'.format(price)+last,end="")
-					if not inStock:
-						line += '{0: <6}'.format(price) + " [NOT IN STOCK]"
-					else:
-						line += '{0: <6}'.format(price)
+					line += '{0: <6}'.format(price)
 			print(line)
 		print("")
 

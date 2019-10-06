@@ -6,8 +6,6 @@
 
 "use strict";
 
-//const Tree = require("tree-node");
-
 class Rpc {
 	
 	/*errorCodes = {
@@ -21,7 +19,8 @@ class Rpc {
 	constructor( opts ) {
 		this._opts = Object.assign({
 			strict: true,
-			auth: null
+			auth: null,
+			identity: "rpc service"
 		}, opts);
 		
 		this._functions = {};
@@ -44,23 +43,6 @@ class Rpc {
 		}
 		return false;
 	}
-		
-	/*listMethodsTree() {
-		var tree = new Tree();
-				
-		for (var i in this._functions) {
-			var path = i.split('/');
-			var current = tree;
-			for (var j in path) {
-				if (current.getChild(path[j]) !== null) {
-					current = current.getChild(path[j]);
-				} else {
-					current = current.createChild(path[j]);
-				}
-			}
-		}
-		return tree;
-	}*/
 	
 	listMethods() {
 		var list = [];
@@ -174,6 +156,16 @@ class Rpc {
 		return new Promise((resolve, reject) => {
 			var requests = null;
 
+			if (data == "") { //Index / empty request
+				var index = {
+					code: -42,
+					message: "Empty request received",
+					service: this._opts.identity,
+					methods: this.listMethods()
+				};
+				return resolve(JSON.stringify(index));
+			}
+			
 			try {
 				requests = JSON.parse(data);
 			} catch (err) {

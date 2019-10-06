@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 4.8.5
+-- version 4.9.1
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: May 02, 2019 at 10:22 PM
--- Server version: 10.3.14-MariaDB-log
--- PHP Version: 7.3.4
+-- Generation Time: Oct 06, 2019 at 09:16 PM
+-- Server version: 10.4.8-MariaDB
+-- PHP Version: 7.3.10
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET AUTOCOMMIT = 0;
@@ -30,11 +30,26 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `bankaccounts` (
   `id` int(11) NOT NULL,
-  `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `iban` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `iban` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
   `balance` int(11) DEFAULT NULL,
   `internal` tinyint(1) NOT NULL DEFAULT 0,
   `person_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `bankaccount_transactions`
+--
+
+CREATE TABLE `bankaccount_transactions` (
+  `id` int(11) NOT NULL,
+  `amount` int(11) NOT NULL,
+  `timestamp` int(11) NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `iban` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -48,6 +63,36 @@ CREATE TABLE `files` (
   `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `mime` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `file` longblob NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `invoices`
+--
+
+CREATE TABLE `invoices` (
+  `id` int(11) NOT NULL,
+  `person_id` int(11) NOT NULL,
+  `total` int(11) NOT NULL,
+  `timestamp` int(11) NOT NULL DEFAULT 0,
+  `code` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `invoice_rows`
+--
+
+CREATE TABLE `invoice_rows` (
+  `id` int(11) NOT NULL,
+  `invoice_id` int(11) NOT NULL,
+  `product_id` int(11) DEFAULT NULL,
+  `tax_id` int(11) DEFAULT NULL,
+  `description` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `price` int(11) NOT NULL DEFAULT 0,
+  `amount` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -138,7 +183,8 @@ CREATE TABLE `person_phone` (
 CREATE TABLE `person_token` (
   `id` int(11) NOT NULL,
   `person_id` int(11) NOT NULL,
-  `type_id` int(11) NOT NULL,
+  `type` int(11) NOT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT 0,
   `public` varchar(512) COLLATE utf8mb4_unicode_ci NOT NULL,
   `private` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -146,14 +192,13 @@ CREATE TABLE `person_token` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `person_token_type`
+-- Table structure for table `pos_device`
 --
 
-CREATE TABLE `person_token_type` (
+CREATE TABLE `pos_device` (
   `id` int(11) NOT NULL,
-  `name` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `method` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  `requirePrivate` tinyint(1) NOT NULL DEFAULT 0
+  `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `topic` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -231,9 +276,7 @@ CREATE TABLE `product_identifier` (
 CREATE TABLE `product_identifier_type` (
   `id` int(11) NOT NULL,
   `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `long_name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `display_method` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'text'
+  `long_name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -248,6 +291,18 @@ CREATE TABLE `product_location` (
   `sub` int(11) DEFAULT NULL,
   `visible` int(1) NOT NULL DEFAULT 0,
   `description` text COLLATE utf8mb4_unicode_ci NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `product_location_mapping`
+--
+
+CREATE TABLE `product_location_mapping` (
+  `id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `product_location_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -301,37 +356,8 @@ CREATE TABLE `product_stock` (
 
 CREATE TABLE `product_stock_mapping` (
   `id` int(11) NOT NULL,
-  `transaction_row_id` int(11) NOT NULL,
+  `invoice_row_id` int(11) NOT NULL,
   `product_stock_id` int(11) NOT NULL,
-  `amount` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `transactions`
---
-
-CREATE TABLE `transactions` (
-  `id` int(11) NOT NULL,
-  `person_id` int(11) NOT NULL,
-  `total` int(11) NOT NULL,
-  `timestamp` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `transaction_rows`
---
-
-CREATE TABLE `transaction_rows` (
-  `id` int(11) NOT NULL,
-  `transaction_id` int(11) NOT NULL,
-  `product_id` int(11) DEFAULT NULL,
-  `tax_id` int(11) DEFAULT NULL,
-  `description` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `price` int(11) NOT NULL DEFAULT 0,
   `amount` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -376,10 +402,31 @@ ALTER TABLE `bankaccounts`
   ADD KEY `person_id_of_bankaccount` (`person_id`);
 
 --
+-- Indexes for table `bankaccount_transactions`
+--
+ALTER TABLE `bankaccount_transactions`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `files`
 --
 ALTER TABLE `files`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `invoices`
+--
+ALTER TABLE `invoices`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `person_id_of_log_entry` (`person_id`);
+
+--
+-- Indexes for table `invoice_rows`
+--
+ALTER TABLE `invoice_rows`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `product_id_of_transaction_row` (`product_id`),
+  ADD KEY `transaction_id_of_transaction_row` (`invoice_id`);
 
 --
 -- Indexes for table `persons`
@@ -429,14 +476,13 @@ ALTER TABLE `person_phone`
 --
 ALTER TABLE `person_token`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `public` (`public`),
   ADD KEY `person_id_of_person_token` (`person_id`),
-  ADD KEY `type_id_of_token` (`type_id`);
+  ADD KEY `type_id_of_token` (`type`);
 
 --
--- Indexes for table `person_token_type`
+-- Indexes for table `pos_device`
 --
-ALTER TABLE `person_token_type`
+ALTER TABLE `pos_device`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -490,6 +536,14 @@ ALTER TABLE `product_location`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `product_location_mapping`
+--
+ALTER TABLE `product_location_mapping`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `product_id_of_product_location_mapping` (`product_id`),
+  ADD KEY `product_location_id_of_product_location_mapping` (`product_location_id`);
+
+--
 -- Indexes for table `product_package`
 --
 ALTER TABLE `product_package`
@@ -517,22 +571,7 @@ ALTER TABLE `product_stock`
 ALTER TABLE `product_stock_mapping`
   ADD PRIMARY KEY (`id`),
   ADD KEY `product_stock_id_of_product_stock_mapping` (`product_stock_id`),
-  ADD KEY `transaction_row_id_of_product_stock_mapping` (`transaction_row_id`);
-
---
--- Indexes for table `transactions`
---
-ALTER TABLE `transactions`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `person_id_of_log_entry` (`person_id`);
-
---
--- Indexes for table `transaction_rows`
---
-ALTER TABLE `transaction_rows`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `product_id_of_transaction_row` (`product_id`),
-  ADD KEY `transaction_id_of_transaction_row` (`transaction_id`);
+  ADD KEY `transaction_row_id_of_product_stock_mapping` (`invoice_row_id`);
 
 --
 -- Indexes for table `users`
@@ -559,9 +598,27 @@ ALTER TABLE `bankaccounts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `bankaccount_transactions`
+--
+ALTER TABLE `bankaccount_transactions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `files`
 --
 ALTER TABLE `files`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `invoices`
+--
+ALTER TABLE `invoices`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `invoice_rows`
+--
+ALTER TABLE `invoice_rows`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -607,9 +664,9 @@ ALTER TABLE `person_token`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `person_token_type`
+-- AUTO_INCREMENT for table `pos_device`
 --
-ALTER TABLE `person_token_type`
+ALTER TABLE `pos_device`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -655,6 +712,12 @@ ALTER TABLE `product_location`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `product_location_mapping`
+--
+ALTER TABLE `product_location_mapping`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `product_package`
 --
 ALTER TABLE `product_package`
@@ -679,18 +742,6 @@ ALTER TABLE `product_stock_mapping`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `transactions`
---
-ALTER TABLE `transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `transaction_rows`
---
-ALTER TABLE `transaction_rows`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
@@ -711,6 +762,19 @@ ALTER TABLE `user_permissions`
 --
 ALTER TABLE `bankaccounts`
   ADD CONSTRAINT `person_id_of_bankaccount` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
+
+--
+-- Constraints for table `invoices`
+--
+ALTER TABLE `invoices`
+  ADD CONSTRAINT `person_id_of_log_entry` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
+
+--
+-- Constraints for table `invoice_rows`
+--
+ALTER TABLE `invoice_rows`
+  ADD CONSTRAINT `product_id_of_transaction_row` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`),
+  ADD CONSTRAINT `transaction_id_of_transaction_row` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`);
 
 --
 -- Constraints for table `persons`
@@ -747,8 +811,7 @@ ALTER TABLE `person_phone`
 -- Constraints for table `person_token`
 --
 ALTER TABLE `person_token`
-  ADD CONSTRAINT `person_id_of_person_token` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`),
-  ADD CONSTRAINT `type_id_of_token` FOREIGN KEY (`type_id`) REFERENCES `person_token_type` (`id`);
+  ADD CONSTRAINT `person_id_of_person_token` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
 
 --
 -- Constraints for table `products`
@@ -779,6 +842,13 @@ ALTER TABLE `product_identifier`
   ADD CONSTRAINT `product_identifier_type_id_of_product_identifier` FOREIGN KEY (`type_id`) REFERENCES `product_identifier_type` (`id`);
 
 --
+-- Constraints for table `product_location_mapping`
+--
+ALTER TABLE `product_location_mapping`
+  ADD CONSTRAINT `product_id_of_product_location_mapping` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`),
+  ADD CONSTRAINT `product_location_id_of_product_location_mapping` FOREIGN KEY (`product_location_id`) REFERENCES `product_location` (`id`);
+
+--
 -- Constraints for table `product_price`
 --
 ALTER TABLE `product_price`
@@ -797,20 +867,7 @@ ALTER TABLE `product_stock`
 --
 ALTER TABLE `product_stock_mapping`
   ADD CONSTRAINT `product_stock_id_of_product_stock_mapping` FOREIGN KEY (`product_stock_id`) REFERENCES `product_stock` (`id`),
-  ADD CONSTRAINT `transaction_row_id_of_product_stock_mapping` FOREIGN KEY (`transaction_row_id`) REFERENCES `transaction_rows` (`id`);
-
---
--- Constraints for table `transactions`
---
-ALTER TABLE `transactions`
-  ADD CONSTRAINT `person_id_of_log_entry` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
-
---
--- Constraints for table `transaction_rows`
---
-ALTER TABLE `transaction_rows`
-  ADD CONSTRAINT `product_id_of_transaction_row` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`),
-  ADD CONSTRAINT `transaction_id_of_transaction_row` FOREIGN KEY (`transaction_id`) REFERENCES `transactions` (`id`);
+  ADD CONSTRAINT `transaction_row_id_of_product_stock_mapping` FOREIGN KEY (`invoice_row_id`) REFERENCES `invoice_rows` (`id`);
 
 --
 -- Constraints for table `users`

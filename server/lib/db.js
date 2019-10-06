@@ -37,6 +37,8 @@ class Record {
 			this._dirty = true;
 			return true;
 		}
+		console.log("!! setField "+field+" of table "+this._table.name()+": field does not exist !!");
+		console.log(this._data);
 		return false;
 	}
 	
@@ -222,17 +224,16 @@ class Table {
 			table: null
 		}, opts);
 		
-		this._columns = [];
 		this._defaultData = {};
 		this._index = null;
+		this._columns = [];
 		this._connection = null;
 	}
 			
 	_generateDefaultData(columns) {
 		var result = {};
-		for (var i = 0; i < columns.length; i++) {
-			var type = this._columns[i].DATA_TYPE;
-			result[this._columns[i].COLUMN_NAME] = null;
+		for (var c in this._columns) {
+			result[c] = null;
 		}
 		this._defaultData = result;
 		return result;
@@ -240,37 +241,32 @@ class Table {
 	
 	initSchema() {
 		return this._opts.db._executeQuery("select * from information_schema.columns where table_schema=? and table_name=?;", [this._opts.db._opts.database, this._opts.table]).then( ([rows, fields]) => {
-			this._columns = rows;
-			this._generateDefaultData(rows);
 			this._index = null;
-			this._columnString = "";
-			this._isNullable = [];
-			for (var i = 0; i < this._columns.length; i++) {
+			this._columns = [];
+			for (var i = 0; i < rows.length; i++) {
 								
-				var name = this._columns[i].COLUMN_NAME;
-				var dataType = this._columns[i].DATA_TYPE;
+				var name = rows[i].COLUMN_NAME;
+				var dataType = rows[i].DATA_TYPE;
 				
-				this._isNullable[name] = (this._columns[i].IS_NULLABLE === 'YES');
+				this._columns[name] = (rows[i].IS_NULLABLE === 'YES');
 				
-				if (dataType === "timestamp") {
-					this._columnString += "UNIX_TIMESTAMP(`"+name+"`) AS `"+name+"`";
-				} else {
-					this._columnString += "`"+name+"`";
-				}
-				if (i < this._columns.length - 1) this._columnString += ", ";
-				
-				var type = this._columns[i].COLUMN_KEY;
+				var type = rows[i].COLUMN_KEY;
 				if (type=="PRI") {
 					if (this._index!=null) {
 						throw "[DATABASE] Error: table '"+this._opts.table+"' has multiple primary indexes.";
 					} else {
-						this._index = this._columns[i].COLUMN_NAME;
+						this._index = rows[i].COLUMN_NAME;
 					}
 				}
 			}
 			if (this._index == null) {
 				throw "Table "+this._opts.table+" has no primary index. A primary index is required for all tables!";
 			}
+			
+			console.log(this._opts.table, this._index, this._columns);
+			
+			this._generateDefaultData();
+			
 		}).catch(this._opts.db._errorHandler);
 	}
 	
@@ -281,22 +277,6 @@ class Table {
 		var fields = record.getFields();
 		for (var field in fields) {
 			cols.push(mysql.escapeId(field));
-			if (this._getColumnTypeForColumnName(field) === "timestamp") {
-				throw "Error: inserting a timestamp into the database is not supported!!";
-			}
-
-			if (this._opts.db._opts.useTimestampHack) {
-				//Automatically fill out the timestamp fields with the current time if the timestamp may not be null
-				if ((fields[field] === null) && (!this._isNullable[field])) {
-					//Field is null and can not be null, this normally results in an error
-					if (field.startsWith('timestamp')) {
-						//But for timestamp fields we make an exception...
-						record.setFieldDate(field); //Without a date object this defaults to the current date
-						fields[field] = record.getField(field);
-					}
-				}
-			}
-			
 			values.push(fields[field]);
 			valuePlaceholders.push('?');
 		}
@@ -333,16 +313,7 @@ class Table {
 			});
 		});
 	}
-	
-	_getColumnTypeForColumnName(query) {
-		for (var i in this._columns) {
-			var name = this._columns[i].COLUMN_NAME;
-			var dataType = this._columns[i].DATA_TYPE;
-			if (name === query) return dataType;
-		}
-		return null;
-	}
-	
+		
 	_updateRecordInternal(record, transaction=null) {
 		if (this._index == null) return new Promise((resolve, reject) => { reject("Update not possible: table has no index."); });
 		var cols = [];
@@ -350,9 +321,6 @@ class Table {
 		var fields = record.getFields();
 		for (var field in fields) {
 			if (field != this._index) {
-				if (this._getColumnTypeForColumnName(field) === "timestamp") {
-					throw "Error: updating a timestamp in the database is not supported!!";
-				}
 				cols.push(mysql.escapeId(field)+" = ?");
 				values.push(fields[field]);
 			}
@@ -438,7 +406,7 @@ class Table {
 		
 		
 		return new Promise((resolve, reject) => {
-			var sql = "SELECT "+this._columnString+" FROM "+mysql.escapeId(this._opts.table)+" "+where+extra+";";
+			var sql = "SELECT * FROM "+mysql.escapeId(this._opts.table)+" "+where+extra+";";
 			var query = this._opts.db._executeQuery(sql, whereValues).then( ([rows, fields]) => {
 				var result = [];
 				for (var i = 0; i < rows.length; i++) {
@@ -485,10 +453,6 @@ class Table {
 		});
 	}
 	
-	schema() {
-		return this._columns();
-	}
-	
 	name() {
 		return this._opts.table;
 	}
@@ -507,8 +471,7 @@ class Database {
 			password: '',
 			database: 'database',
 			onConnect: null,
-			logFile: null,
-			useTimestampHack: true
+			logFile: null
 		}, opts);
 		
 		this._tables = [];
@@ -557,7 +520,7 @@ class Database {
 	}
 	
 	
-	table(table) {
+	table(table, schema=null) {
 		if (this._tables.length<1) {
 			this._refreshTables();
 		}

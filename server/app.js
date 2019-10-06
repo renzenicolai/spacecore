@@ -16,7 +16,7 @@ const Files            = require('./modules/files.js');
 const Users            = require('./modules/users.js');
 const Persons          = require('./modules/persons.js');
 const Products         = require('./modules/products.js');
-const Transactions     = require('./modules/transactions.js');
+const Invoices         = require('./modules/invoices.js');
 const Mt940            = require('./modules/mt940.js');
 const Vending          = require('./modules/vending.js');
 
@@ -66,7 +66,8 @@ function start() {
 
 	var rpc = new Rpc({
 		strict: true,
-		auth: sessions
+		auth: sessions,
+		identity: "Spacecore Alpha"
 	});
 
 	var websocketserver = new Websocketserver({
@@ -113,7 +114,7 @@ function start() {
 		products: products
 	});
 
-	var transactions = new Transactions({
+	var invoices = new Invoices({
 		database: database,
 		persons: persons,
 		products: products
@@ -136,7 +137,7 @@ function start() {
 	ping.registerRpcMethods(rpc);
 	persons.registerRpcMethods(rpc);
 	products.registerRpcMethods(rpc);
-	transactions.registerRpcMethods(rpc);
+	invoices.registerRpcMethods(rpc);
 	mt940.registerRpcMethods(rpc);
     vending.registerRpcMethods(rpc);
 
@@ -148,7 +149,7 @@ function start() {
 
 	verifications.push(new VerifyBalance({
 		persons: persons,
-		transactions: transactions
+		transactions: invoices
 	}));
 
 	for (var i in verifications) {

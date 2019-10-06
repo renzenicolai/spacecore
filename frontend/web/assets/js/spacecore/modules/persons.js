@@ -1,34 +1,17 @@
 class Persons {
 	constructor( opts ) {
-		this.name = 'persons';
-
 		opts = Object.assign({
-			ui: null,
-			app: null
+			name: 'persons'
 		}, opts);
-
-		this.ui = opts.ui;
-		this.app = opts.app;
-
-		this.reset();
-
-		this.groups = {};
-		this.tokenTypes = [];
+		this.name = opts.name;
+		this.reset(); //Initialize state
 	}
 
 	reset() {
 		this.state = {
-			lastSelected: null,
-			searchText: "",
-			lastData: null,
-
-			lastSelectedGroup: null,
-			groupsSearchText: "",
-			groupsLastData: null,
-			
-			lastSelectedToken: null,
-			tokensSearchText: "",
-			tokensLastData: null
+			persons: {lastSelected: null, lastData: null, searchText: "", searchId: 'persons-search',        tableId: 'table_persons', filterFields: ['nick_name', 'first_name', 'last_name'], render: this._renderPersons},
+			groups:  {lastSelected: null, lastData: null, searchText: "", searchId: 'persons-groups-search', tableId: 'table_groups',  filterFields: ['name', 'description', 'addToNew'],      render: this._renderGroups,  types: []},
+			tokens:  {lastSelected: null, lastData: null, searchText: "", searchId: 'persons-tokens-search', tableId: 'table_tokens',  filterFields: ['public', 'owner', 'enabled'],           render: this._renderTokens,  types: []}
 		};
 	}
 
@@ -37,7 +20,7 @@ class Persons {
 	menu(menu='main') {
 		var items = [];
 		if (menu === 'main') {
-			if (this.app.checkPermission('person/list')) items.push({
+			if (spacecore.checkPermission('person/list')) items.push({
 				label: "Persons",
 				fe_icon: "user",
 				action: "javascript:spacecore.action('"+this.name+"', null, true);"
@@ -45,60 +28,143 @@ class Persons {
 		}
 		return items;
 	}
+	
+	/* Helper functions */
+	
+	getPersonName(person) {
+		if ((person.first_name.length > 0) && (person.last_name.length > 0)) {
+			return person.first_name+" "+person.last_name;
+		} else if (person.first_name.length > 0) {
+			return person.first_name;
+		} else if (person.last_name.length > 0) {
+			return person.last_name;			
+		}
+		return person.nick_name;
+	}
 
+	getCurrentPersonName() { return this.getPersonName(this.state.persons.lastSelected); }
+	getCurrentPersonId() { return this.state.persons.lastSelected.id; }
+	
+	_handleRefreshGroupTypes(res, err) {
+		if (err) return console.log("Refresh exception", err);
+		this.state.groups.types = res;
+	}
+	
+	_handleRefreshTokenTypes(res, err) {
+		if (err) return console.log("Refresh exception", err);
+		this.state.tokens.types = res;
+	}	
+	
+	_getGroupNameById(id) {
+		for (var i in this.state.groups.types) {
+			if (this.state.groups.types[i].id === id) return this.state.groups.types[i].name;
+		}
+		return "";
+	}
+	
+	/* Forms and form handling */
+	
+	_addItemToPersonForm(id, method, title, btnText, formElements) {
+		var items = [];
+		if (id>0) items.push({ type: "hidden", name: "person", value: id, convertToNumber: true });
+		items = items.concat(formElements);
+		spacecore.showPage({ header: { title: "Persons", options: [] },
+			body: [[[{
+				type: "card", width: ['lg-8', 'md-12'], header: { title: title },
+				form: { id: "additemtoperson-form", elements: items,
+					footer: [
+						spacecore.ui.elemBtnSecondary("javascript:spacecore.currentModule.showDetails("+this.getCurrentPersonId()+");", "Cancel", "cancelBtn", "x"),
+						spacecore.ui.elemBtnPrimary("javascript:spacecore.currentModule.submitForm('additemtoperson-form','"+method+"')", btnText, "saveBtn", "save")
+					]
+				}
+			}]]]
+		});
+	}
+	
+	_groupForm(method, title, btnText, formElements) {
+		spacecore.showPage({ header: { title: "Persons: groups", options: [] },
+			body: [[[{
+				type: "card", width: ['lg-8', 'md-12'], header: { title: title },
+				form: { id: "group-form", elements: formElements,
+					footer: [
+						spacecore.ui.elemBtnSecondary("javascript:spacecore.currentModule.show('groups');", "Cancel", "cancelBtn", "x"),
+						spacecore.ui.elemBtnPrimary("javascript:spacecore.currentModule.submitForm('group-form','"+method+"')", btnText, "saveBtn", "save")
+					]
+				}
+			}]]]
+		});
+	}
+	
+	submitForm(form, method) { spacecore.submitForm(this.submitFormHandler.bind(this, form, method), form, method); }
+
+	submitFormHandler(form, method, res, err) {
+		var action = "show()";
+		var actionFunc = spacecore.currentModule.show;
+		var skip = false;
+
+		if (form==="removeperson-form") {
+			if (err === null) return this.show();
+			action = "show()";
+		}
+		
+		if (form==="addperson-form") {
+			if (err === null) return this.showDetails(res);
+			action = "showDetails("+res+")";
+		}
+
+		if (
+			(form==="addgrouptoperson-form") ||
+			(form==="removegroupfromperson-form") ||
+			(form==="additemtoperson-form") ||
+			(form==="removeitemfromperson-form") ||
+			(form==="editperson-form")
+		) {
+			if (err === null) return this.showDetails();
+			action = "showDetails()";
+
+		}
+
+		if ((form==="group-form") || (form=="removegroup-form")) {
+			if (err === null) return this.show(false, 'groups'); //Skip the result if succesfull
+			action = "show(false, 'groups')";
+		}
+
+		if (err) {
+			spacecore.showMessage2(
+				[ err.message ], "Persons", "Error",
+				[{ type: "button", value: "OK", action: "javascript:spacecore.currentModule."+action+";" }]
+			);
+		} else {
+			spacecore.showMessage2(
+				[ res ], "Persons", "Result",
+				[{ type: "button", value: "OK", action: "javascript:spacecore.currentModule."+action+";" }]
+			);
+		}
+	}
+	
 	/* Module */
 
 	show(reset=true, part="persons") {
 		if (reset) this.reset();
-		this.app.currentModule = this;
-
+		spacecore.currentModule = this;
 		window.location.href = "#";
-		
-		if (part==="persons") {
-			/* These are loaded async and may not be available right after rendering the page */
-			this.app.executeCommand('person/group/list', {}, this._handleGroupsRefresh.bind(this));
-			this.app.executeCommand('person/token/type/list', {}, this._handleTokenTypesRefresh.bind(this));
 
-			/* Render the page */
-			this.app.executeCommand('person/list', {}, this._handleShow.bind(this));
-		} else {
-			console.log("Unhandled part in persons module",part);
+		spacecore.executeCommand('person/group/list',      {}, this._handleRefreshGroupTypes.bind(this));
+		spacecore.executeCommand('person/token/type/list', {}, this._handleRefreshTokenTypes.bind(this));
+		
+		switch(part) {
+			case "persons": spacecore.executeCommand('person/list', {}, this._handleShow.bind(this)); break;
+			case "tokens":  spacecore.executeCommand('person/token/list', {}, this._handleManageTokens.bind(this)); break;
+			case "groups":  spacecore.executeCommand('person/group/list', {}, this._handleManageGroups.bind(this)); break;
+			default: this.genericErrorHandler("Unhandled part in persons module: '"+part+"'");
 		}
 	}
 
 	/* Tokens */
-
-	manageTokens() {
-		this.app.executeCommand('person/token/list', {}, this._handleManageTokens.bind(this));
-	}
-	
-	getPersonName(person) {
-		var name = person.nick_name;
-		if (person.first_name.length > 0) {
-			name = person.first_name;
-			if (person.last_name.length > 0) {
-				name += " "+person.last_name;
-			}
-		} else {
-			if (person.last_name.length > 0) {
-				name += person.last_name;
-			}
-		}
-		return name;
-	}
-	
-	getCurrentPersonName() {
-		return this.getPersonName(this.state.lastSelected);
-	}
-	
-	getCurrentPersonId() {
-		return this.state.lastSelected.id;
-	}
-
+		
 	_handleManageTokens(res, err) {
 		if (err !== null) return this.genericErrorHandler(err);
-		
-		this.app.history.push(this.manageTokens.bind(this));
+		spacecore.history.push(this.show.bind(this, false));
 		
 		for (var i in res) {
 			res[i].owner = "-";
@@ -107,478 +173,121 @@ class Persons {
 			}
 		}
 		
-		this.state.tokensLastData = res;
-		var tokensTable = this._renderTokens(this.app.filter(res, this.state.tokensSearchText, ['public', 'owner', 'enabled'], false));
+		this.state.tokens.lastData = res;
+		var tokensTable = this._renderTokens(spacecore.filter(res, this.state.tokens.searchText, ['public', 'owner', 'enabled'], false));
 
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Persons: tokens",
 				options: [
-						{
-							type:"text",
-							id: "persons-tokens-search",
-							fe_icon: "search",
-							placeholder: "Search tokens...",
-							action:  "javascript:spacecore.currentModule.searchTokens();",
-							value: this.state.groupsSearchText
-						},
-						{
-							"type":"button",
-							"fe_icon": "chevron-left",
-							"action":  "javascript:spacecore.currentModule.show();",
-							"value": "Back",
-							"class": "secondary"
-						}
+						spacecore.ui.elemSearchBox("javascript:spacecore.search('tokens');", "Search tokens...", "persons-tokens-search", "search", this.state.tokens.searchText),
+						spacecore.ui.elemBtnSecondary("javascript:spacecore.currentModule.show();", "Back", "backBtn", "chevron-left")
 					]
 			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							header: {
-								title: "Tokens",
-								options: [
-									/*{
-										type: "button",
-										action: "javascript:spacecore.currentModule.tokenAdd();",
-										fe_icon: "plus",
-										small: true
-									}*/
-								]
-							},
-							table: tokensTable
-						}
-					]
-				]
+			body: [[[{ type: "card", header: { title: "Tokens", options: [] }, table: tokensTable }]]
 			]
 		}, ['table_tokens']);
 
-		if (this.state.lastSelectedToken !== null) window.location.href = "#person-token-"+this.state.lastSelectedToken.id;
+		if (this.state.tokens.lastSelected !== null) window.location.href = "#person-token-"+this.state.tokens.lastSelected.id;
 	}
 
 	_renderTokens(res) {
-		var table = {
-			id: "table_tokens",
-			header: [
-				{
-					fe_icon: "key",
-					width: 1,
-					text_center: true
-				},
-				{
-					text: "Identifier"
-				},
-				{
-					text: "Owner"
-				},
-				{
-					text: "Type"
-				},
-				{
-					text: "Enabled"
-				},
-				{
-					width: 1
-				}
-			],
-			body: []
-		};
-
-		for (var i in res) {
-			table.body.push({
-				id: "person-token-"+res[i].id,
-				fields: [
-					{
-						//action: "javascript:spacecore.currentModule.tokenEdit("+res[i].id+");",
-						text: res[i].id,
-						text_center: true
-					},
-					{
-						//action: "javascript:spacecore.currentModule.tokenEdit("+res[i].id+");",
-						text: res[i].public
-					},
-					{
-						//action: "javascript:spacecore.currentModule.tokenEdit("+res[i].id+");",
-						text: res[i].owner
-					},
-					{
-						text: res[i].type.name
-					},
-					{
-						//action: "javascript:spacecore.currentModule.tokenEdit("+res[i].id+");",
-						fe_icon: res[i].enabled ? "check" : "x"
-					},
-					{
-						text_center: true,
-						/*menu: [
-							{
-								action: "javascript:spacecore.currentModule.tokenEdit("+res[i].id+");",
-								fe_icon: "command",
-								label: "Edit"
-							},
-							{
-								action: "javascript:spacecore.currentModule.tokenRemove("+res[i].id+");",
-								fe_icon: "trash-2",
-								label: "Remove"
-							}
-						]*/
-						elements: [{
-							"type":"button",
-							"fe_icon": "user",
-							"action":  "javascript:spacecore.currentModule.showDetails("+res[i].person.id+");",
-							"class": "secondary"
-						}]
-					}
-				]
-			});
-		}
+		var table = { id: "table_tokens", body: [], header: [
+			{ fe_icon: "key", width: 1, text_center: true },
+			{ text: "Identifier" },
+			{ text: "Owner" },
+			{ text: "Type" },
+			{ text: "Enabled" },
+			{ width: 1 }
+		]};
+		
+		for (var i in res) table.body.push({ id: "person-token-"+res[i].id, fields: [
+			{ text: res[i].id, text_center: true },
+			{ text: res[i].public },
+			{ text: res[i].owner },
+			{ text: res[i].type.name },
+			{ fe_icon: res[i].enabled ? "check" : "x" },
+			{ text_center: true, elements: [ spacecore.ui.elemBtnSecondary("javascript:spacecore.currentModule.showDetails("+res[i].person.id+");", "", "btnUser", "user") ] }
+		]});
 		return table;
 	}
 	
-	searchTokens(elem='persons-tokens-search') {
-		this.state.tokensSearchText = document.getElementById(elem).value;
-
-		console.log("SearchTokens", this.state.tokensSearchText, this.state.tokensLastData);
-
-		var filtered = this.app.filter(
-			this.state.tokensLastData,
-			this.state.tokensSearchText,
-			['public', 'owner', 'enabled'],
-			false
-		);
-
-		var content = this.ui.renderTemplate('table', this._renderTokens(filtered));
-		document.getElementById('table_tokens').innerHTML = content;
-		this.ui.enableSorting(['table_tokens']);
-	}
-	
-	/*tokenAdd() {		
-		var typeOptions = [];
-		for (var i in this.tokenTypes) typeOptions.push({id: i, value: this.tokenTypes[i].name});
-		
-		//var typeAction = function() { document.getElementById("privateKeyField") };
-		
-		this.app.showPage({
-			header: {
-				title: "Persons: tokens",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Add token"
-							},
-							form: {
-								id: "addtoken-form",
-								elements: [
-									{
-										type: "select-buttons",
-										name: "type",
-										label: "Type",
-										options: typeOptions
-									},
-									{
-										type: "text",
-										name: "public",
-										label: "Public key"
-									},
-									{
-										type: "text",
-										name: "public",
-										label: "Private key",
-										id: "privateKeyField"
-									},
-									{
-										type: "checkbox",
-										name: "enabled",
-										label: "Enabled",
-										checked: true
-									}
-								],
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.manageTokens();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('addtoken-form','person/token/create')",
-											fe_icon: "save",
-											value: "Add token",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
-	}*/
-	
-	/*tokenEdit(id) {
-		this.app.executeCommand('person/token/list', {id: id}, this._tokenEditHandler.bind(this));
-	}
-	
-	_tokenEditHandler(res, err) {
-		alert("Not implemented");
-		this.manageTokens();
-	}
-	
-	tokenRemove(id) {
-		this.app.executeCommand('person/token/list', {id: id}, this._tokenRemoveHandler.bind(this));
-	}
-	
-	_tokenRemoveHandler(res, err) {
-		alert("Not implemented");
-		this.manageTokens();
-	}*/
-
 	/* Groups */
-
-	manageGroups() {
-		this.app.executeCommand('person/group/list', {}, this._handleManageGroups.bind(this));
-	}
 
 	_handleManageGroups(res, err) {
 		if (err !== null) return this.genericErrorHandler(err);
-		this._handleGroupsRefresh(res, err); //Update cache
-		this.state.groupsLastData = res;
-		var groupsTable = this._renderGroups(this.app.filter(res, this.state.groupsSearchText, ['name', 'description', 'addToNew'], false));
+		spacecore.history.push(this.show.bind(this, false));
+		this.state.groups.lastData = res;
+		var groupsTable = this._renderGroups(spacecore.filter(res, this.state.groups.searchText, ['name', 'description', 'addToNew'], false));
 
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Persons: groups",
 				options: [
-						{
-							type:"text",
-							id: "persons-groups-search",
-							fe_icon: "search",
-							placeholder: "Search groups...",
-							action:  "javascript:spacecore.currentModule.searchGroups();",
-							value: this.state.groupsSearchText
-						},
-						{
-							"type":"button",
-							"fe_icon": "chevron-left",
-							"action":  "javascript:spacecore.currentModule.show();",
-							"value": "Back",
-							"class": "secondary"
-						}
+						spacecore.ui.elemSearchBox("javascript:spacecore.search('groups');", "Search groups...", "persons-groups-search", "search", this.state.groups.searchText),
+						spacecore.ui.elemBtnSecondary("javascript:spacecore.currentModule.show();", "Back", "backBtn", "chevron-left")
 					]
 			},
-			body: [
-				[
-					[
+			body: [[[{
+				type: "card",
+				header: {
+					title: "Groups",
+					options: [
 						{
-							type: "card",
-							header: {
-								title: "Groups",
-								options: [
-									{
-										type: "button",
-										action: "javascript:spacecore.currentModule.groupAdd();",
-										fe_icon: "plus",
-										small: true
-									}
-								]
-							},
-							table: groupsTable
+							type: "button",
+							action: "javascript:spacecore.currentModule.groupAdd();",
+							fe_icon: "plus",
+							small: true
 						}
 					]
-				]
-			]
-		}, ['table_groups']);
+				},
+				table: groupsTable
+			}]]]}, ['table_groups']);
 
-		if (this.state.lastSelectedGroup !== null) window.location.href = "#person-group-"+this.state.lastSelectedGroup.id;
+		if (this.state.groups.lastSelected !== null) window.location.href = "#person-group-"+this.state.groups.lastSelected.id;
 	}
 
 	_renderGroups(res) {
-		var table = {
-			id: "table_groups",
-			header: [
-				{
-					fe_icon: "user",
-					width: 1,
-					text_center: true
-				},
-				{
-					text: "Name"
-				},
-				{
-					text: "Description"
-				},
-				{
-					text: "Default"
-				},
-				{
-					width: 1
-				}
-			],
-			body: []
-		};
+		var table = { id: "table_groups", body: [], header: [
+			{ fe_icon: "user", width: 1, text_center: true },
+			{ text: "Name" },
+			{ text: "Description" },
+			{ text: "Default" },
+			{ width: 1 }
+		]};
 
-		for (var i in res) {
-			table.body.push({
-				id: "person-group-"+res[i].id,
-				fields: [
-					{
-						action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-						text: res[i].id,
-						text_center: true
-					},
-					{
-						action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-						text: res[i].name
-					},
-					{
-						action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-						text: res[i].description
-					},
-					{
-						action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-						fe_icon: res[i].addToNew ? "check" : "x"
-					},
-					{
-						text_center: true,
-						menu: [
-							{
-								action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-								fe_icon: "command",
-								label: "Edit"
-							},
-							{
-								action: "javascript:spacecore.currentModule.groupRemove("+res[i].id+");",
-								fe_icon: "trash-2",
-								label: "Remove"
-							}
-						]
-					}
-				]
-			});
-		}
+		for (var i in res) table.body.push({ id: "person-group-"+res[i].id, fields: [
+			{ action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");", text: res[i].id, text_center: true },
+			{ action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");", text: res[i].name },
+			{ action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");", text: res[i].description },
+			{ action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");", fe_icon: res[i].addToNew ? "check" : "x" },
+			{ text_center: true, menu: [
+				{ action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");", fe_icon: "command", label: "Edit" },
+				{ action: "javascript:spacecore.currentModule.groupRemove("+res[i].id+");", fe_icon: "trash-2", label: "Remove" }
+			]}
+		]});
 		return table;
 	}
 
-	searchGroups(elem='persons-groups-search') {
-		this.state.groupsSearchText = document.getElementById(elem).value;
-
-		console.log("SearchGroups", this.state.groupsSearchText, this.state.groupsLastData);
-
-		var filtered = this.app.filter(
-			this.state.groupsLastData,
-			this.state.groupsSearchText,
-			['name', 'description', 'addToNew'],
-			false
-		);
-
-		var content = this.ui.renderTemplate('table', this._renderGroups(filtered));
-		document.getElementById('table_groups').innerHTML = content;
-		this.ui.enableSorting(['table_groups']);
-	}
-
-	_handleGroupsRefresh(res, err) {
-		if (err) return console.log("Persons _handleGroupsRefresh exception", err);
-		this.groups = res;
-	}
-	
-	_handleTokenTypesRefresh(res, err) {
-		if (err) return console.log("Persons _handleTokenTypesRefresh exception", err);
-		this.tokenTypes = res;
-	}
-
-	_getGroupNameById(id) {
-		for (var i in this.groups) {
-			if (this.groups[i].id === id) return this.groups[i].name;
-		}
-		return "";
-	}
-
-	groupAdd(name="", description="", addToNew="") {
-		this.app.showPage({
-			header: {
-				title: "Persons: groups",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Add group"
-							},
-							form: {
-								id: "addgroup-form",
-								elements: [
-									{
-										type: "text",
-										name: "name",
-										label: "Name",
-										value: name,
-									},
-									{
-										type: "text",
-										name: "description",
-										label: "Description",
-										value: description
-									},
-									{
-										type: "checkbox",
-										name: "default",
-										label: "Default",
-										checked: addToNew
-									}
-								],
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.manageGroups();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('addgroup-form','person/group/create')",
-											fe_icon: "save",
-											value: "Add group",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
+	groupAdd() {
+		return this._groupForm("person/group/create", "Create group", "Create", [
+			{ type: "text",     name: "name",        label: "Name"        },
+			{ type: "text",     name: "description", label: "Description" },
+			{ type: "checkbox", name: "default",     label: "Default"     },
+		]);
 	}
 
 	groupRemove(id) {
-		this.app.executeCommand('person/group/list', {id: id}, this._groupRemoveHandler.bind(this));
+		spacecore.executeCommand('person/group/list', {id: id}, this._groupRemoveHandler.bind(this));
 	}
 
 	_groupRemoveHandler(res, err) {
-		if (err !== null) {
-			return this.genericErrorHandler(err);
-		}
-
-		if (res.length !== 1) {
-			return this.genericErrorHandler({message: "Group not found!"});
-		}
+		if (err !== null) return this.genericErrorHandler(err);
+		if (res.length !== 1) return this.genericErrorHandler({message: "Group not found!"});
 
 		var data = res[0];
 
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Persons: groups",
 				options: []
@@ -616,7 +325,7 @@ class Persons {
 								footer: [
 										{
 											type: "button",
-											action: "javascript:spacecore.currentModule.manageGroups();",
+											action: "javascript:spacecore.currentModule.show(false, 'groups');",
 											fe_icon: "x",
 											value: "Cancel",
 											class: "secondary"
@@ -638,7 +347,7 @@ class Persons {
 	}
 
 	groupEdit(id) {
-		this.app.executeCommand('person/group/list', {id: id}, this._groupEditHandler.bind(this));
+		spacecore.executeCommand('person/group/list', {id: id}, this._groupEditHandler.bind(this));
 	}
 
 	_groupEditHandler(res, err) {
@@ -652,7 +361,7 @@ class Persons {
 
 		var data = res[0];
 
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Persons: groups",
 				options: []
@@ -698,7 +407,7 @@ class Persons {
 								footer: [
 										{
 											type: "button",
-											action: "javascript:spacecore.currentModule.manageGroups();",
+											action: "javascript:spacecore.currentModule.show(false, 'groups');",
 											fe_icon: "x",
 											value: "Cancel",
 											class: "secondary"
@@ -720,10 +429,10 @@ class Persons {
 	}
 	
 	_removeItemFromPersonForm(typeName, typeFieldName, itemName, itemId, endpoint) {
-		if (typeof this.state.lastSelected !== "object") return console.log("removeItemFromPersonForm called without a person selected!", this.state.lastSelected);
-		var id = this.state.lastSelected.id;
+		if (typeof this.state.persons.lastSelected !== "object") return console.log("removeItemFromPersonForm called without a person selected!", this.state.persons.lastSelected);
+		var id = this.state.persons.lastSelected.id;
 
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Persons",
 				options: []
@@ -735,7 +444,7 @@ class Persons {
 							type: "card",
 							width: ['lg-8', 'md-12'],
 							header: {
-								title: "Remove "+typeName+" from "+this.getPersonName(this.state.lastSelected)
+								title: "Remove "+typeName+" from "+this.getPersonName(this.state.persons.lastSelected)
 							},
 							form: {
 								id: "removeitemfromperson-form",
@@ -755,7 +464,7 @@ class Persons {
 									{
 										type: "static",
 										label: "Are you sure?",
-										value: "You are about to remove "+typeName+" "+itemName+" from "+this.getPersonName(this.state.lastSelected)+"."
+										value: "You are about to remove "+typeName+" "+itemName+" from "+this.getPersonName(this.state.persons.lastSelected)+"."
 									}
 								],
 								footer: [
@@ -783,21 +492,33 @@ class Persons {
 	}
 
 	/* Persons */
+	
+	_getGroupByIdFromLastSelected(id) {
+		var groups = spacecore.currentModule.state.persons.lastSelected.groups;
+		for (var i in groups) if (groups[i].id===id) return groups[i];
+		return null;
+	}
 
 	removeGroupFromPerson(group) {
-		if (typeof this.state.lastSelected !== "object") return console.log("removeGroupFromPerson called without a person selected!", this.state.lastSelected);
-		var id = this.state.lastSelected.id;
+		//var record = this._getGroupByIdFromLastSelected(id);
+		//var desc = "'"+record.street+" "+record.housenumber+", "+record.postalcode+" "+record.city+"'";
+		//return this._removeItemFromPersonForm("address", "id", desc, id, "person/removeAddress");
+		
+		//Old
+		
+		if (typeof this.state.persons.lastSelected !== "object") return console.log("removeGroupFromPerson called without a person selected!", this.state.persons.lastSelected);
+		var id = this.state.persons.lastSelected.id;
 
 		var groupItems = [];
-		for (var i in this.groups) {
+		for (var i in this.state.groups.types) {
 			var item = {
-				value: this.groups[i].id,
-				label: this.groups[i].name
+				value: this.state.groups.types[i].id,
+				label: this.state.groups.types[i].name
 			};
 			groupItems.push(item);
 		}
 
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Persons",
 				options: []
@@ -829,7 +550,7 @@ class Persons {
 									{
 										type: "static",
 										label: "Are you sure?",
-										value: "You are about to remove '"+this.getPersonName(this.state.lastSelected)+"' from group '"+this._getGroupNameById(group)+"'."
+										value: "You are about to remove '"+this.getPersonName(this.state.persons.lastSelected)+"' from group '"+this._getGroupNameById(group)+"'."
 									}
 								],
 								footer: [
@@ -858,61 +579,20 @@ class Persons {
 
 	addGroupToPerson(id) {
 		var groupItems = [];
-		for (var i in this.groups) {
+		for (var i in this.state.groups.types) {
 			var item = {
-				value: this.groups[i].id,
-				label: this.groups[i].name
+				value: this.state.groups.types[i].id,
+				label: this.state.groups.types[i].name
 			};
 			groupItems.push(item);
 		}
 
 		this._addItemToPersonForm(id, "person/addToGroup", "Add group to "+this.getCurrentPersonName(), "Add group", [
-			{ type: "radio", name: "group", label: "Group", selected: this.groups[0].id, options: groupItems, convertToNumber: true }
+			{ type: "radio", name: "group", label: "Group", selected: this.state.groups.types[0].id, options: groupItems, convertToNumber: true }
 		]);
 	}
 	
-	_addItemToPersonForm(id, method, title, btnText, formElements) {
-		var items = [];
-		if (id>0) {
-			items.push({ type: "hidden", name: "person", value: id, convertToNumber: true });
-		}
-		items = items.concat(formElements);
-		this.app.showPage({ header: { title: "Persons", options: [] },
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: title
-							},
-							form: {
-								id: "additemtoperson-form",
-								elements: items,
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.showDetails("+this.getCurrentPersonId()+");",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('additemtoperson-form','"+method+"')",
-											fe_icon: "save",
-											value: btnText,
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
-	}
+
 	
 	addAddressToPerson(id) {
 		this._addItemToPersonForm(id, "person/addAddress", "Add address to "+this.getCurrentPersonName(), "Add address", [
@@ -924,7 +604,7 @@ class Persons {
 	}
 		
 	_getAddressByIdFromLastSelected(id) {
-		var addresses = spacecore.currentModule.state.lastSelected.addresses;
+		var addresses = spacecore.currentModule.state.persons.lastSelected.addresses;
 		for (var i in addresses) if (addresses[i].id===id) return addresses[i];
 		return null;
 	}
@@ -953,7 +633,7 @@ class Persons {
 	}
 	
 	_getEmailByIdFromLastSelected(id) {
-		var emails = spacecore.currentModule.state.lastSelected.email;
+		var emails = spacecore.currentModule.state.persons.lastSelected.email;
 		for (var i in emails) if (emails[i].id===id) return emails[i];
 		return null;
 	}
@@ -973,13 +653,13 @@ class Persons {
 	}
 	
 	addPhoneToPerson(id) {
-		this._addItemToPersonForm(id, "person/addPhone", "Add phonenumber to "+this.getCurrentPersonName(), "Add phonenumber", [
-			{ type: "text", name: "phonenumber", label: "Phonenumber" }
+		this._addItemToPersonForm(id, "person/addPhone", "Add phone number to "+this.getCurrentPersonName(), "Add phone number", [
+			{ type: "text", name: "phonenumber", label: "Phone number" }
 		]);
 	}
 	
 	_getPhoneByIdFromLastSelected(id) {
-		var phone = spacecore.currentModule.state.lastSelected.phone;
+		var phone = spacecore.currentModule.state.persons.lastSelected.phone;
 		for (var i in phone) if (phone[i].id===id) return phone[i];
 		return null;
 	}
@@ -992,9 +672,9 @@ class Persons {
 	
 	editPhoneOfPerson(id) {
 		var record = this._getPhoneByIdFromLastSelected(id);
-		this._addItemToPersonForm(-1, "person/editPhone", "Edit phonenumber of "+this.getCurrentPersonName(), "Edit phonenumber", [
+		this._addItemToPersonForm(-1, "person/editPhone", "Edit phone number of "+this.getCurrentPersonName(), "Edit phone number", [
 			{ type: "hidden", name: "id",                                value: id,                 convertToNumber: true },
-			{ type: "text",   name: "phonenumber", label: "Phonenumber", value: record.phonenumber                        }
+			{ type: "text",   name: "phonenumber", label: "Phone number", value: record.phonenumber                        }
 		]);
 	}
 	
@@ -1006,7 +686,7 @@ class Persons {
 	}
 	
 	_getBankaccountByIdFromLastSelected(id) {
-		var bankaccounts = spacecore.currentModule.state.lastSelected.bankaccounts;
+		var bankaccounts = spacecore.currentModule.state.persons.lastSelected.bankaccounts;
 		for (var i in bankaccounts) if (bankaccounts[i].id===id) return bankaccounts[i];
 		return null;
 	}
@@ -1028,17 +708,17 @@ class Persons {
 	
 	addTokenToPerson(id) {
 		var typeOptions = [];
-		for (var i in this.tokenTypes) typeOptions.push({value: i, label: this.tokenTypes[i].name});
+		for (var i in this.state.tokens.types) typeOptions.push({value: i, label: this.state.tokens.types[i].name});
 		this._addItemToPersonForm(id, "person/addToken", "Add token to "+this.getCurrentPersonName(), "Add token", [
 			{ type: "select",   name: "type",    label: "Type",                   options: typeOptions,  action: "spacecore.currentModule.tokenTypeAction()", id: "typeField", convertToNumber: true },
 			{ type: "text",     name: "public",  label: "Public key / identifier"                                                                                                                    },
-			{ type: "text",     name: "private", label: "Private key / secret",   id: "privateKeyField", disabled: (!this.tokenTypes[0].requirePrivate)                                              },
+			{ type: "text",     name: "private", label: "Private key / secret",   id: "privateKeyField", disabled: (!this.state.tokens.types[0].requirePrivate)                                              },
 			{ type: "checkbox", name: "enabled", label: "Enable"                                                                                                                                     }
 		]);
 	}
 	
 	_getTokenByIdFromLastSelected(id) {
-		var tokens = spacecore.currentModule.state.lastSelected.tokens;
+		var tokens = spacecore.currentModule.state.persons.lastSelected.tokens;
 		for (var i in tokens) if (tokens[i].id===id) return tokens[i];
 		return null;
 	}
@@ -1051,104 +731,26 @@ class Persons {
 	
 	tokenTypeAction() {
 		var currentType = parseInt(document.getElementById("typeField").value);
-		document.getElementById("privateKeyField").disabled = !this.tokenTypes[currentType].requirePrivate;
+		document.getElementById("privateKeyField").disabled = !this.state.tokens.types[currentType].requirePrivate;
 	};
 	
 	editTokenOfPerson(id) {
 		var record = this._getTokenByIdFromLastSelected(id);
 		var typeOptions = [];
-		for (var i in this.tokenTypes) {
-			typeOptions.push({value: Number(i), label: this.tokenTypes[i].name});
-		}
-		console.log("ENABLED", record.enabled, typeof record.enabled);
+		for (var i in this.state.tokens.types) typeOptions.push({value: Number(i), label: this.state.tokens.types[i].name});
 		this._addItemToPersonForm(-1, "person/editToken", "Edit token of "+this.getCurrentPersonName(), "Edit token", [
 			{ type: "hidden",   name: "id",                                                                                                                                                           value: id,            convertToNumber: true },
 			{ type: "select",   name: "type",    label: "Type",                   options: typeOptions,  action: "spacecore.currentModule.tokenTypeAction()", id: "typeField", convertToNumber: true, value: record.type.id                       },
 			{ type: "text",     name: "public",  label: "Public key / identifier"                                                                                                                   , value: record.public                        },
-			{ type: "text",     name: "private", label: "Private key / secret",   id: "privateKeyField", disabled: (!this.tokenTypes[0].requirePrivate)                                             , value: record.private                       },
+			{ type: "text",     name: "private", label: "Private key / secret",   id: "privateKeyField", disabled: (!this.state.tokens.types[0].requirePrivate)                                     , value: record.private                       },
 			{ type: "checkbox", name: "enabled", label: "Enable"                                                                                                                                    , checked: Boolean(record.enabled)            }
 		]);
-	}
-
-	/* Form handling */
-
-	submitForm(form, method) {
-		spacecore.submitForm(this.submitFormHandler.bind(this, form, method), form, method);
-	}
-
-	submitFormHandler(form, method, res, err) {
-		var action = "show()";
-		var actionFunc = spacecore.currentModule.show;
-		var skip = false;
-
-		if (form==="addperson-form") {
-			if (err === null) return this.showDetails(res);
-			action = "showDetails("+res+")";
-		}
-
-		if (form==="editperson-form") {
-			if (err === null) return this.showDetails(res);
-			action = "show()";
-		}
-
-		if (form==="removeperson-form") {
-			if (err === null) return this.show();
-			action = "show()";
-		}
-
-		if (
-			(form==="addgrouptoperson-form") ||
-			(form==="removegroupfromperson-form") ||
-			(form==="additemtoperson-form") ||
-			(form==="removeitemfromperson-form")
-		) {
-			if (err === null) return this.showDetails(); //Skip the result if succesfull
-			action = "showDetails()";
-
-		}
-
-		if ((form==="addgroup-form") || (form==="editgroup-form") || (form=="removegroup-form")) {
-			if (err === null) return this.manageGroups(); //Skip the result if succesfull
-			action = "manageGroups()";
-		}
-
-		if (err) {
-			this.app.showMessage2(
-				[
-					err.message
-				],
-				"Persons",
-				"Error",
-				[
-					{
-						type: "button",
-						value: "OK",
-						action: "javascript:spacecore.currentModule."+action+";"
-					}
-				]
-			);
-		} else {
-			this.app.showMessage2(
-				[
-					res
-				],
-				"Persons",
-				"Result",
-				[
-					{
-						type: "button",
-						value: "OK",
-						action: "javascript:spacecore.currentModule."+action+";"
-					}
-				]
-			);
-		}
 	}
 
 	/* Persons */
 
 	add(nick_name="", first_name="", last_name="") {
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Persons",
 				options: []
@@ -1166,10 +768,7 @@ class Persons {
 								id: "addperson-form",
 								elements: [
 									{
-										type: "text",
-										name: "nick_name",
-										label: "Nickname",
-										value: nick_name,
+										type: "text", name: "nick_name", label: "Nickname", value: nick_name,
 									},
 									{
 										type: "text",
@@ -1220,15 +819,15 @@ class Persons {
 		if (id !== null) {
 			return this.getDetails(id, (res, err) => {
 				if (err || (res.length < 1)) return console.log("Error while fetching details for user to be removed.", err,res);
-				this.state.lastSelected = res[0];
+				this.state.persons.lastSelected = res[0];
 				this.remove();
 			});
 		}
 
-		if (typeof this.state.lastSelected !== "object") return console.log("remove called without a person selected!", this.state.lastSelected);
-		var data = this.state.lastSelected;
+		if (typeof this.state.persons.lastSelected !== "object") return console.log("remove called without a person selected!", this.state.persons.lastSelected);
+		var data = this.state.persons.lastSelected;
 
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Persons",
 				options: []
@@ -1254,7 +853,7 @@ class Persons {
 									{
 										type: "static",
 										label: "Are you sure?",
-										value: "You are about to remove person '"+this.getPersonName(this.state.lastSelected)+"' from the system."
+										value: "You are about to remove person '"+this.getPersonName(this.state.persons.lastSelected)+"' from the system."
 									}
 								],
 								footer: [
@@ -1279,21 +878,6 @@ class Persons {
 				]
 			]
 		});
-	}
-
-	search(elem='persons-search') {
-		this.state.searchText = document.getElementById(elem).value;
-
-		var filtered = this.app.filter(
-			this.state.lastData,
-			this.state.searchText,
-			['nick_name', 'first_name', 'last_name'],
-			false
-		);
-
-		var content = this.ui.renderTemplate('table', this._renderPersons(filtered));
-		document.getElementById('table_persons').innerHTML = content;
-		this.ui.enableSorting(['table_persons']);
 	}
 
 	_renderPersons(res) {
@@ -1386,7 +970,7 @@ class Persons {
 			console.log("Invalid argument supplied to error handler", err);
 		}
 
-		this.app.showMessage2(
+		spacecore.showMessage2(
 			message,
 			"Persons",
 			"Error",
@@ -1405,32 +989,32 @@ class Persons {
 			return this.genericErrorHandler(err);
 		}
 
-		this.state.lastData = res;
+		this.state.persons.lastData = res;
 
 		var personsTable = this._renderPersons(
-			this.app.filter(
+			spacecore.filter(
 				res,
-				this.state.searchText,
+				this.state.persons.searchText,
 				['nick_name', 'first_name', 'last_name'],
 				false
 			)
 		);
 
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Persons",
 				options: [
 						{
 							"type":"button",
 							"fe_icon": "key",
-							"action":  "javascript:spacecore.currentModule.manageTokens();",
+							"action":  "javascript:spacecore.currentModule.show(false, 'tokens');",
 							"value": "Manage tokens",
 							"class": "secondary"
 						},
 						{
 							"type":"button",
 							"fe_icon": "folder",
-							"action":  "javascript:spacecore.currentModule.manageGroups();",
+							"action":  "javascript:spacecore.currentModule.show(false, 'groups');",
 							"value": "Manage groups",
 							"class": "secondary"
 						},
@@ -1439,8 +1023,8 @@ class Persons {
 							id: "persons-search",
 							fe_icon: "search",
 							placeholder: "Search persons...",
-							action:  "javascript:spacecore.currentModule.search();",
-							value: this.state.searchText
+							action:  "javascript:spacecore.search('persons');",
+							value: this.state.persons.searchText
 						}
 					]
 			},
@@ -1467,7 +1051,7 @@ class Persons {
 			]
 		}, ['table_persons']);
 		
-		if (this.state.lastSelected !== null) window.location.href = "#person-"+this.state.lastSelected.id;
+		if (this.state.persons.lastSelected !== null) window.location.href = "#person-"+this.state.persons.lastSelected.id;
 	}
 
 	/* Person details */
@@ -1476,19 +1060,19 @@ class Persons {
 		if (id !== null) {
 			return this.getDetails(id, (res, err) => {
 				if (err || (res.length < 1)) return console.log("Error while fetching details for user to be edited.", err,res);
-				this.state.lastSelected = res[0];
+				this.state.persons.lastSelected = res[0];
 				this.edit();
 			});
 		}
 
 
-		if (typeof this.state.lastSelected !== "object") {
-			return console.log("edit called without a person selected!", this.state.lastSelected);
+		if (typeof this.state.persons.lastSelected !== "object") {
+			return console.log("edit called without a person selected!", this.state.persons.lastSelected);
 		}
 
-		var data = this.state.lastSelected;
+		var data = this.state.persons.lastSelected;
 
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Person details",
 				options: []
@@ -1565,12 +1149,12 @@ class Persons {
 	}
 
 	getDetails(id, target) {
-		return this.app.executeCommand('person/list',{id: id},target.bind(this));
+		return spacecore.executeCommand('person/list',{id: id},target.bind(this));
 	}
 
 	showDetails(id=null) {
-		if ((id === null) && (typeof this.state.lastSelected === "object")) {
-			id = this.state.lastSelected.id;
+		if ((id === null) && (typeof this.state.persons.lastSelected === "object")) {
+			id = this.state.persons.lastSelected.id;
 		}
 
 		if (id === null) {
@@ -1593,12 +1177,12 @@ class Persons {
 
 		res = res[0]; //First result is the only result
 
-		this.state.lastSelected = res;
-		this.app.executeCommand('transaction/list/query', [{person_id: res.id}], this._handleShowDetails2.bind(this, res, err));
+		this.state.persons.lastSelected = res;
+		spacecore.executeCommand('invoice/list/query', [{person_id: res.id}], this._handleShowDetails2.bind(this, res, err));
 	}
 
 	_handleShowDetails2(res, err, transactionsRes, transactionsErr) {
-		console.log("_handleShowDetails2");
+		//console.log("_handleShowDetails2");
 		if (err !== null) {
 			console.log("handlePersonDetails error ",err);
 			this.genericErrorHandler(err);
@@ -1611,9 +1195,9 @@ class Persons {
 			return;
 		}
 
-		this.app.history.push(this.show.bind(this, false));
+		spacecore.history.push(this.show.bind(this, false));
 
-		console.log("Person", res);
+		//console.log("Person", res);
 
 		var table_groups = {
 			id: "table_person_groups",
@@ -1650,7 +1234,9 @@ class Persons {
 		var table_transactions = {
 			id: "table_person_transactions",
 			header: [
-				"ID",
+				"Invoice #",
+				"Status",
+				"Source",
 				"Details",
 				"Total",
 				"Timestamp",
@@ -1682,11 +1268,21 @@ class Persons {
 			                 timestamp.getFullYear() + " " +
 			                 ((timestamp.getHours()<10)?"0":"")+timestamp.getHours() + ":" +
 			                 ((timestamp.getMinutes()<10)?"0":"")+timestamp.getMinutes();
+			var code = transactionsRes[i].code;
+			if (code === null) {
+				code = ""; //Not an invoice
+			}
 			table_transactions.body.push({
 				id: "transaction-"+transactionsRes[i].id,
 				fields: [
 					{
-						text: transactionsRes[i].id
+						text: code
+					},
+					{
+						text: ""
+					},
+					{
+						text: ""
 					},
 					{
 						text: description
@@ -1698,7 +1294,13 @@ class Persons {
 						text: timestring
 					},
 					{
-						text: ""
+						elements: [
+							{
+								type: "button",
+								action: "javascript:spacecore.currentModule.invoicePdf("+transactionsRes[i].id+");",
+								fe_icon: "download"
+							}
+						]
 					}
 				]
 			});
@@ -1797,7 +1399,7 @@ class Persons {
 		var table_phone = {
 			id: "table_person_phone",
 			header: [
-				"Phonenumber",
+				"Phone number",
 				{
 					width: 1
 				}
@@ -1818,12 +1420,12 @@ class Persons {
 							{
 								action: "javascript:spacecore.currentModule.editPhoneOfPerson("+res.phone[i].id+");",
 								fe_icon: "edit",
-								label: "Edit phonenumber"
+								label: "Edit phone number"
 							},
 							{
 								action: "javascript:spacecore.currentModule.removePhoneFromPerson("+res.phone[i].id+");",
 								fe_icon: "trash-2",
-								label: "Remove phonenumber"
+								label: "Remove phone number"
 							},
 						]
 					}
@@ -1913,7 +1515,7 @@ class Persons {
 			});
 		}
 
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Person details",
 				options: [
@@ -2002,7 +1604,7 @@ class Persons {
 						{
 							type: "card",
 							header: {
-								title: "Phonenumbers",
+								title: "Phone numbers",
 								options: [
 									{
 										type: "button",
@@ -2052,7 +1654,7 @@ class Persons {
 						{
 							type: "card",
 							header: {
-								title: "Transactions",
+								title: "Invoices & other transactions",
 								options: []
 							},
 							table: table_transactions
@@ -2061,6 +1663,21 @@ class Persons {
 				}]
 			]
 		}, ['table_person_addresses', 'table_person_bankaccounts', 'table_person_email', 'table_person_groups', 'table_person_phone', 'table_person_tokens', 'table_person_transactions']);
-		this.app.jumpToTop();
+		spacecore.jumpToTop();
+	}
+	
+	_invoicePdfHandler(res, err) {
+		if (err !== null) return this.genericErrorHandler(err);
+		var element = document.createElement('a');
+		element.setAttribute('href', 'data:'+res.mime+';base64,'+res.data);
+		element.setAttribute('download', res.name);
+		element.style.display = 'none';
+		document.body.appendChild(element);
+		element.click();
+		document.body.removeChild(element);
+	}
+	
+	invoicePdf(id) {
+		spacecore.executeCommand('invoice/pdf', id, this._invoicePdfHandler.bind(this));
 	}
 };

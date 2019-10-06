@@ -154,7 +154,7 @@ class SpacecoreUI {
 											 + '{{#if (list this)}}{{#each this}}{{>bodyElement}}{{/each}}{{else}}{{#if elements}}{{#each elements}}{{>bodyElement}}{{/each}}{{else}}{{>bodyElement}}{{/if}}{{/if}}'
 											 + '</div>');
 		
-		console.log("[UI] Registering templates...");
+		//console.log("[UI] Registering templates...");
 		
 		this.templates['single'] = Handlebars.compile('<div class="page-single"><div class="container"><div class="row">'
 													+ '<div class="col col-login mx-auto"><div class="text-center mb-6">'
@@ -203,6 +203,41 @@ class SpacecoreUI {
 		if (typeof this.templates[template] === 'undefined') return null;
 		return this.templates[template](data);
 	}
+	
+	elemBtnSecondary(actionString, caption="Cancel", id="", icon="x", value="") {
+		return {
+			type: "button",
+			action: actionString,
+			fe_icon: icon,
+			value: caption,
+			class: "secondary",
+			id: id
+		}
+	}
+	
+	elemBtnPrimary(actionString, caption="Save", id="", icon="save", value="") {
+		return {
+			type: "button",
+			action: actionString,
+			fe_icon: icon,
+			value: caption,
+			ml: "auto",
+			id: id
+		}
+	}
+	
+	elemSearchBox(actionString, caption="Search...", id="searchBox", icon="search", value="") {
+		return {
+			type:"text",
+			id: id,
+			fe_icon: icon,
+			placeholder: caption,
+			action:  actionString,
+			value: value
+		}
+	}
+	
+	
 }
 
 

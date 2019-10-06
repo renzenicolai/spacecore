@@ -145,6 +145,9 @@ class Files {
 				},
 				{
 					width: 1
+				},
+				{
+					width: 1
 				}
 			],
 			body: []
@@ -164,17 +167,21 @@ class Files {
 						text: res[i].mime
 					},
 					{
-						text_center: true,
-						menu: [
+						elements: [
 							{
+								type: "button",
 								action: "javascript:spacecore.currentModule.fileGet("+res[i].id+");",
-								fe_icon: "info",
-								label: "Download"
-							},
+								fe_icon: "download"
+							}
+						]
+					},
+					{
+						elements: [
 							{
+								type: "button",
 								action: "javascript:spacecore.currentModule.fileRemove("+res[i].id+");",
 								fe_icon: "trash-2",
-								label: "Remove"
+								class: "secondary"
 							}
 						]
 					}

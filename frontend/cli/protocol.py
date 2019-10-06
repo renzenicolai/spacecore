@@ -35,9 +35,7 @@ class RpcClient:
 		if self._session != None:
 			data["token"] = self._session
 		request = requests.post(self._uri, json=data)
-		print("JSON LOADS")
 		data = json.loads(request.text)
-		print("OK")
 		if (not 'id' in data) or (data['id']!=id):
 			print("DEBUG",data)
 			raise ApiError("API returned incorrect id!")
@@ -102,7 +100,7 @@ class RpcClient:
 	# PRODUCTS MODULE
 
 	def productList(self, query):
-		return self._request("product/list", query)
+		return self._request("product/list/noimg", query)
 
 	def productFindByName(self, name):
 		return self._request("product/find", name)
@@ -122,9 +120,9 @@ class RpcClient:
 	def getLocations(self, query=None):
 		return self._request("product/location/list", query)
 	
-	# TRANSACTIONS MODULE
+	# INVOICE MODULE
 	
-	def transactions(self, person=None, after=None, before=None):
+	def invoices(self, person=None, after=None, before=None):
 		query = {}
 		if person != None:
 			query['person_id'] = person
@@ -134,26 +132,26 @@ class RpcClient:
 			query['timestamp'] = {">=": after}
 		elif before != None:
 			query['timestamp'] = {"<=": before}
-		return self._request("transaction/list", query)
+		return self._request("invoice/list", query)
 	
-	def lastTransactions(self, amount):
-		return self._request("transaction/list/last", amount)
+	def lastInvoice(self, amount):
+		return self._request("invoice/list/last", amount)
 
-	def lastTransactionsOfPerson(self, person, amount):
-		return self._request("transaction/list/last", {"query": {'person_id': person}, "amount": amount})
+	def lastInvoicesOfPerson(self, person, amount):
+		return self._request("invoice/list/last", {"query": {'person_id': person}, "amount": amount})
 	
-	def transactionExecuteProducts(self, person, products=[]):
+	def invoiceExecuteProducts(self, person, products=[]):
 		transaction = {"person_id": person, "products": products}
 		print(transaction)
-		return self._request("transaction/execute", transaction)
+		return self._request("invoice/create", transaction)
 	
-	def transactionExecuteCustom(self, person, other=[]):
+	def invoiceExecuteCustom(self, person, other=[]):
 		# Expects other to have the following format:
 		# {"description:"...", "price":123, "amount":123}
 		# where price is the unit price and amount is the amount of units
 		transaction = {"person_id": person, "other": other}
-		return self._request("transaction/execute", transaction)
+		return self._request("invoice/create", transaction)
 	
-	def transactionExecute(self, person, products=[], other=[]):
+	def invoiceExecute(self, person, products=[], other=[]):
 		transaction = {"person_id": person, "products": products, "other": other}
-		return self._request("transaction/execute", transaction)
+		return self._request("invoice/create", transaction)

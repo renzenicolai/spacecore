@@ -60,6 +60,19 @@ class Products {
 		return Tasks.merge(tasks, products);
 	}
 	
+	async listNoImg(session, params) {
+		var products = await this._table.list(params);
+		var tasks = [
+			Tasks.create('groups',       this._getGroups.bind(this),                              products, 'id'),
+			Tasks.create('stock',        this._getStock.bind(this),                               products, 'id'),
+			Tasks.create('brand',        this._getBrand.bind(this),                               products, 'brand_id'),
+			Tasks.create('identifiers',  this._getIdentifiers.bind(this),                         products, 'id'),
+			Tasks.create('package',      this._getPackage.bind(this),                             products, 'package_id'),
+			Tasks.create('prices',       this._getPrices.bind(this),                              products, 'id')
+		];
+		return Tasks.merge(tasks, products);
+	}
+	
 	async create(session, params) {
 		if (typeof params !== 'object')                                                              throw "Expected parameter to be an object";
 		if (typeof params.name !== 'string')                                                         throw "Missing required property 'name'";
@@ -245,15 +258,55 @@ class Products {
 	}
 
 	async addIdentifierType(session, params) {
-		return "Not implemented";
+		if ((typeof params           !== 'object') ||
+			(typeof params.name      !== 'string') ||
+			(typeof params.long_name !== 'string')
+		) throw "Invalid parameters";
+		var record = this._table_identifier_type.createRecord();
+		record.setField("name", params.name);
+		record.setField("long_name", params.long_name);
+		return record.flush();
 	}
 
 	async editIdentifierType(session, params) {
-		return "Not implemented";
+		if ((typeof params           !== 'object') ||
+			(typeof params.id        !== 'number')
+		) throw "Invalid parameters";
+		var records = await this._table_identifier_type.selectRecords({id: params.id});
+		if (records.length !== 1) throw "Identifier type not found";
+		var record = records[0];
+		if (typeof params.name !== 'undefined') {
+			if (typeof params.name !== 'string') throw "Expected 'name' to be a string";
+			record.setField('name', name);
+		}
+		if (typeof params.long_name !== 'undefined') {
+			if (typeof params.long_name !== 'string') throw "Expected 'long_name' to be a string";
+			record.setField('long_name', long_name);
+		}
+		return record.flush();
 	}
 
 	async removeIdentifierType(session, params) {
-		return "Not implemented";
+		if ((typeof params           !== 'object') ||
+			(typeof params.id        !== 'number')
+		) throw "Invalid parameters";
+		var records = await this._table_identifier_type.selectRecords({id: params.id});
+		if (records.length !== 1) throw "Identifier type not found";
+		var record = records[0];
+		
+		var dbTransaction = await this._opts.database.transaction("Remove identifier type #"+record.getIndex());
+		
+		try {
+			var identifiers = await this._table_identifier.selectRecords({type_id: params.id});
+			var operations = [];
+			for (var i in identifiers) operations.push(identifiers[i].destroy(transaction));
+			await Promise.all(operations);
+			await record.destroy(dbTransaction);
+			await dbTransaction.commit();
+		} catch (e) {
+			await dbTransaction.rollback();
+		}
+		return true;
 	}
 
 	//Identifiers
@@ -278,7 +331,7 @@ class Products {
 
 		var query  = {value: barcode};
 		if (typeof type === "string") {
-			if (!(type in typesByName)) return Promise.reject("Unknown type");
+			if (!(type in typesByName)) throw "Unknown type";
 			query.type_id = typesByName[type].id;
 		} else if (typeof type === "number") {
 			query.type_id = type;
@@ -287,11 +340,38 @@ class Products {
 	}
 
 	async addIdentifier(session, params) {
-		return "Not implemented";
+		if ((typeof params            !== 'object') ||
+			(typeof params.product_id !== 'number') ||
+			(typeof params.type_id    !== 'number') ||
+			(typeof params.value      !== 'string')
+		) throw "Invalid parameters";
+		var record = this._table_identifier.createRecord();
+		record.setField("product_id", params.product_id);
+		record.setField("type_id", params.type_id);
+		record.setField("value", params.value);
+		return record.flush();
 	}
 
 	async editIdentifier(session, params) {
-		return "Not implemented";
+		if ((typeof params           !== 'object') ||
+			(typeof params.id        !== 'number')
+		) throw "Invalid parameters";
+		var records = await this._table_identifier.selectRecords({id: params.id});
+		if (records.length !== 1) throw "Identifier not found";
+		var record = records[0];
+		if (typeof params.product_id !== 'undefined') {
+			if (typeof params.product_id !== 'number') throw "Expected 'product_id' to be a number";
+			record.setField('product_id', product_id);
+		}
+		if (typeof params.type_id !== 'undefined') {
+			if (typeof params.type_id !== 'number') throw "Expected 'type_id' to be a number";
+			record.setField('type_id', type_id);
+		}
+		if (typeof params.value !== 'undefined') {
+			if (typeof params.value !== 'string') throw "Expected 'value' to be a string";
+			record.setField('value', value);
+		}
+		return record.flush();
 	}
 
 	async removeIdentifier(session, params) {
@@ -309,7 +389,7 @@ class Products {
 		} else if (params === null) {
 			query = {};
 		} else {
-			return Promise.reject("Parameter should be either string with name or number with id.");
+			throw "Parameter should be either string with name or number with id.";
 		}
 
 		var locations = await this._table_location.list(query);
@@ -322,15 +402,83 @@ class Products {
 	}
 
 	async createLocation(session, params) {
-		return "Not implemented";
+		if ((typeof params      !== 'object') ||
+			(typeof params.name !== 'string')
+		) throw "Invalid parameters";
+		
+		var sub = null;
+		if (typeof params.sub !== 'undefined') {
+			if (typeof params.sub !== 'number')  throw "Invalid parameter 'sub', expected number.";
+			sub = params.sub;
+		}
+		
+		var visible = true;
+		if (typeof params.visible !== 'undefined') {
+			if (typeof params.visible !== 'boolean')  throw "Invalid parameter 'visible', expected boolean.";
+			visible = params.visible;
+		}
+		
+		var description = "";
+		if (typeof params.description !== 'undefined') {
+			if (typeof params.description !== 'string')  throw "Invalid parameter 'description', expected string.";
+			description = params.description;
+		}
+		
+		var record = this._table_location.createRecord();
+		record.setField("name",        params.name);
+		record.setField("sub",         sub);
+		record.setField("visible",     visible);
+		record.setField("description", description);
+		return record.flush();
 	}
 
 	async editLocation(session, params) {
-		return "Not implemented";
+		if ((typeof params           !== 'object') ||
+			(typeof params.id        !== 'number')
+		) throw "Invalid parameters";
+		var records = await this._table_location.selectRecords({id: params.id});
+		if (records.length !== 1) throw "Identifier not found";
+		var record = records[0];
+		if (typeof params.name !== 'undefined') {
+			if (typeof params.name !== 'string') throw "Expected 'name' to be a string";
+			record.setField('name', name);
+		}
+		if (typeof params.sub !== 'undefined') {
+			if ((typeof params.sub !== 'number') && (params.sub !== 'null')) throw "Expected 'sub' to be a number or null";
+			record.setField('sub', sub);
+		}
+		if (typeof params.visible !== 'undefined') {
+			if (typeof params.visible !== 'boolean') throw "Expected 'visible' to be a boolean";
+			record.setField('visible', visible);
+		}
+		if (typeof params.description !== 'undefined') {
+			if (typeof params.description !== 'string') throw "Expected 'description' to be a string";
+			record.setField('description', description);
+		}
+		return record.flush();
 	}
 
 	async removeLocation(session, params) {
-		return "Not implemented";
+		if ((typeof params           !== 'object') ||
+			(typeof params.id        !== 'number')
+		) throw "Invalid parameters";
+		var records = await this._table_location.selectRecords({id: params.id});
+		if (records.length !== 1) throw "Location not found";
+		var record = records[0];
+		
+		var dbTransaction = await this._opts.database.transaction("Remove location #"+record.getIndex());
+		
+		try {
+			var mappings = await this._table_location_mapping.selectRecords({product_location_id: params.id});
+			var operations = [];
+			for (var i in mappings) operations.push(mappings[i].destroy(transaction));
+			await Promise.all(operations);
+			await record.destroy(dbTransaction);
+			await dbTransaction.commit();
+		} catch (e) {
+			await dbTransaction.rollback();
+		}
+		return true;
 	}
 
 	listStockRecords(session, params) {
@@ -343,11 +491,11 @@ class Products {
 		}
 
 		if (!("product_id" in params) && (typeof params.product_id === "number")) {
-			return "Missing product_id parameter.";
+			return "Missing product_id parameter (or invalid type, expect number).";
 		}
 
 		if (!("amount" in params) && (typeof params.amount === "number")) {
-			return "Missing amount parameter.";
+			return "Missing amount parameter (or invalid type, expect number).";
 		}
 
 		var product = params.product_id;
@@ -424,13 +572,51 @@ class Products {
 	async removeGroupFromProduct(session, params) {
 		throw "Not implemented";
 	}
+	
+	async _getProductsInGroup(product_group_id) {
+		var mapping = await this._table_group_mapping.list({product_group_id : product_group_id});
+		var products = [];
+		for (var i in mapping) products.push(mapping[i].product_id);
+		if (products.length < 1) return [];
+		return this.list(null, {id: products});
+	}
 
 	async listGroups(session, params) {
-		throw "Not implemented";
+		var query = null;
+		if (typeof params === "string") {
+			query = {"name": params};
+		} else if (typeof params === "number") {
+			query = {"id": params};
+		} else if (params === null) {
+			query = {};
+		} else {
+			throw "Parameter should be either string with name or number with id.";
+		}
+
+		var groups = await this._table_group.list(query);
+
+		var tasks = [
+			Tasks.create('products', this._getProductsInGroup.bind(this), groups, 'id')
+		];
+
+		return Tasks.merge(tasks, groups);
 	}
 
 	async createGroup(session, params) {
-		throw "Not implemented";
+		if ((typeof params      !== 'object') ||
+			(typeof params.name !== 'string')
+		) throw "Invalid parameters";
+		
+		var description = "";
+		if (typeof params.description !== 'undefined') {
+			if (typeof params.description !== 'string')  throw "Invalid parameter 'description', expected string.";
+			description = params.description;
+		}
+		
+		var record = this._table_group.createRecord();
+		record.setField("name",        params.name);
+		record.setField("description", description);
+		return record.flush();
 	}
 
 	async editGroup(session, params) {
@@ -438,7 +624,26 @@ class Products {
 	}
 
 	async removeGroup(session, params) {
-		throw "Not implemented";
+		if ((typeof params           !== 'object') ||
+			(typeof params.id        !== 'number')
+		) throw "Invalid parameters";
+		var records = await this._table_group.selectRecords({id: params.id});
+		if (records.length !== 1) throw "Group not found";
+		var record = records[0];
+		
+		var dbTransaction = await this._opts.database.transaction("Remove group #"+record.getIndex());
+		
+		try {
+			var mappings = await this._table_group_mapping.selectRecords({product_group_id: params.id});
+			var operations = [];
+			for (var i in mappings) operations.push(mappings[i].destroy(transaction));
+			await Promise.all(operations);
+			await record.destroy(dbTransaction);
+			await dbTransaction.commit();
+		} catch (e) {
+			await dbTransaction.rollback();
+		}
+		return true;
 	}
 
 	registerRpcMethods(rpc, prefix="product") {
@@ -446,18 +651,24 @@ class Products {
 
 		/* Products */
 		rpc.addMethod(prefix+"list",                   this.list.bind(this));                        //Products: list products
+		rpc.addMethod(prefix+"list/noimg",             this.listNoImg.bind(this));                   //Products: list products (No images)
 		rpc.addMethod(prefix+"create",                 this.create.bind(this));                      //Products: create a product
 		rpc.addMethod(prefix+"edit",                   this.edit.bind(this));                        //Products: edit a product
+
 		rpc.addMethod(prefix+"remove",                 this.remove.bind(this));                      //Products: remove a product
 		rpc.addMethod(prefix+"find",                   this.find.bind(this));                        //Products: find a product by it's name
+
 		rpc.addMethod(prefix+"addIdentifier",          this.addIdentifier.bind(this));               //Products: add an identifier
 		rpc.addMethod(prefix+"editIdentifier",         this.editIdentifier.bind(this));              //Products: edit an identifier
 		rpc.addMethod(prefix+"removeIdentifier",       this.removeIdentifier.bind(this));            //Products: remove an identifier
 		rpc.addMethod(prefix+"findByIdentifier",       this.findByIdentifier.bind(this));            //Products: find a product by one of it's identifiers
+
 		rpc.addMethod(prefix+"addStock",               this.addStock.bind(this));                    //Products: add stock
 		rpc.addMethod(prefix+"editStock",              this.editStock.bind(this));                   //Products: edit stock
 		rpc.addMethod(prefix+"removeStock",            this.removeStock.bind(this));                 //Products: remove stock
+
 		rpc.addMethod(prefix+"setPrice",               this.setPrice.bind(this));                    //Products: set the price of a product for a group
+
 		rpc.addMethod(prefix+"addToGroup",             this.addGroupToProduct.bind(this));           //Products: add a group to a person
 		rpc.addMethod(prefix+"removeFromGroup",        this.removeGroupFromProduct.bind(this));      //Products: remove a group from a person
 

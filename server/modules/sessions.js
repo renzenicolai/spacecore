@@ -34,12 +34,12 @@ class Session {
 
 		if ((this.user!==null) && (typeof this.user.permissions === 'object')) {
 			for (i in this.user.permissions) {
-				console.log("PERM", method, this.user.permissions[i], method.startsWith(this.user.permissions[i]));
+				//console.log("PERM", method, this.user.permissions[i], method.startsWith(this.user.permissions[i]));
 				if (method.startsWith(this.user.permissions[i])) return true;
 			}
-			console.log("REJECT USER DOES NOT HAVE PERM");
+			console.log("REJECT BECAUSE USER DOES NOT HAVE PERMISSION");
 		} else {
-			console.log("REJECT NOT LOGGED IN",this.user);
+			console.log("REJECT BECAUSE NOT LOGGED IN",this.user);
 		}
 		return false;
 	}
@@ -229,7 +229,6 @@ class Sessions {
 		}
 		return false;
 	}*/
-
 
 	getSession(token) {
 		for (var i in this.sessions) {

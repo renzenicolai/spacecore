@@ -1,19 +1,43 @@
 "use strict";
 
 const mime = require('mime-types');
+const pdf = require('./invoicesToPdf.js');
+const fs = require('fs');
+const stream = require('stream');
 
-class Transactions {
+class WritableBufferStream extends stream.Writable {
+		constructor(options) {
+			super(options);
+			this._chunks = [];
+		}
+
+		_write (chunk, enc, callback) {
+			this._chunks.push(chunk);
+			return callback(null);
+		}
+
+		_destroy(err, callback) {
+			this._chunks = null;
+			return callback(null);
+		}
+
+		toBuffer() {
+			return Buffer.concat(this._chunks);
+		}
+	}
+
+class Invoices {
 	constructor(opts) {
 		this._opts = Object.assign({
 			database: null,
-			table: 'transactions',
-			table_rows: 'transaction_rows',
+			table: 'invoices',
+			table_rows: 'invoice_rows',
 			table_rows_stock_mapping: 'product_stock_mapping',
 			persons: null,
 			products: null
 		}, opts);
 		if (this._opts.database === null) {
-			console.log("The transactions module can not be started without a database!");
+			console.log("The invoice module can not be started without a database!");
 			process.exit(1);
 		}
 		this._table                    = this._opts.database.table(this._opts.table);
@@ -26,35 +50,28 @@ class Transactions {
 	}
 
 	async list(session, params, whereKeySeparator="AND", resolvePersons=false) {
-		return this._table.list(params, whereKeySeparator).then(async (result) => {
-			var promises = [];
-			for (var i in result) {
-				promises.push(this._table_rows.selectRecords({"transaction_id":result[i].id},"","AND",false));
+		var invoices = await this._table.list(params, whereKeySeparator)
+			var rowPromises = [];
+			var personPromises = [];
+			for (var i in invoices) {
+				rowPromises.push(this._table_rows.selectRecords({"invoice_id":invoices[i].id},"","AND",false));
+				if (resolvePersons) {
+					personPromises.push(this._opts.persons.list(session, {id: invoices[i].person_id}));
+				}
 			}
 			
 			if (resolvePersons) {
-				var personPromises = [];
-				for (var i in result) {
-					personPromises.push(this._opts.persons.list({id: result[i].person_id}));
-				}
 				var persons = await Promise.all(personPromises);
 				for (var i in persons) {
-					if (persons[i].length < 1) {
-						throw "Unknown person in transaction?!";
-					}
-					result[i].person = persons[i][0];
+					if (persons[i].length < 1) throw "Unknown person in invoice";
+					invoices[i].person = persons[i][0];
 				}
 			}
 			
-			return Promise.all(promises).then((resultArray) => {
-				
-				for (var i in resultArray) {
-					result[i].rows = resultArray[i];
-					
-				}
-				return result;
-			});
-		});
+			var rows = await Promise.all(rowPromises);
+			for (var i in rows) invoices[i].rows = rows[i];
+			
+			return invoices;
 	}
 	
 	async listLast(session, params) {
@@ -81,7 +98,7 @@ class Transactions {
 		return this._table.listExtra(filter, "ORDER BY `timestamp` DESC LIMIT "+amount).then((result) => {
 			var promises = [];
 			for (var i in result) {
-				promises.push(this._table_rows.selectRecords({"transaction_id":result[i].id},"","AND",false));
+				promises.push(this._table_rows.selectRecords({"invoice_id":result[i].id},"","AND",false));
 			}
 			return Promise.all(promises).then((resultArray) => {
 				for (var i in resultArray) {
@@ -111,7 +128,7 @@ class Transactions {
 		return this._table.listExtra(query, "ORDER BY `timestamp`"+limit).then((result) => {
 			var promises = [];
 			for (var i in result) {
-				promises.push(this._table_rows.selectRecords({"transaction_id":result[i].id},"","AND",false));
+				promises.push(this._table_rows.selectRecords({"invoice_id":result[i].id},"","AND",false));
 			}
 			return Promise.all(promises).then((resultArray) => {
 				for (var i in resultArray) {
@@ -196,10 +213,10 @@ class Transactions {
 				}
 				
 				return Promise.all(stock_promises).then((stockRecords) => {					
-					var transaction_rows = [];
-					var transaction = this._table.createRecord();
-					transaction.setField("person_id", person.id);
-					var transaction_total = 0;
+					var invoice_rows = [];
+					var invoice = this._table.createRecord();
+					invoice.setField("person_id", person.id);
+					var invoice_total = 0;
 					for (var i in product_results) {
 						if (product_results[i].length < 0 || product_results[i].length > 1) {
 							return new Promise(function(resolve, reject) {
@@ -240,7 +257,7 @@ class Transactions {
 						});
 						record.setField("price", price);
 						record.setField("amount", product_amounts[product.id]);
-						transaction_total += price*product_amounts[product.id];
+						invoice_total += price*product_amounts[product.id];
 						
 						var blockIfNotInStock = false;
 						
@@ -285,12 +302,12 @@ class Transactions {
 								//requestedStockList[item].print(); //Debug!
 								selectedStock.push(requestedStockList[item]);
 								
-								//This creates the mapping record that links each stock mutation to the transaction row responsible
-								//Note that the transaction row id still needs to be added. This is done once the transaction row id is known.
+								//This creates the mapping record that links each stock mutation to the invoice row responsible
+								//Note that the invoice row id still needs to be added. This is done once the invoice row id is known.
 								var mappingRecord = this._table_rows_stock_mapping.createRecord();
 								mappingRecord.setField("product_stock_id", currentStockId);
 								mappingRecord.setField("amount", amountFromCurrentStock);
-								record.addSubRecord("transaction_row_id", mappingRecord); //Now there is a record in your record, so you can flush your records while you flush your records \(^_^)/
+								record.addSubRecord("invoice_row_id", mappingRecord); //Now there is a record in your record, so you can flush your records while you flush your records \(^_^)/
 								blockIfNotInStock = true; //If shit hits the fan we stop.
 							}
 						}
@@ -301,7 +318,7 @@ class Transactions {
 							});
 						}
 						
-						transaction_rows.push(record);
+						invoice_rows.push(record);
 					}
 					
 					if ("other" in params) {
@@ -322,32 +339,33 @@ class Transactions {
 							} else {
 								otherRecord.setField("amount", 0);
 							}
-							transaction_rows.push(otherRecord);
-							transaction_total += params.other[i].price;
+							invoice_rows.push(otherRecord);
+							invoice_total += params.other[i].price;
 						}
 					}
 					
-					transaction.setField("total", transaction_total);
+					invoice.setField("total", invoice_total);
+					invoice.setField("timestamp", Math.floor(Date.now() / 1000));
 					var balance = person_record.getField("balance");
-					person_record.setField("balance", balance - transaction_total);
+					person_record.setField("balance", balance - invoice_total);
 					
-					//Complete the transaction
+					//Complete the invoice
 					return this._opts.database.transaction(person_record.getField("nick_name")).then((dbTransaction) => {
-						return transaction.flush(dbTransaction).then((result) => {
+						return invoice.flush(dbTransaction).then((result) => {
 							if (!result) return new Promise(function(resolve, reject) {
-								return reject("Error: transaction not created?!");
+								return reject("Error: invoice not created?!");
 							});
 							var promise_rows = [];
-							var transaction_id = transaction.getIndex();
-							for (var i in transaction_rows) {
-								transaction_rows[i].setField("transaction_id", transaction_id);
-								promise_rows.push(transaction_rows[i].flush(dbTransaction, true));
+							var invoice_id = invoice.getIndex();
+							for (var i in invoice_rows) {
+								invoice_rows[i].setField("invoice_id", invoice_id);
+								promise_rows.push(invoice_rows[i].flush(dbTransaction, true));
 							}
 							return Promise.all(promise_rows).then((resultArray) => {
 								for (var i in resultArray) {
 									if (!resultArray[i]) {
 										return new Promise(function(resolve, reject) {
-											return reject("Error: transaction row not created?!");
+											return reject("Error: invoice row not created?!");
 										});
 									}
 								}
@@ -367,13 +385,13 @@ class Transactions {
 									}
 									
 									var rows = [];
-									for (i in transaction_rows) {
-										rows.push(transaction_rows[i].getFields());
+									for (i in invoice_rows) {
+										rows.push(invoice_rows[i].getFields());
 									}
 									return person_record.flush(dbTransaction).then((result) => {
 										dbTransaction.commit();
 										return {
-											"transaction": transaction.getFields(),
+											"invoice": invoice.getFields(),
 											"rows": rows,
 											"person": person_record.getFields()
 										};
@@ -400,47 +418,119 @@ class Transactions {
 		}
 		
 		if (params.operation === "unknownOrigin") {
-			var rows = await this._table_rows.selectRecordsRaw("SELECT * FROM `transaction_rows` WHERE `id` NOT IN (SELECT transaction_row_id FROM `product_stock_mapping`) AND `price` > 0", [], false);
+			var rows = await this._table_rows.selectRecordsRaw("SELECT * FROM `invoice_rows` WHERE `id` NOT IN (SELECT invoice_row_id FROM `product_stock_mapping`) AND `price` > 0", [], false);
 			
 			var rowIds = [];
-			var transactionIds = [];
+			var invoiceIds = [];
 			
 			for (var i in rows) {
 				var row = rows[i];
 				rowIds.push(row.id);
-				if (!(row.transaction_id in transactionIds)) {
-					transactionIds.push(row.transaction_id);
+				if (!(row.invoice_id in invoiceIds)) {
+					invoiceIds.push(row.invoice_id);
 				}
 			}
 			
-			var transactions = await this.list(session, {id: transactionIds}, "OR", true);
+			var invoices = await this.list(session, {id: invoiceIds}, "OR", true);
 			
-			for (var i in transactions) {
-				for (var j in transactions[i].rows) {
+			for (var i in invoices) {
+				for (var j in invoices[i].rows) {
 					var isUnknown = false;
-					var id = transactions[i].rows[j].id;
+					var id = invoices[i].rows[j].id;
 					if (rowIds.lastIndexOf(id)>=0) {
 						isUnknown = true;
 					}
-					transactions[i].rows[j].isUnknown = isUnknown;
+					invoices[i].rows[j].isUnknown = isUnknown;
 				}
 			}
 			
-			return transactions;
+			return invoices;
 			
 		} else {
 			throw "Unsupported operation.";
 		}
 	}
 	
-	registerRpcMethods(rpc, prefix="transaction") {
+	async pdf(session, params) {
+		if (typeof params !== "number") throw "Expected parameter to be the id of the invoice.";
+		
+		var invoices = await this.list(session, {id : params}, "AND", true);
+		if (invoices.length !== 1) throw "Invoice not found";
+		var invoice = invoices[0];
+				
+		//FIXME!!! Store name and address in the invoice itself
+		var clientAddress = invoice.person.first_name+" "+invoice.person.last_name+"\n";
+		if (invoice.person.addresses.length > 0) {
+			var address = invoice.person.addresses[0]; //FIXME!!! Add method for selecting invoice address
+			clientAddress += address.street+" "+address.housenumber+"\n";
+			clientAddress += address.postalcode+" "+address.city;
+		}
+		
+		var timestamp = new Date(invoice.timestamp*1000);
+		
+		var rows = [];
+		
+		for (var i in invoice.rows) {
+			var row = invoice.rows[i];
+			rows.push([
+					{text: row.description},
+					{text: "€ "+(row.price/100.0)},
+					{text: row.amount.toString()},
+					{text: "€ "+((row.price*row.amount)/100.0)}
+				]);
+		}
+		
+		var month = timestamp.getMonth()+1;
+		if (month < 10) {
+			month = "0"+month.toString();
+		} else {
+			month = month.toString();
+		}
+		
+		var day = timestamp.getDate();
+		if (day < 10) {
+			day = "0"+day.toString();
+		} else {
+			day = day.toString();
+		}
+		
+		var factuur = {
+			date: day+"-"+month+"-"+timestamp.getFullYear(),
+			identifier: "SPACECORE #"+invoice.id,
+			totals: [{text: "Total", value: "€ "+(invoice.total/100.0), bold: true}],
+			products: rows};
+			
+		//TODO: Create setting store for storing info about system owner.
+		var businessAddress = "Stichting TkkrLab\nRigtersbleek-zandvoort 10\n7521BE Enschede\nIBAN: NL57ABNA0408886641\nKvK: 51974967";
+				
+		var converter = new WritableBufferStream();
+		
+		var end = new Promise(function(resolve, reject) {
+			converter.on('finish', () => { resolve(converter.toBuffer()) });
+		});
+		
+		var invoiceRenderer = new pdf();
+		invoiceRenderer.render(converter, clientAddress, businessAddress, factuur.products, factuur.totals, factuur.identifier, factuur.date);
+		
+		var buffer = await end;
+		
+		return {
+			name: "invoice.pdf",
+			mime: "application/pdf",
+			size: buffer.length,
+			data: buffer.toString('base64')
+		};
+	}
+	
+	registerRpcMethods(rpc, prefix="invoice") {
 		if (prefix!=="") prefix = prefix + "/";
 		rpc.addMethod(prefix+"list", this.list.bind(this));
 		rpc.addMethod(prefix+"list/last", this.listLast.bind(this));
 		rpc.addMethod(prefix+"list/query", this.listQuery.bind(this));
-		rpc.addMethod(prefix+"execute", this.execute.bind(this));
+		rpc.addMethod(prefix+"create", this.execute.bind(this));
 		rpc.addMethod(prefix+"analysis/stock", this.analysisStock.bind(this));
+		rpc.addMethod(prefix+"pdf", this.pdf.bind(this));
 	}
 }
 
-module.exports = Transactions;
+module.exports = Invoices;
