@@ -497,7 +497,7 @@ class Products {
 					spacecore.ui.elemBtnSecondary("javascript:spacecore.currentModule.show();", "Back", "backBtn", "chevron-left")
 			]},
 			body: [[[{ type: "card", header: { title: "Product brands", options: [ {type: "button", action: "javascript:spacecore.currentModule.addBrand();", fe_icon: "plus", small: true } ] }, table: brandsTable}]]]
-		}, [this.state.brands.tableId);
+		}, [this.state.brands.tableId]);
 		if (this.state.brands.lastSelected !== null) window.location.href = "#brand-"+this.state.brands.lastSelected.id;
 		spacecore.history.push(this.show.bind(this, false, "brands"));
 	}
