@@ -605,6 +605,6 @@ class Spacecore {
 	search(dataType) {
 		this.currentModule.state[dataType].searchText = document.getElementById(this.currentModule.state[dataType].searchId).value;
 		var filtered = spacecore.filter(this.currentModule.state[dataType].lastData, this.currentModule.state[dataType].searchText, this.currentModule.state[dataType].filterFields, false);
-		this.currentModule._updateTable(this.currentModule.state[dataType].tableId, this.currentModule.state[dataType].render(filtered));
+		this._updateTable(this.currentModule.state[dataType].tableId, this.currentModule.state[dataType].render(filtered));
 	}
 }

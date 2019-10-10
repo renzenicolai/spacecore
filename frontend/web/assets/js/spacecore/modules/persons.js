@@ -1209,11 +1209,7 @@ class Persons {
 					},
 					{
 						elements: [
-							{
-								type: "button",
-								action: "javascript:spacecore.currentModule.invoicePdf("+transactionsRes[i].id+");",
-								fe_icon: "download"
-							}
+							spacecore.ui.elemBtnSecondary("javascript:spacecore.currentModule.invoicePdf("+transactionsRes[i].id+");", null, null, "download")
 						]
 					}
 				]

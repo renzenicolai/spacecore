@@ -67,13 +67,16 @@ class UI {
 		
 		this.templates['table'] = Handlebars.compile("{{>table}}");
 		
-		this.templates['message'] = Handlebars.compile('<dialog class="ds-dialog" open="">'
-													 + '<header class="ds-dialog-header {{#if image}}ds-dialog-header-image{{/if}}">'
+		this.templates['message'] = Handlebars.compile('<div class="ds-center-middle" style="height: 1024px;">'
+													 + '<dialog class="ds-dialog" open="">'
+													 + '<header class="ds-dialog-header ds-bg-primary {{#if image}}ds-dialog-header-image{{/if}}">'
 													 + '{{#if image}}<img class="ds-background-image" src="{{resolveImage image}}" alt="">{{/if}}'
 													 + '{{#if title}}<div class="ds-space"><h2>{{title}}</h2></div>{{/if}}'
 													 + '</header><div class="ds-dialog-content">'
 													 + '{{#each lines}}<div class="ds-space">{{this}}</div>{{/each}}'
-													 + '</div></dialog>');
+													 + '</div></dialog>'
+													 + '<div class="ds-dialog-overlay"></div>'
+													 + '</div>');
 		
 		this.templates['dashboard'] = Handlebars.compile('{{#if content}}'
 													   + '{{#if content.header}}{{>pageHeader content.header}}{{/if}}'

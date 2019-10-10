@@ -232,7 +232,8 @@ class Candy {
 	}
 	
 	selectProduct(product, slot) {
-		this.app.showMessage("Selected "+product+" in slot "+slot);
+		//this.app.showMessage("Selected "+product+" in slot "+slot);
+		this.app.showMessage("Please wait...");
 		this.app.executeCommand('product/list', {id: product}, this._handleSelectProduct.bind(this, slot));
 	}
 	
@@ -247,10 +248,8 @@ class Candy {
 		
 		this.selectedProduct = {product: product, slot: slot};
 		this.app.showMessage([
-			"Present iButton to buy product!",
-			product.name,
-			price
-		]);
+			"You are buying "+product.name+" for "+price
+		], "Please present key");
 		this.setLed(true,false,false);
 		this.timeout(5000, "_handleSelectProduct");
 	}

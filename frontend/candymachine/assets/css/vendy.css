@@ -6,7 +6,8 @@
 
 body {
 	overflow: hidden;
-        background-color: #444444;
+	background-color: #444444;
+	background-image: url("../img/background.jpg");
 }
 
 body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,form,fieldset,p,blockquote,th,td {
@@ -363,4 +364,97 @@ dd, li, blockquote {
     display: block;
     height: calc(var(--ds-line-height) - 5px);
     z-index: -1;
+}
+
+/* Dialogs */
+
+:root {
+	--ds-box-radius: 6px;
+    --ds-dialog-radius: calc( 2 * var(--ds-box-radius));
+    --ds-dialog-shadow: var(--ds-shadow-large);
+}
+.ds-dialog {
+    border: 0;
+    width: calc( 50% - (1/2 * var(--ds-spacing)));
+    min-width: 20em;
+    box-shadow: var(--ds-dialog-shadow);
+    padding: 0;
+    z-index: 101;
+    border-radius: calc(2px + var(--ds-dialog-radius));
+}
+
+.ds-dialog-narrow {
+    width: calc( 33% - (1/2 * var(--ds-spacing)));
+    min-width: 20em;
+}
+
+.ds-dialog-header,
+.ds-dialog-header-image > img {
+    border-radius: var(--ds-dialog-radius) var(--ds-dialog-radius) 0 0;
+}
+.ds-dialog-footer,
+.ds-dialog-footer-image > img {
+    border-radius: 0 0 var(--ds-dialog-radius) var(--ds-dialog-radius);
+}
+
+.ds-dialog-header,
+.ds-dialog-footer {
+    flex-grow: 0;
+}
+
+.ds-dialog-header,
+.ds-dialog-footer,
+.ds-dialog-content {
+    position: relative;
+    padding: 0.05px; 
+}
+
+.ds-dialog-header-image,
+.ds-dialog-footer-image {
+    min-height: calc(var(--ds-line-height) * 6);
+    color: var(--ds-white);
+    text-shadow: 0 0 3px var(--ds-black);
+}
+.ds-dialog-content {
+    flex-grow: 1;
+	min-height: 10em;
+	font-size: 1.5em;
+	line-height: 1.5em;
+	max-height: 20em;
+	overflow-y: auto;
+}
+
+.ds-dialog-content .ds-alert {
+    margin: calc(-1 * var(--ds-dialog-padding));
+    margin-bottom: var(--ds-dialog-padding);
+}
+
+.ds-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: rgba(255,255,255,0.3);
+    z-index: 11;
+    display: none;
+}
+dialog[open] ~ .ds-dialog-overlay {
+    display: block;
+}
+
+/* Utility */
+
+.ds-center {
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+.ds-center-middle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ds-align-right {
+    float: right;
 }
