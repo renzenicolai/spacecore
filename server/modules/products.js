@@ -77,7 +77,7 @@ class Products {
 		if (typeof params !== 'object')                                                              throw "Expected parameter to be an object";
 		if (typeof params.name !== 'string')                                                         throw "Missing required property 'name'";
 		if ((typeof params.description !== 'undefined') && (typeof params.description !== 'string')) throw "Expected description to to be a string";
-		if ((typeof params.hidden !== 'undefined') && (typeof params.hidden !== 'boolean'))          throw "Expected hidden to be a boolean";
+		if ((typeof params.active !== 'undefined') && (typeof params.active !== 'boolean'))          throw "Expected active to be a boolean";
 		if ((typeof params.brand_id !== 'undefined') && (typeof params.brand_id !== 'number'))       throw "Expected brand_id to be a number";
 		if ((typeof params.picture_id !== 'undefined') && (typeof params.picture_id !== 'number'))   throw "Expected picture_id to be a number";
 		if ((typeof params.package_id !== 'undefined') && (typeof params.package_id !== 'number'))   throw "Expected package_id to be a number";
@@ -114,10 +114,10 @@ class Products {
 		if (typeof params.description !== "string") params.description = "";
 		product.setField("description", params.description);
 		
-		if (typeof params.hidden === "boolean") {
-			product.setField("hidden", params.hidden);
+		if (typeof params.active === "boolean") {
+			product.setField("active", params.active);
 		} else {
-			product.setField("hidden", false);
+			product.setField("active", false);
 		}
 		
 		if (typeof params.brand_id === "number") {
@@ -388,8 +388,8 @@ class Products {
 			query = {"id": params};
 		} else if (params === null) {
 			query = {};
-		} else {
-			throw "Parameter should be either string with name or number with id.";
+		} else if (typeof params !== "object") {
+			throw "Parameter should be either string with name, number with id or object with query.";
 		}
 
 		var locations = await this._table_location.list(query);
@@ -589,8 +589,8 @@ class Products {
 			query = {"id": params};
 		} else if (params === null) {
 			query = {};
-		} else {
-			throw "Parameter should be either string with name or number with id.";
+		} else if (typeof params !== "object") {
+			throw "Parameter should be either string with name, number with id or object with query.";
 		}
 
 		var groups = await this._table_group.list(query);
@@ -645,6 +645,42 @@ class Products {
 		}
 		return true;
 	}
+	
+	//Brands
+
+	async listBrands(session, params) {
+		return "Not implemented";
+	}
+
+	async createBrand(session, params) {
+		return "Not implemented";
+	}
+
+	async editBrand(session, params) {
+		return "Not implemented";
+	}
+
+	async removeBrand(session, params) {
+		return "Not implemented";
+	}
+	
+	//Packages
+
+	async listPackages(session, params) {
+		return "Not implemented";
+	}
+
+	async createPackage(session, params) {
+		return "Not implemented";
+	}
+
+	async editPackage(session, params) {
+		return "Not implemented";
+	}
+
+	async removePackage(session, params) {
+		return "Not implemented";
+	}
 
 	registerRpcMethods(rpc, prefix="product") {
 		if (prefix!=="") prefix = prefix + "/";
@@ -672,6 +708,12 @@ class Products {
 		rpc.addMethod(prefix+"addToGroup",             this.addGroupToProduct.bind(this));           //Products: add a group to a person
 		rpc.addMethod(prefix+"removeFromGroup",        this.removeGroupFromProduct.bind(this));      //Products: remove a group from a person
 
+		/* Groups */
+		rpc.addMethod(prefix+"group/list",             this.listGroups.bind(this));                  //Groups: list groups
+		rpc.addMethod(prefix+"group/create",           this.createGroup.bind(this));                 //Groups: create a group
+		rpc.addMethod(prefix+"group/edit",             this.editGroup.bind(this));                   //Groups: edit a group
+		rpc.addMethod(prefix+"group/remove",           this.removeGroup.bind(this));                 //Groups: remove a group
+
 		/* Identifiers */
 		rpc.addMethod(prefix+"identifier/type/list",   this.listIdentifierTypes.bind(this));         //Identifiers: list identifier types
 		rpc.addMethod(prefix+"identifier/type/add",    this.addIdentifierType.bind(this));           //Identifiers: add an identifier type
@@ -684,11 +726,17 @@ class Products {
 		rpc.addMethod(prefix+"location/edit",          this.editLocation.bind(this));                //Locations: edit a location
 		rpc.addMethod(prefix+"location/remove",        this.removeLocation.bind(this));              //Locations: remove a location
 
-		/* Groups */
-		rpc.addMethod(prefix+"group/list",             this.listGroups.bind(this));                  //Groups: list groups
-		rpc.addMethod(prefix+"group/create",           this.createGroup.bind(this));                 //Groups: create a group
-		rpc.addMethod(prefix+"group/edit",             this.editGroup.bind(this));                   //Groups: edit a group
-		rpc.addMethod(prefix+"group/remove",           this.removeGroup.bind(this));                 //Groups: remove a group
+		/* Brands */
+		rpc.addMethod(prefix+"brand/list",             this.listBrands.bind(this));                  //Brands: list brands
+		rpc.addMethod(prefix+"brand/create",           this.createBrand.bind(this));                 //Brands: create a brand
+		rpc.addMethod(prefix+"brand/edit",             this.editBrand.bind(this));                   //Brands: edit a brand
+		rpc.addMethod(prefix+"brand/remove",           this.removeBrand.bind(this));                 //Brands: remove a brand
+
+		/* Packages */
+		rpc.addMethod(prefix+"package/list",           this.listPackages.bind(this));                //Packages: list 	
+		rpc.addMethod(prefix+"package/create",         this.createPackage.bind(this));               //Packages: create a package
+		rpc.addMethod(prefix+"package/edit",           this.editPackage.bind(this));                 //Packages: edit a package
+		rpc.addMethod(prefix+"package/remove",         this.removePackage.bind(this));               //Packages: remove a package
 	}
 }
 

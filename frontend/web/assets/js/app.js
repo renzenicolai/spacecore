@@ -8,6 +8,7 @@ require.config({
 		'vector-map-world': ['vector-map', 'jquery'],
 		'tabler-core': ['bootstrap', 'jquery'],
 		'handlebars': [],
+		'circle-progress': [],
 		'spacecore-persons': [],
 		'spacecore-users': [],
 		'spacecore-login': [],
@@ -15,7 +16,7 @@ require.config({
 		'spacecore-dashboard': [],
 		'spacecore-files': [],
 		'spacecore-ui': ['handlebars', 'tablesorter'],
-		'spacecore': ['tabler-core', 'input-mask', 'spacecore-ui', 'spacecore-persons', 'spacecore-users', 'spacecore-login', 'spacecore-dashboard', 'spacecore-files', 'spacecore-mt940','spacecore-products'],
+		'spacecore': ['tabler-core', 'input-mask', 'spacecore-ui', 'spacecore-persons', 'spacecore-users', 'spacecore-login', 'spacecore-dashboard', 'spacecore-files', 'spacecore-mt940','spacecore-products', 'circle-progress'],
 	},
 	paths: {
 		'tabler-core': 'assets/js/vendors/tabler-core',
@@ -65,7 +66,8 @@ function startApplication(common=null) {
 		
 		if (typeof history.pushState === "function") {
 				history.pushState("spacecore-A", null, null);
-				window.onpopstate = function () {
+				window.onpopstate = function (event) {
+					console.log(event);
 					history.pushState('spacecore-B', null, null);
 					spacecore.handleBackButton();
 				};

@@ -42,8 +42,13 @@ class Persons {
 		return person.nick_name;
 	}
 
-	getCurrentPersonName() { return this.getPersonName(this.state.persons.lastSelected); }
-	getCurrentPersonId() { return this.state.persons.lastSelected.id; }
+	getCurrentPersonName() {
+		return this.getPersonName(this.state.persons.lastSelected);
+	}
+	
+	getCurrentPersonId() {
+		return this.state.persons.lastSelected.id;
+	}
 	
 	_handleRefreshGroupTypes(res, err) {
 		if (err) return console.log("Refresh exception", err);
@@ -53,7 +58,7 @@ class Persons {
 	_handleRefreshTokenTypes(res, err) {
 		if (err) return console.log("Refresh exception", err);
 		this.state.tokens.types = res;
-	}	
+	}
 	
 	_getGroupNameById(id) {
 		for (var i in this.state.groups.types) {
@@ -98,18 +103,18 @@ class Persons {
 	submitForm(form, method) { spacecore.submitForm(this.submitFormHandler.bind(this, form, method), form, method); }
 
 	submitFormHandler(form, method, res, err) {
-		var action = "show()";
+		var action = "javascript:spacecore.currentModule.show();";
 		var actionFunc = spacecore.currentModule.show;
 		var skip = false;
 
 		if (form==="removeperson-form") {
 			if (err === null) return this.show();
-			action = "show()";
+			action = "javascript:spacecore.currentModule.show();";
 		}
 		
 		if (form==="addperson-form") {
 			if (err === null) return this.showDetails(res);
-			action = "showDetails("+res+")";
+			action = "javascript:spacecore.currentModule.showDetails("+res+");";
 		}
 
 		if (
@@ -120,24 +125,25 @@ class Persons {
 			(form==="editperson-form")
 		) {
 			if (err === null) return this.showDetails();
-			action = "showDetails()";
+			if (err === null) return spacecore.handleBackButton();
+			action = "javascript:spacecore.handleBackButton();";
 
 		}
 
 		if ((form==="group-form") || (form=="removegroup-form")) {
 			if (err === null) return this.show(false, 'groups'); //Skip the result if succesfull
-			action = "show(false, 'groups')";
+			action = "javascript:spacecore.currentModule.show(false, 'groups');";
 		}
 
 		if (err) {
 			spacecore.showMessage2(
 				[ err.message ], "Persons", "Error",
-				[{ type: "button", value: "OK", action: "javascript:spacecore.currentModule."+action+";" }]
+				[{ type: "button", value: "OK", action: action }]
 			);
 		} else {
 			spacecore.showMessage2(
 				[ res ], "Persons", "Result",
-				[{ type: "button", value: "OK", action: "javascript:spacecore.currentModule."+action+";" }]
+				[{ type: "button", value: "OK", action: action }]
 			);
 		}
 	}
@@ -147,6 +153,7 @@ class Persons {
 	show(reset=true, part="persons") {
 		if (reset) this.reset();
 		spacecore.currentModule = this;
+		spacecore.history = [];
 		window.location.href = "#";
 
 		spacecore.executeCommand('person/group/list',      {}, this._handleRefreshGroupTypes.bind(this));
@@ -156,7 +163,8 @@ class Persons {
 			case "persons": spacecore.executeCommand('person/list', {}, this._handleShow.bind(this)); break;
 			case "tokens":  spacecore.executeCommand('person/token/list', {}, this._handleManageTokens.bind(this)); break;
 			case "groups":  spacecore.executeCommand('person/group/list', {}, this._handleManageGroups.bind(this)); break;
-			default: this.genericErrorHandler("Unhandled part in persons module: '"+part+"'");
+			case "details": spacecore.currentModule.showDetails(this.getCurrentPersonId()); break;
+			default:        this.genericErrorHandler("Unhandled part in persons module: '"+part+"'");
 		}
 	}
 
@@ -189,6 +197,7 @@ class Persons {
 		}, ['table_tokens']);
 
 		if (this.state.tokens.lastSelected !== null) window.location.href = "#person-token-"+this.state.tokens.lastSelected.id;
+		spacecore.history.push(this.show.bind(this, false, "persons"));
 	}
 
 	_renderTokens(res) {
@@ -815,69 +824,36 @@ class Persons {
 		});
 	}
 
-	remove(id=null) {
-		if (id !== null) {
-			return this.getDetails(id, (res, err) => {
-				if (err || (res.length < 1)) return console.log("Error while fetching details for user to be removed.", err,res);
-				this.state.persons.lastSelected = res[0];
-				this.remove();
-			});
-		}
-
-		if (typeof this.state.persons.lastSelected !== "object") return console.log("remove called without a person selected!", this.state.persons.lastSelected);
+	showRemove() {
 		var data = this.state.persons.lastSelected;
-
+		var action_details = "javascript:spacecore.handleBackButton();";
+		var action_remove  = "javascript:spacecore.currentModule.submitForm('removeperson-form','person/remove')";
 		spacecore.showPage({
-			header: {
-				title: "Persons",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Remove person"
-							},
-							form: {
-								id: "removeperson-form",
-								elements: [
-									{
-										type: "hidden",
-										name: "id",
-										value: data.id,
-										convertToNumber: true
-									},
-									{
-										type: "static",
-										label: "Are you sure?",
-										value: "You are about to remove person '"+this.getPersonName(this.state.persons.lastSelected)+"' from the system."
-									}
-								],
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.showDetails();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('removeperson-form','person/remove')",
-											fe_icon: "trash-2",
-											value: "Remove person",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
+			header: { title: "Persons", options: [] },
+			body: [[[{
+				type: "card", width: ['lg-8', 'md-12'], header: { title: "Remove person" }, form: { id: "removeperson-form", elements: [
+					{ type: "hidden", name: "id", value: data.id, convertToNumber: true },
+					{ type: "static", label: "Are you sure?", value: "You are about to remove person '"+this.getPersonName(this.state.persons.lastSelected)+"' from the system." }
+				], footer: [
+					{ type: "button", action: action_details, fe_icon: "x",       value: "Cancel",        class: "secondary" },
+					{ type: "button", action: action_remove,  fe_icon: "trash-2", value: "Remove person", ml: "auto" }
+				]}
+			}]]]
 		});
+	}
+	
+	remove(id=null, fromDetails=false) {
+		if (fromDetails) spacecore.history.push(this.show.bind(this, false, "details"));
+		// Allow for deleting a person without opening the details view
+		if (id !== null) {
+			this.getDetails(id, (res, err) => {
+				if (err || (res.length < 1)) return console.log("Error while fetching details for the person to be removed.", err,res);
+				this.state.persons.lastSelected = res[0];
+				this.showRemove();
+			});
+		} else {
+			this.showRemove();
+		}
 	}
 
 	_renderPersons(res) {
@@ -992,12 +968,7 @@ class Persons {
 		this.state.persons.lastData = res;
 
 		var personsTable = this._renderPersons(
-			spacecore.filter(
-				res,
-				this.state.persons.searchText,
-				['nick_name', 'first_name', 'last_name'],
-				false
-			)
+			spacecore.filter(res, this.state.persons.searchText, this.state.persons.filterFields, false)
 		);
 
 		spacecore.showPage({
@@ -1052,100 +1023,43 @@ class Persons {
 		}, ['table_persons']);
 		
 		if (this.state.persons.lastSelected !== null) window.location.href = "#person-"+this.state.persons.lastSelected.id;
+		spacecore.history.push(this.show.bind(this, false, "persons"));
 	}
 
 	/* Person details */
 
-	edit(id=null) {
+	showEdit() {
+		var data = this.state.persons.lastSelected;
+		var action_back = "javascript:spacecore.handleBackButton();";
+		var action_edit = "javascript:spacecore.currentModule.submitForm('editperson-form','person/edit')";
+		spacecore.showPage({
+			header: { title: "Person details", options: [] },
+			body: [[[
+				{ type: "card", width: ['lg-8', 'md-12'], header: { title: "Edit person" },	form: { id: "editperson-form", elements: [
+					{ type: "hidden", name: "id",         value: data.id,convertToNumber: true },
+					{ type: "text",   name: "nick_name",  label: "Nickname",   value: data.nick_name },
+					{ type: "text",   name: "first_name", label: "First name", value: data.first_name },
+					{ type: "text",   name: "last_name",  label: "Last name",  value: data.last_name },
+					{ type: "file",   name: "avatar",     label: "Avatar",     default: "Select an image to upload...",id: "personAvatarFile",value: "" }
+				], footer: [
+					{type: "button", action: action_back, fe_icon: "x",    value: "Cancel" ,class: "secondary" },
+					{type: "button", action: action_edit, fe_icon: "save", value: "Edit",   ml: "auto"         }
+				]}}
+			]]]
+		});
+	}
+	
+	edit(id=null, fromDetails=false) {
+		if (fromDetails) spacecore.history.push(this.show.bind(this, false, "details"));
 		if (id !== null) {
-			return this.getDetails(id, (res, err) => {
+			this.getDetails(id, (res, err) => {
 				if (err || (res.length < 1)) return console.log("Error while fetching details for user to be edited.", err,res);
 				this.state.persons.lastSelected = res[0];
-				this.edit();
+				this.showEdit();
 			});
+		} else {
+			this.showEdit();
 		}
-
-
-		if (typeof this.state.persons.lastSelected !== "object") {
-			return console.log("edit called without a person selected!", this.state.persons.lastSelected);
-		}
-
-		var data = this.state.persons.lastSelected;
-
-		spacecore.showPage({
-			header: {
-				title: "Person details",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Edit person"
-							},
-							form: {
-								id: "editperson-form",
-								elements: [
-									{
-										type: "hidden",
-										name: "id",
-										value: data.id,
-										convertToNumber: true
-									},
-									{
-										type: "text",
-										name: "nick_name",
-										label: "Nickname",
-										value: data.nick_name
-									},
-									{
-										type: "text",
-										name: "first_name",
-										label: "First name",
-										value: data.first_name
-									},
-									{
-										type: "text",
-										name: "last_name",
-										label: "Last name",
-										value: data.last_name
-									},
-									{
-										type: "file",
-										name: "avatar",
-										label: "Avatar",
-										default: "Select an image to upload...",
-										id: "personAvatarFile",
-										value: ""
-									}
-								],
-
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.showDetails();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('editperson-form','person/edit')",
-											fe_icon: "save",
-											value: "Edit",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
-
 	}
 
 	getDetails(id, target) {
@@ -1195,7 +1109,7 @@ class Persons {
 			return;
 		}
 
-		spacecore.history.push(this.show.bind(this, false));
+		spacecore.history.push(this.show.bind(this, false, "persons"));
 
 		//console.log("Person", res);
 
@@ -1522,14 +1436,14 @@ class Persons {
 						{
 							"type":"button",
 							"fe_icon": "command",
-							"action":  "javascript:spacecore.currentModule.edit();",
+							"action":  "javascript:spacecore.currentModule.edit(null, true);",
 							"value": "Edit",
 							"class": "secondary"
 						},
 						{
 							"type":"button",
 							"fe_icon": "trash-2",
-							"action":  "javascript:spacecore.currentModule.remove();",
+							"action":  "javascript:spacecore.currentModule.remove(null, true);",
 							"value": "Remove",
 							"class": "secondary"
 						},

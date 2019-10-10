@@ -9,9 +9,17 @@ except BaseException as e:
 
 client.token(result)
 
+
+try:
+	result = client.request("user/authenticate", {"username": "test", "password": "test"})
+except BaseException as e:
+	print(e)
+	exit(1)
+
 try:
 	result = client.request("session/state")
 except BaseException as e:
+	print(e)
 	exit(1)
 	
 print(result)

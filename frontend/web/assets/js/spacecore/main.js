@@ -129,6 +129,10 @@ class Spacecore {
 		});
 	}
 	
+	showLoadingCircle(title) {
+		this.showPage({header: { title: title }, body: [[[{ type: "loadingcircle", width: ['lg-8', 'md-12'], center: true}]]]});
+	}
+	
 	/* Helper functions for menu */
 		
 	generateMenu(name) {	

@@ -474,9 +474,9 @@ class Invoices {
 			var row = invoice.rows[i];
 			rows.push([
 					{text: row.description},
-					{text: "€ "+(row.price/100.0)},
+					{text: "€ "+(row.price/100).toFixed(2)},
 					{text: row.amount.toString()},
-					{text: "€ "+((row.price*row.amount)/100.0)}
+					{text: "€ "+((row.price*row.amount)/100).toFixed(2)}
 				]);
 		}
 		
@@ -497,7 +497,7 @@ class Invoices {
 		var factuur = {
 			date: day+"-"+month+"-"+timestamp.getFullYear(),
 			identifier: "SPACECORE #"+invoice.id,
-			totals: [{text: "Total", value: "€ "+(invoice.total/100.0), bold: true}],
+			totals: [{text: "Total", value: "€ "+(invoice.total/100).toFixed(2), bold: true}],
 			products: rows};
 			
 		//TODO: Create setting store for storing info about system owner.

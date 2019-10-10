@@ -1,34 +1,33 @@
 class Products {
 	constructor( opts ) {
-		this.name = 'products';
-		
 		opts = Object.assign({
-			ui: null,
-			app: null
+			name: 'products'
 		}, opts);
+		this.name = opts.name;
+		this.reset(); //Initialize state
+	}
 		
-		this.ui = opts.ui;
-		this.app = opts.app;
-		
-		this.reset();
-		
-		this.groups = {};
+	reset() {
+		this.personGroupsReady = false;
+		this.state = {
+			products:        {lastSelected: null, lastData: null, searchText: "", searchId: 'products-search',                   tableId: 'table_products',         filterFields: ['name'],                            render: this._renderProducts},
+			groups:          {lastSelected: null, lastData: null, searchText: "", searchId: 'products-groups-search',            tableId: 'table_groups',           filterFields: ['name', 'description', 'addToNew'], render: this._renderGroups},
+			identifiers:     {lastSelected: null, lastData: null, searchText: "", searchId: 'products-identifiers-search',       tableId: 'table_identifiers',      filterFields: ['name'],                            render: this._renderIdentifiers},
+			identifierTypes: {lastSelected: null, lastData: null, searchText: "", searchId: 'products-identifier-types-search',  tableId: 'table_identifier_types', filterFields: ['name'],                            render: this._renderIdentifierTypes},
+			locations:       {lastSelected: null, lastData: null, searchText: "", searchId: 'products-locations-search',         tableId: 'table_locations',        filterFields: ['name'],                            render: this._renderLocations},
+			brands:          {lastSelected: null, lastData: null, searchText: "", searchId: 'products-brands-search',            tableId: 'table_brands',           filterFields: ['name'],                            render: this._renderBrands},
+			packages:        {lastSelected: null, lastData: null, searchText: "", searchId: 'products-packages-search',          tableId: 'table_packages',         filterFields: ['name'],                            render: this._renderPackages},
+			personGroups:    {lastData: null /* Other functionality for this data type is in the persons module. */},
+		};
 	}
 	
-	reset() {
-		this.state = {
-			lastSelected: null,
-			searchText: "",
-			sortBy: "nick_name",
-			sortReverse: false,
-			lastData: null,
-			
-			lastSelectedGroup: null,
-			groupsSearchText: "",
-			groupsSortBy: "name",
-			groupsSortReverse: false,
-			groupsLastData: null
-		};
+	refresh() {
+		spacecore.executeCommand('person/group/list',            {}, this._handleRefreshPersonGroups.bind(this));
+		spacecore.executeCommand('product/group/list',           {}, this._handleRefreshGroups.bind(this));
+		spacecore.executeCommand('product/identifier/type/list', {}, this._handleRefreshIdentifierTypes.bind(this));
+		spacecore.executeCommand('product/location/list',        {}, this._handleRefreshLocations.bind(this));
+		spacecore.executeCommand('product/brand/list',           {}, this._handleRefreshBrands.bind(this));
+		spacecore.executeCommand('product/package/list',         {}, this._handleRefreshPackages.bind(this));
 	}
 		
 	/* Menu */
@@ -36,9 +35,9 @@ class Products {
 	menu(menu='main') {
 		var items = [];
 		if (menu === 'main') {
-			if (this.app.checkPermission('product/list')) items.push({
+			if (spacecore.checkPermission('product/list')) items.push({
 				label: "Products",
-				fe_icon: "box",
+				fe_icon: "shopping-bag",
 				action: "javascript:spacecore.action('"+this.name+"', null, true);"
 			});
 		}
@@ -49,847 +48,162 @@ class Products {
 	
 	show(reset=true, part="products") {
 		if (reset) this.reset();
-		this.app.currentModule = this;
+		spacecore.currentModule = this;
+		spacecore.history = [];
+		window.location.href = "#";
 		
-		if (part==="products") {
-			/* These are loaded async and may not be available right after rendering the page */
-			//this.app.executeCommand('person/group/list', {}, this._handleGroupsRefresh.bind(this));
-			
-			/* Render the page */
-			this.app.executeCommand('product/list', {}, this._handleShow.bind(this));
+		this.refresh();
+		
+		if (!this.personGroupsReady) {
+			//This is needed to ensure availability of the extra data needed to print the product list
+			//spacecore.showMessage2("Loading...", "", "Busy");
+			spacecore.showLoadingCircle("Products");
+			setTimeout(this.show.bind(this, false, part), 250);
+			return;
+		}
+		
+		switch(part) {
+			case "products": spacecore.executeCommand('product/list', {}, this._handleShow.bind(this)); break;
+			case "details": spacecore.currentModule.showDetails(this.getCurrentProductId()()); break;
+			default:         this.genericErrorHandler("Unhandled part in products module: '"+part+"'");
+		}
+	}
+	
+	_handleRefreshGroups(res, err) {
+		if (err) return console.log("Refresh exception", err);
+		this.state.groups.lastData = res;
+	}
+	
+	_handleRefreshIdentifierTypes(res, err) {
+		if (err) return console.log("Refresh exception", err);
+		this.state.identifierTypes.lastData = res;
+	}
+	
+	_handleRefreshLocations(res, err) {
+		if (err) return console.log("Refresh exception", err);
+		this.state.locations.lastData = res;
+	}
+	
+	_handleRefreshBrands(res, err) {
+		if (err) return console.log("Refresh exception", err);
+		this.state.brands.lastData = res;
+	}
+	
+	_handleRefreshPackages(res, err) {
+		if (err) return console.log("Refresh exception", err);
+		this.state.packages.lastData = res;
+	}
+	
+	_handleRefreshPersonGroups(res, err) {
+		if (err) return console.log("Refresh exception", err);
+		this.state.personGroups.lastData = res;
+		this.personGroupsReady = true;
+	}
+	
+	/* Helper functions */
+	genericErrorHandler(err, action="show()") {
+		var message = "Unknown error!";
+
+		if ((typeof err === 'object') && (typeof err.message === 'string')) {
+			message = err.message;
+		} else if (typeof err === 'string') {
+			message = err;
 		} else {
-			console.log("Unhandled part in products module",part);
-		}
-	}
-	
-	/* Groups */
-	
-	manageGroups() {
-		this.app.executeCommand('person/group/list', {}, this._handleManageGroups.bind(this));
-	}
-	
-	_handleManageGroups(res, err) {
-		if (err !== null) {
-			return this.genericErrorHandler(err);
+			console.log("Invalid argument supplied to error handler", err);
 		}
 		
-		this._handleGroupsRefresh(res, err); //Update cache
-				
-		this.state.groupsLastData = res;
-		
-		var groupsTable = this._renderGroups(
-			this.app.sort(
-				this.app.filter(
-					res,
-					this.state.groupsSearchText,
-					['name', 'description', 'addToNew'],
-					false
-				),
-				this.state.groupsSortBy,
-				this.state.groupsSortReverse
-			)
-		);
-				
-		this.app.showPage({
-			header: {
-				title: "Persons: groups",
-				options: [
-						{
-							type:"text",
-							id: "persons-groups-search",
-							fe_icon: "search",
-							placeholder: "Search groups...",
-							action:  "javascript:spacecore.currentModule.searchGroups();",
-							value: this.state.groupsSearchText
-						},
-						{
-							"type":"button",
-							"fe_icon": "chevron-left",
-							"action":  "javascript:spacecore.currentModule.show();",
-							"value": "Back",
-							"class": "secondary"
-						}
-					]
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							header: {
-								title: "Groups",
-								options: [
-									{
-										type: "button",
-										action: "javascript:spacecore.currentModule.groupAdd();",
-										fe_icon: "plus",
-										small: true
-									}
-								]
-							},
-							table: groupsTable
-						}
-					]
-				]
-			]
-		});
-		
-		if (this.state.lastSelectedGroup !== null) window.location.href = "#person-group-"+this.state.lastSelectedGroup.id;
-	}
-	
-	_renderGroups(res) {		
-		var table = {
-			id: "table_groups",
-			header: [
+		console.log("genericErrorHandler", err);
+
+		spacecore.showMessage2(
+			message,
+			"Products",
+			"Error",
+			[
 				{
-					fe_icon: "user",
-					width: 1,
-					text_center: true,
-					action: "javascript:spacecore.currentModule.changeGroupsSort('id');",
-					fe_icon_after: this._getGroupsSortIcon('id')
-				},
-				{
-					text: "Name",
-					action: "javascript:spacecore.currentModule.changeGroupsSort('name');",
-					fe_icon_after: this._getGroupsSortIcon('name')
-				},
-				{
-					text: "Description",
-					action: "javascript:spacecore.currentModule.changeGroupsSort('description');",
-					fe_icon_after: this._getGroupsSortIcon('description')
-				},
-				{
-					text: "Default",
-					action: "javascript:spacecore.currentModule.changeGroupsSort('addToNew');",
-					fe_icon_after: this._getGroupsSortIcon('addToNew')
-				},
-				{
-					width: 1
+					type: "button",
+					value: "OK",
+					action: "javascript:spacecore.currentModule."+action+";"
 				}
-			],
-			body: []
-		};
-		
-		for (var i in res) {
-			table.body.push({
-				id: "person-group-"+res[i].id,
-				fields: [
-					{
-						action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-						text: res[i].id,
-						text_center: true
-					},
-					{
-						action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-						text: res[i].name
-					},
-					{
-						action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-						text: res[i].description
-					},
-					{
-						action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-						fe_icon: res[i].addToNew ? "check" : "x"
-					},
-					{
-						text_center: true,
-						menu: [
-							/*{
-								action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-								fe_icon: "info",
-								label: "Details"
-							},*/
-							{
-								action: "javascript:spacecore.currentModule.groupEdit("+res[i].id+");",
-								fe_icon: "command",
-								label: "Edit"
-							},
-							{
-								action: "javascript:spacecore.currentModule.groupRemove("+res[i].id+");",
-								fe_icon: "trash-2",
-								label: "Remove"
-							}
-						]
-					}
-				]
-			});
-		}
-		return table;
-	}
-	
-	searchGroups(elem='persons-groups-search') {
-		this.state.groupsSearchText = document.getElementById(elem).value;
-		
-		console.log("SearchGroups", this.state.groupsSearchText, this.state.groupsLastData, this.state.groupsSortBy, this.state.groupsSortReverse);
-		
-		var filtered = this.app.sort(
-			this.app.filter(
-				this.state.groupsLastData,
-				this.state.groupsSearchText,
-				['name', 'description', 'addToNew'],
-				false),
-			this.state.groupsSortBy,
-			this.state.groupsSortReverse);
-		
-		var content = this.ui.renderTemplate('table', this._renderGroups(filtered));
-		document.getElementById('table_groups').innerHTML = content;
-	}
-	
-	changeGroupsSort(field) {
-		if (this.state.groupsSortBy === field) {
-			this.state.groupsSortReverse = !this.state.groupsSortReverse;
-		} else {
-			this.state.groupsSortReverse = false;
-			this.state.groupsSortBy = field;
-		}
-		this.searchGroups();
-	}
-	
-	_handleGroupsRefresh(res, err) {
-		if (err) return console.log("Persons _handleGroupsRefresh exception", err);
-		this.groups = res;
-	}
-	
-	_getGroupNameById(id) {
-		for (var i in this.groups) {
-			if (this.groups[i].id === id) return this.groups[i].name;
-		}
-		return "";
-	}
-	
-	groupAdd(name="", description="", addToNew="") {
-		this.app.showPage({
-			header: {
-				title: "Persons: groups",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Add group"
-							},
-							form: {
-								id: "addgroup-form",
-								elements: [
-									{
-										type: "text",
-										name: "name",
-										label: "Name",
-										value: name,
-									},
-									{
-										type: "text",
-										name: "description",
-										label: "Description",
-										value: description
-									},
-									{
-										type: "checkbox",
-										name: "default",
-										label: "Default",
-										checked: addToNew
-									}
-								],
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.manageGroups();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('addgroup-form','person/group/add')",
-											fe_icon: "save",
-											value: "Add group",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
 			]
-		});
+		);
 	}
 	
-	groupRemove(id) {
-		this.app.executeCommand('person/group/list', {id: id}, this._groupRemoveHandler.bind(this));
+	getCurrentProductId() {
+		return this.state.products.lastSelected.id;
 	}
 	
-	_groupRemoveHandler(res, err) {
-		if (err !== null) {
-			return this.genericErrorHandler(err);
-		}
-		
-		if (res.length !== 1) {
-			return this.genericErrorHandler({message: "Group not found!"});
-		}
-		
-		var data = res[0];
-		
-		this.app.showPage({
-			header: {
-				title: "Persons: groups",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Remove group"
-							},
-							form: {
-								id: "removegroup-form",
-								elements: [
-									{
-										type: "hidden",
-										name: "id",
-										value: data.id,
-										convertToNumber: true
-									},
-									{
-										type: "static",
-										label: "Are you sure?",
-										value: "You are about to remove group '"+data.name+"'."
-									},
-									{
-										type: "checkbox",
-										label: "Force (remove even if there are persons in this group)",
-										name: "force"
-									}
-								],
-								
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.manageGroups();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('removegroup-form','person/group/remove')",
-											fe_icon: "trash-2",
-											value: "Remove group",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
-	}
-	
-	groupEdit(id) {
-		this.app.executeCommand('person/group/list', {id: id}, this._groupEditHandler.bind(this));
-	}
-	
-	_groupEditHandler(res, err) {
-		if (err !== null) {
-			return this.genericErrorHandler(err);
-		}
-		
-		if (res.length !== 1) {
-			return this.genericErrorHandler({message: "Group not found!"});
-		}
-		
-		var data = res[0];
-		
-		this.app.showPage({
-			header: {
-				title: "Persons: groups",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Edit group"
-							},
-							form: {
-								id: "editgroup-form",
-								elements: [
-									{
-										type: "hidden",
-										name: "id",
-										value: data.id,
-										convertToNumber: true
-									},
-									{
-										type: "text",
-										name: "name",
-										label: "Name",
-										value: data.name,
-									},
-									{
-										type: "text",
-										name: "description",
-										label: "Description",
-										value: data.description
-									},
-									{
-										type: "checkbox",
-										name: "default",
-										label: "Default",
-										checked: data.addToNew > 0
-									}
-								],
-								
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.manageGroups();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('editgroup-form','person/group/edit')",
-											fe_icon: "save",
-											value: "Edit group",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
-	}
-	
-	/* Persons */
-	
-	removeGroupFromPerson(group) {
-		if (typeof this.state.lastSelected !== "object") return console.log("removeGroupFromPerson called without a person selected!", this.state.lastSelected);
-		var id = this.state.lastSelected.id;
-		
-		var groupItems = [];
-		for (var i in this.groups) {
-			var item = {
-				value: this.groups[i].id,
-				label: this.groups[i].name
-			};
-			groupItems.push(item);
-		}
-		
-		this.app.showPage({
-			header: {
-				title: "Persons",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Remove group"
-							},
-							form: {
-								id: "removegroupfromperson-form",
-								elements: [
-									{
-										type: "hidden",
-										name: "person",
-										value: id,
-										convertToNumber: true
-									},
-									{
-										type: "hidden",
-										name: "group",
-										value: group,
-										convertToNumber: true
-									},
-									{
-										type: "static",
-										label: "Are you sure?",
-										value: "You are about to remove '"+this.state.lastSelected.nick_name+"' from group '"+this._getGroupNameById(group)+"'."
-									}
-								],
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.showDetails();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('removegroupfromperson-form','person/removeGroup')",
-											fe_icon: "trash-2",
-											value: "Remove from group",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
-	}
-	
-	addGroupToPerson(id, nick_name="") {
-		var groupItems = [];
-		for (var i in this.groups) {
-			var item = {
-				value: this.groups[i].id,
-				label: this.groups[i].name
-			};
-			groupItems.push(item);
-		}
-		
-		this.app.showPage({
-			header: {
-				title: "Persons",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Add group"
-							},
-							form: {
-								id: "addgrouptoperson-form",
-								elements: [
-									{
-										type: "hidden",
-										name: "person",
-										value: id,
-										convertToNumber: true
-									},
-									{
-										type: "static",
-										label: "Person",
-										value: nick_name,
-										ng: true
-									},
-									{
-										type: "radio",
-										name: "group",
-										label: "Group",
-										selected: this.groups[0].id,
-										options: groupItems,
-										convertToNumber: true
-									}
-								],
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.showDetails("+id+");",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('addgrouptoperson-form','person/addGroup')",
-											fe_icon: "save",
-											value: "Add group",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
-	}
-	
-	/* Form handling */
-		
-	submitForm(form, method) {
-		spacecore.submitForm(this.submitFormHandler.bind(this, form, method), form, method);
-	}
-	
+	submitForm(form, method) { spacecore.submitForm(this.submitFormHandler.bind(this, form, method), form, method); }
+
 	submitFormHandler(form, method, res, err) {
-		var action = "show()";
+		var action = "javascript:spacecore.currentModule.show();";
 		var actionFunc = spacecore.currentModule.show;
 		var skip = false;
-		
-		if ((form==="addgrouptoperson-form") || (form==="removegroupfromperson-form")) {
-			if (err === null) return this.showDetails(); //Skip the result if succesfull
-			action = "showDetails()";
-			
+
+		if (form==="removeproduct-form") {
+			if (err === null) return this.show();
+			action = "javascript:spacecore.currentModule.show();";
 		}
 		
-		if ((form==="addgroup-form") || (form==="editgroup-form") || (form=="removegroup-form")) {
-			if (err === null) return this.manageGroups(); //Skip the result if succesfull
-			action = "manageGroups()";
+		if (form==="addproduct-form") {
+			if (err === null) return this.showDetails(res);
+			action = "javascript:spacecore.currentModule.showDetails("+res+");";
 		}
-		
+
+		if (
+			(form==="addgrouptoproduct-form") ||
+			(form==="removegroupfromproduct-form") ||
+			(form==="editproduct-form")
+		) {
+			if (err === null) return spacecore.handleBackButton();
+			action = "javascript:spacecore.handleBackButton();";
+		}
+
+		if ((form==="group-form") || (form=="removegroup-form")) {
+			if (err === null) return this.show(false, 'groups'); //Skip the result if succesfull
+			action = "javascript:spacecore.currentModule.show(false, 'groups');";
+		}
+
 		if (err) {
-			this.app.showMessage2(
-				[
-					err.message
-				],
-				"Persons",
-				"Error",
-				[
-					{
-						type: "button",
-						value: "OK",
-						action: "javascript:spacecore.currentModule."+action+";"
-					}
-				]
+			console.log("submitFormHandler error", err);
+			var content = [ err.message ];
+			if (typeof err.raw.message == "string") content.push(err.raw.message);
+			spacecore.showMessage2(
+				content, "Products", "Error",
+				[{ type: "button", value: "OK", action: action }]
 			);
 		} else {
-			this.app.showMessage2(
-				[
-					res
-				],
-				"Persons",
-				"Result",
-				[
-					{
-						type: "button",
-						value: "OK",
-						action: "javascript:spacecore.currentModule."+action+";"
-					}
-				]
+			spacecore.showMessage2(
+				[ res ], "Products", "Result",
+				[{ type: "button", value: "OK", action: action }]
 			);
 		}
 	}
 	
-	/* Persons */
-	
-	add(nick_name="", first_name="", last_name="") {
-		this.app.showPage({
-			header: {
-				title: "Persons",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Add person"
-							},
-							form: {
-								id: "addperson-form",
-								elements: [
-									{
-										type: "text",
-										name: "nick_name",
-										label: "Nickname",
-										value: nick_name,
-									},
-									{
-										type: "text",
-										name: "first_name",
-										label: "First name",
-										value: first_name
-									},
-									{
-										type: "text",
-										name: "last_name",
-										label: "Last name",
-										value: last_name
-									}
-								],
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.action();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('addperson-form','person/add')",
-											fe_icon: "save",
-											value: "Add person",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
-	}
-	
-	remove(id=null) {
-		if (id !== null) {
-			return this.getDetails(id, (res, err) => {
-				if (err || (res.length < 1)) return console.log("Error while fetching details for user to be removed.", err,res);
-				this.state.lastSelected = res[0];
-				this.remove();
-			});
+	findPersonGroup(id) {
+		for (var i in this.state.personGroups.lastData) {
+			var group = this.state.personGroups.lastData[i];
+			console.log(group.id, id);
+			if (group.id === id) return group; 
 		}
-		
-		if (typeof this.state.lastSelected !== "object") return console.log("remove called without a person selected!", this.state.lastSelected);
-		var data = this.state.lastSelected;
-		
-		this.app.showPage({
-			header: {
-				title: "Persons",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Remove person"
-							},
-							form: {
-								id: "removeperson-form",
-								elements: [
-									{
-										type: "hidden",
-										name: "id",
-										value: data.id,
-										convertToNumber: true
-									},
-									{
-										type: "static",
-										label: "Are you sure?",
-										value: "You are about to remove person '"+this.state.lastSelected.nick_name+"' from the system."
-									}
-								],
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.showDetails();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('removeperson-form','person/remove')",
-											fe_icon: "trash-2",
-											value: "Remove person",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
-	}
-		
-	search(elem='products-search') {
-		this.state.searchText = document.getElementById(elem).value;
-		
-		var filtered = this.app.sort(
-			this.app.filter(
-				this.state.lastData,
-				this.state.searchText,
-				['nick_name', 'first_name', 'last_name'],
-				false),
-			this.state.sortBy,
-			this.state.sortReverse);
-		
-		var content = this.ui.renderTemplate('table', this._renderProducts(filtered));
-		document.getElementById('table_products').innerHTML = content;
+		return null;
 	}
 	
-	changeSort(field) {
-		if (this.state.sortBy === field) {
-			this.state.sortReverse = !this.state.sortReverse;
-		} else {
-			this.state.sortReverse = false;
-			this.state.sortBy = field;
-		}
-		this.search();
-	}
+	/* Products */
 	
-	_getSortIcon(field) {
-		if (this.state.sortBy !== field) return null;
-		if (this.state.sortReverse) return "chevron-up";
-		return "chevron-down";
-	}
-	
-	_getGroupsSortIcon(field) {
-		if (this.state.groupsSortBy !== field) return null;
-		if (this.state.groupsSortReverse) return "chevron-up";
-		return "chevron-down";
-	}
-		
-	_renderProducts(res) {		
+	_renderProducts(res) {
+		this.state.products.lastData = res;
 		var table = {
 			id: "table_products",
 			header: [
-				{
-					fe_icon: "image",
-					width: 1,
-					text_center: true,
-					action: "javascript:spacecore.currentModule.changeSort('id');",
-					fe_icon_after: this._getSortIcon('id')
-				},
-				{
-					text: "Name",
-					action: "javascript:spacecore.currentModule.changeSort('name');",
-					fe_icon_after: this._getSortIcon('name')
-				},
-				{
-					text: "Description",
-					action: "javascript:spacecore.currentModule.changeSort('description');",
-					fe_icon_after: this._getSortIcon('description')
-				},
-				{
-					text: "Brand",
-					action: "javascript:spacecore.currentModule.changeSort('brand');",
-					fe_icon_after: this._getSortIcon('brand')
-				},
-				{
-					text: "Package",
-					action: "javascript:spacecore.currentModule.changeSort('package');",
-					fe_icon_after: this._getSortIcon('package')
-				},
-				{
-					text: "Price",
-					action: "javascript:spacecore.currentModule.changeSort('price');",
-					fe_icon_after: this._getSortIcon('price')
-				},
-				{
-					text: "Stock",
-					action: "javascript:spacecore.currentModule.changeSort('stock');",
-					fe_icon_after: this._getSortIcon('stock')
-				},
-				{
-					text: "Hidden",
-					action: "javascript:spacecore.currentModule.changeSort('hidden');",
-					fe_icon_after: this._getSortIcon('hidden')
-				},
-				{
-					width: 1
-				}
+				{ fe_icon: "image", width: 1, text_center: true },
+				{ text: "Name" },
+				{ text: "Description"},
+				{ text: "Brand" },
+				{ text: "Package" },
+				{ text: "Price" },
+				{ text: "Stock" },
+				{ text: "Active" },
+				{ width: 1 }
 			],
 			body: []
 		};
@@ -903,100 +217,44 @@ class Products {
 			}
 			var price = "-";
 			if (res[i].prices.length > 1) {
-				price = "...";
+				price = "";
+				for (var p in res[i].prices) {
+					console.log(res[i].prices[p]);
+					var groupName = "Unknown";
+					var group = this.findPersonGroup(res[i].prices[p].person_group_id);
+					if (group) groupName = group.name;
+					price += groupName+": € "+(res[i].prices[p].amount/100.0).toFixed(2)+"\n";
+				}
+				//price = "...";
 			} else if (res[i].prices.length === 1) {
 				price = "€ "+(res[i].prices[0].amount/100.0).toFixed(2);
 			}
 			var stock = 0;
 			for (var j in res[i].stock) {
-				stock += Number(res[i].stock.amount_current);
+				stock += Number(res[i].stock[j].amount_current);
 			}
 			
-			table.body.push({
-				id: "person-"+res[i].id,
-				fields: [
-					{
-						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						avatar: res[i].picture,
-						text_center: true
-					},
-					{
-						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: res[i].name
-					},
-					{
-						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: res[i].description
-					},
-					{
-						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: brand
-					},
-					{
-						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: pkg
-					},
-				    {
-						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: price
-					},
-					{
-						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: String(stock)
-					},
-				   {
-						action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-						text: String(res[i].hidden)
-					},
-					{
-						text_center: true,
-						menu: [
-							{
-								action: "javascript:spacecore.currentModule.showDetails("+res[i].id+");",
-								fe_icon: "info",
-								label: "Details"
-							},
-							{
-								action: "javascript:spacecore.currentModule.edit("+res[i].id+");",
-								fe_icon: "command",
-								label: "Edit"
-							},
-							{
-								action: "javascript:spacecore.currentModule.remove("+res[i].id+");",
-								fe_icon: "trash-2",
-								label: "Remove"
-							}
-						]
-					}
-				]
-			});
+			var action_details = "javascript:spacecore.currentModule.showDetails("+res[i].id+");";
+			var action_edit    = "javascript:spacecore.currentModule.edit("+res[i].id+");";
+			var action_remove  = "javascript:spacecore.currentModule.remove("+res[i].id+");"
+			
+			table.body.push({ id: "product-"+res[i].id, fields: [
+					{ action: action_details, avatar: res[i].picture, text_center: true },
+					{ action: action_details, text: res[i].name },
+					{ action: action_details, text: res[i].description },
+					{ action: action_details, text: brand },
+					{ action: action_details, text: pkg },
+				    { action: action_details, text: price },
+					{ action: action_details, text: String(stock) },
+					{ action: action_details, fe_icon: res[i].active ? "check" : "x" },
+					{ text_center: true, menu: [
+						{ action: action_details, fe_icon: "info",    label: "Details" },
+						{ action: action_edit,    fe_icon: "command", label: "Edit" },
+						{ action: action_remove,  fe_icon: "trash-2", label: "Remove" }
+					]}
+			]});
 		}
 		return table;
-	}
-	
-	genericErrorHandler(err, action="show()") {
-		var message = "Unknown error!";
-		
-		if ((typeof err === 'object') && (typeof err.message === 'string')) {
-			message = err.message;
-		} else if (typeof err === 'string') {
-			message = err;
-		} else {
-			console.log("Invalid argument supplied to error handler", err);
-		}
-		
-		this.app.showMessage2(
-			message,
-			"Persons",
-			"Error",
-			[
-				{
-					type: "button",
-					value: "OK",
-					action: "javascript:spacecore.currentModule."+action+";"
-				}
-			]
-		);
 	}
 	
 	_handleShow(res, err) {
@@ -1007,37 +265,49 @@ class Products {
 		this.state.lastData = res;
 		
 		var productsTable = this._renderProducts(
-			this.app.sort(
-				res,
-				/*this.app.filter(
-					res,
-					this.state.searchText,
-					['name', 'first_name', 'last_name'],
-					false
-				),*/
-				this.state.sortBy,
-				this.state.sortReverse
-			)
+			spacecore.filter(res, this.state.products.searchText, this.state.products.filterFields, false)
 		);
 				
-		this.app.showPage({
+		spacecore.showPage({
 			header: {
 				title: "Products",
-				options: [
-						{
+				options: [{
 							"type":"button",
 							"fe_icon": "folder",
 							"action":  "javascript:spacecore.currentModule.manageGroups();",
-							"value": "Manage groups",
+							"value": "Groups",
 							"class": "secondary"
-						},
-						{
+						}, {
+							"type":"button",
+							"fe_icon": "hash",
+							"action":  "javascript:spacecore.currentModule.manageIdentifiers();",
+							"value": "Identifiers",
+							"class": "secondary"
+						}, {
+							"type":"button",
+							"fe_icon": "map-pin",
+							"action":  "javascript:spacecore.currentModule.manageLocations();",
+							"value": "Locations",
+							"class": "secondary"
+						}, {
+							"type":"button",
+							"fe_icon": "umbrella",
+							"action":  "javascript:spacecore.currentModule.manageBrands();",
+							"value": "Brands",
+							"class": "secondary"
+						}, {
+							"type":"button",
+							"fe_icon": "package",
+							"action":  "javascript:spacecore.currentModule.managePackages();",
+							"value": "Packages",
+							"class": "secondary"
+						}, {
 							type:"text",
 							id: "products-search",
 							fe_icon: "search",
 							placeholder: "Search products...",
-							action:  "javascript:spacecore.currentModule.search();",
-							value: this.state.searchText
+							action:  "javascript:spacecore.search('products');",
+							value: this.state.products.searchText
 						}
 					]
 			},
@@ -1062,313 +332,79 @@ class Products {
 					]
 				]
 			]
-		});
+		}, ['table_products']);
 		
-		if (this.state.lastSelected !== null) window.location.href = "#product-"+this.state.lastSelected.id;
-	}
-	
-	/* Person details */
-		
-	edit(id=null) {
-		if (id !== null) {
-			return this.getDetails(id, (res, err) => {
-				if (err || (res.length < 1)) return console.log("Error while fetching details for user to be edited.", err,res);
-				this.state.lastSelected = res[0];
-				this.edit();
-			});
-		}
-		
-		
-		if (typeof this.state.lastSelected !== "object") {
-			return console.log("edit called without a person selected!", this.state.lastSelected);
-		}
-		
-		var data = this.state.lastSelected;
-		
-		this.app.showPage({
-			header: {
-				title: "Person details",
-				options: []
-			},
-			body: [
-				[
-					[
-						{
-							type: "card",
-							width: ['lg-8', 'md-12'],
-							header: {
-								title: "Edit person"
-							},
-							form: {
-								id: "editperson-form",
-								elements: [
-									{
-										type: "hidden",
-										name: "id",
-										value: data.id,
-										convertToNumber: true
-									},
-									{
-										type: "text",
-										name: "nick_name",
-										label: "Nickname",
-										value: data.nick_name
-									},
-									{
-										type: "text",
-										name: "first_name",
-										label: "First name",
-										value: data.first_name
-									},
-									{
-										type: "text",
-										name: "last_name",
-										label: "Last name",
-										value: data.last_name
-									},
-									{
-										type: "file",
-										name: "avatar",
-										label: "Avatar",
-										default: "Select an image to upload...",
-										id: "personAvatarFile",
-										value: ""
-									}
-								],
-								
-								footer: [
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.showDetails();",
-											fe_icon: "x",
-											value: "Cancel",
-											class: "secondary"
-										},
-										{
-											type: "button",
-											action: "javascript:spacecore.currentModule.submitForm('editperson-form','person/edit')",
-											fe_icon: "save",
-											value: "Edit",
-											ml: "auto"
-										}
-									]
-							}
-						}
-					]
-				]
-			]
-		});
-		
+		if (this.state.products.lastSelected !== null) window.location.href = "#product-"+this.state.products.lastSelected.id;
+		spacecore.history.push(this.show.bind(this, false, "products"));
 	}
 	
 	getDetails(id, target) {
-		return this.app.executeCommand('person/list',{id: id},target.bind(this));
+		return spacecore.executeCommand('product/list',{id: id},target.bind(this));
 	}
 	
-	showDetails(id=null) {
-		if ((id === null) && (typeof this.state.lastSelected === "object")) {
-			id = this.state.lastSelected.id;
-		}
-		
-		if (id === null) {
-			this.show();
-		} else {
-			this.getDetails(id, this._handleShowDetails);
-		}
-	}
-	
-	_handleShowDetails(res, err) {
-		if (err) {
-			console.log('_handleShowDetails error', err);
-			genericErrorHandler(err);
-		}
-		
-		if (res.length < 1) {
-			this.genericErrorHandler({message: "Person not found."});
-			return;
-		}
-		
-		res = res[0]; //First result is the only result
-		
-		this.state.lastSelected = res;
-		this.app.executeCommand('transaction/list/query', [{person_id: res.id}], this._handleShowDetails2.bind(this, res, err));
-	}
-	
-	_handleShowDetails2(res, err, transactionsRes, transactionsErr) {
-		console.log("_handleShowDetails2");
-		if (err !== null) {
-			console.log("handlePersonDetails error ",err);
-			this.genericErrorHandler(err);
-			return;
-		}
-		
-		if (transactionsErr !== null) {
-			console.log("handlePersonDetails transactions error ",err);
-			this.genericErrorHandler(transactionsErr);
-			return;
-		}
-				
-		this.app.history.push(this.show.bind(this, false));
-		
-		console.log("Person", res);
-		
-		var table_groups = {
-			id: "table_person_groups",
-			header: [
-				"Group",
-				{
-					width: 1
-				}
-			],
-			body: []
-		};
-		
-		for (var i in res.groups) {
-			table_groups.body.push({
-				id: "group-"+res.groups[i].id,
-				fields: [
-					{
-						text: res.groups[i].name,
-					},
-					{
-						text_center: true,
-						menu: [
-							{
-								action: "javascript:spacecore.currentModule.removeGroupFromPerson("+res.groups[i].id+");",
-								fe_icon: "trash-2",
-								label: "Remove group from person"
-							},
-						]
-					}
-				]
-			});
-		}
-		
-		var table_transactions = {
-			id: "table_transactions",
-			header: [
-				"ID",
-				"Details",
-				"Total",
-				"Timestamp",
-				{
-					width: 1
-				}
-			],
-			body: []
-		};
-		
-		for (var i in transactionsRes) {
-			var description = "";
-			
-			if (transactionsRes[i].rows.length < 1) {
-				description = "Empty transaction";
-			} else if (transactionsRes[i].rows.length === 1) {
-				description = transactionsRes[i].rows[0].amount+"x "+transactionsRes[i].rows[0].description;
-			} else {
-				description = "Transaction contains more than one operation";
-			}
-			var timestamp = new Date(transactionsRes[i].timestamp*1000);
-			var timestring = ((timestamp.getDate()<10)?"0":"")+timestamp.getDate() + "-" + 
-			                 (((timestamp.getMonth()+1)<10)?"0":"")+(timestamp.getMonth()+1) + "-" +
-			                 timestamp.getFullYear() + " " +
-			                 ((timestamp.getHours()<10)?"0":"")+timestamp.getHours() + ":" +
-			                 ((timestamp.getMinutes()<10)?"0":"")+timestamp.getMinutes();
-			table_transactions.body.push({
-				id: "transaction-"+transactionsRes[i].id,
-				fields: [
-					{
-						text: transactionsRes[i].id
-					},
-					{
-						text: description
-					},
-					{
-						text: "€ "+(transactionsRes[i].total/100.0).toFixed(2)
-					},
-					{
-						text: timestring
-					},
-					{
-						text: ""
-					}
-				]
-			});
-		}
-				
-		this.app.showPage({
-			header: {
-				title: "Person details",
-				options: [
-						{
-							"type":"button",
-							"fe_icon": "command",
-							"action":  "javascript:spacecore.currentModule.edit();",
-							"value": "Edit",
-							"class": "secondary"
-						},
-						{
-							"type":"button",
-							"fe_icon": "trash-2",
-							"action":  "javascript:spacecore.currentModule.remove();",
-							"value": "Remove",
-							"class": "secondary"
-						},
-						{
-							"type":"button",
-							"fe_icon": "chevron-left",
-							"action":  "javascript:spacecore.handleBackButton();",
-							"value": "Back",
-							"class": "secondary"
-						}
-					]
-			},
-			body: [
-				[{
-					width: "lg-4",
-					elements: [
-						{
-							type: "card",
-							padding: 5,
-							media: {
-								avatar: res.avatar,
-								name: res.first_name+" "+res.last_name,
-								comment: res.nick_name,
-								buttons: ""
-							}
-						},
-						{
-							type: "card",
-							header: {
-								title: "Groups",
-								options: [
-									{
-										type: "button",
-										action: "javascript:spacecore.currentModule.addGroupToPerson("+res.id+", '"+res.nick_name+"')",
-										fe_icon: "plus",
-										small: true
-									}
-								]
-							},
-							table: table_groups
-						}
-					]
-				},
-				{
-					width: ["lg-8", "md-12"],
-					elements: [
-						{
-							type: "card",
-							header: {
-								title: "Transactions",
-								options: []
-							},
-							table: table_transactions
-						}
-					]
-				}]
-			]
+	showEdit() {
+		var data = this.state.products.lastSelected;
+		var action_back = "javascript:spacecore.handleBackButton();";
+		var action_edit = "javascript:spacecore.currentModule.submitForm('editproduct-form','product/edit')";
+		spacecore.showPage({
+			header: { title: "Product details", options: [] },
+			body: [[[
+				{ type: "card", width: ['lg-8', 'md-12'], header: { title: "Edit product" },	form: { id: "editproduct-form", elements: [
+					{ type: "hidden",   name: "id",                                value: data.id, convertToNumber: true },
+					{ type: "text",     name: "name",        label: "Name",        value: data.name },
+					{ type: "text",     name: "description", label: "Description", value: data.description },
+					{ type: "checkbox", name: "active",      label: "Active",      checked: Boolean(data.active) },
+					{ type: "file",     name: "picture",     label: "Picture",     default: "Select an image to upload...",id: "productPictureFile", value: "" }
+				], footer: [
+					{type: "button", action: action_back, fe_icon: "x", value: "Cancel", class: "secondary" },
+					{type: "button", action: action_edit, fe_icon: "save", value: "Edit", ml: "auto" }
+				]}}
+			]]]
 		});
-		this.app.jumpToTop();
+	}
+	
+	edit(id=null, fromDetails=false) {
+		if (fromDetails) spacecore.history.push(this.show.bind(this, false, "details"));
+		if (id !== null) {
+			this.getDetails(id, (res, err) => {
+				if (err || (res.length < 1)) return console.log("Error while fetching details for user to be edited.", err,res);
+				this.state.products.lastSelected = res[0];
+				this.showEdit();
+			});
+		} else {
+			this.showEdit();
+		}
+	}
+	
+	showRemove() {
+		var data = this.state.products.lastSelected;
+		var action_back    = "javascript:spacecore.handleBackButton();";
+		var action_remove  = "javascript:spacecore.currentModule.submitForm('removeproduct-form','product/remove')";
+		spacecore.showPage({
+			header: { title: "Products", options: [] },
+			body: [[[{
+				type: "card", width: ['lg-8', 'md-12'], header: { title: "Remove product" }, form: { id: "removeproduct-form", elements: [
+					{ type: "hidden", name: "id", value: data.id, convertToNumber: true },
+					{ type: "static", label: "Are you sure?", value: "You are about to remove product '"+this.state.products.lastSelected.name+"' from the system.\nThis will permanently remove the link to this product from all transactions!" }
+				], footer: [
+					{ type: "button", action: action_back,   fe_icon: "x",       value: "Cancel",         class: "secondary" },
+					{ type: "button", action: action_remove, fe_icon: "trash-2", value: "Remove product", ml: "auto" }
+				]}
+			}]]]
+		});
+	}
+	
+	remove(id=null, fromDetails=false) {
+		if (fromDetails) spacecore.history.push(this.show.bind(this, false, "details"));
+		// Allow for deleting a product without opening the details view
+		if (id !== null) {
+			this.getDetails(id, (res, err) => {
+				if (err || (res.length < 1)) return console.log("Error while fetching details for product to be removed.", err,res);
+				this.state.products.lastSelected = res[0];
+				this.showRemove();
+			});
+		} else {
+			this.showRemove();
+		}
 	}
 };

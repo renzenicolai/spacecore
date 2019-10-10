@@ -148,9 +148,10 @@ class SpacecoreUI {
 		Handlebars.registerPartial('bodyElement', '{{#if (eq type "alert")}}<div class="alert alert-{{#if class}}{{class}}{{else}}primary{{/if}}" role="alert">{{value}}</div>{{/if}}'
 												+ '{{#if (eq type "table")}}{{>table}}{{/if}}'
 												+ '{{#if (eq type "card")}}{{>card}}{{/if}}'
-												+ '{{#if (eq type "raw")}}{{{raw}}}{{/if}}');
+												+ '{{#if (eq type "raw")}}{{{raw}}}{{/if}}'
+												+ '{{#if (eq type "loadingcircle")}}<div class="loadingcircle">&nbsp;</div>{{/if}}');
 		
-		Handlebars.registerPartial('pageColumn', '<div class="{{#if (list width)}}{{#each width}}col-{{this}} {{/each}}{{else}}col-{{#if width}}{{width}}{{else}}12{{/if}}{{/if}}">'
+		Handlebars.registerPartial('pageColumn', '<div class="{{#if (eq center true)}}text-center{{/if}}{{#if (list width)}}{{#each width}}col-{{this}} {{/each}}{{else}}col-{{#if width}}{{width}}{{else}}12{{/if}}{{/if}}">'
 											 + '{{#if (list this)}}{{#each this}}{{>bodyElement}}{{/each}}{{else}}{{#if elements}}{{#each elements}}{{>bodyElement}}{{/each}}{{else}}{{>bodyElement}}{{/if}}{{/if}}'
 											 + '</div>');
 		
@@ -184,6 +185,14 @@ class SpacecoreUI {
 		
 	show(html, elem="spacecore") {
 		document.getElementById(elem).innerHTML = html;
+		
+		$('.loadingcircle').circleProgress({
+			value: 1,
+			size: 80,
+			fill: {
+			gradient: ["#CB5348", "#FF7046"]
+			}
+		});
 	}
 	
 	showTemplate(template='single', data={}, sortableTables=[], elem="spacecore") {
@@ -236,8 +245,6 @@ class SpacecoreUI {
 			value: value
 		}
 	}
-	
-	
 }
 
 
