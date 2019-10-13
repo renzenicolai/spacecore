@@ -147,7 +147,7 @@ class Candy {
 		
 		var trx = {person_id: person.id, products: [{id: product.id, amount: 1}]};
 		
-		this.app.executeCommand('transaction/execute', trx, this._handleTransactionResult.bind(this));
+		this.app.executeCommand('invoice/create', trx, this._handleTransactionResult.bind(this));
 	}
 	
 	genericErrorHandler(err) {

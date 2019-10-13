@@ -6,7 +6,11 @@ const Webserver        = require('./lib/webserver.js');
 const Websocketserver  = require('./lib/websocketserver.js');
 const Mqttclient       = require('./lib/mqtt.js');
 const Database         = require('./lib/db.js');
+
+//System functions
 const fs               = require('fs');
+
+//Database settings
 const password         = require('./password.js');
 
 //Modules

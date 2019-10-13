@@ -525,6 +525,7 @@ class Spacecore {
 		}
 		var formElements = form.elements;
 		var argument = {};
+		var firstCheckboxValueTemp = null;
 		var fileReaders = [];
 		for (var i in formElements) {
 			if (i === 'length') continue;
@@ -535,13 +536,43 @@ class Spacecore {
 				if (type=="radio") {
 						if (formElements[i].checked) {
 							if (formElements[i].classList.contains("scConvertNumber")) {
-							value = Number(value);
+							console.log("scConvertNumber", value, typeof value);
+							if (value === "") {
+								value = null;
+							} else {
+								value = Number(value);
+							}
 						}
 						argument[name] = value;
 						//console.log("Handled RADIO element", name, value);
 					}
 				} else if (type=="checkbox") {
-					argument[name] = formElements[i].checked;
+					var value = null;
+					if (formElements[i].value !== "undefined") value = formElements[i].value;
+					if (formElements[i].classList.contains("scConvertNumber")) {
+						console.log("scConvertNumber", value, typeof value);
+						if (value === "") {
+							value = null;
+						} else {
+							value = Number(value);
+						}
+					}
+					
+					if (typeof argument[name] === "undefined") {
+						//First checkbox with this name
+						argument[name] = formElements[i].checked;
+						firstCheckboxValueTemp = value;
+						console.log("First checkbox with name",name,": argument is now a boolean", argument[name]);
+					} else if (typeof argument[name] === "boolean") {
+						var firstCheckboxStateTemp = argument[name];
+						argument[name] = [];
+						if (firstCheckboxStateTemp) argument[name].push(firstCheckboxValueTemp);
+						if (formElements[i].checked) argument[name].push(value);
+						console.log("Second checkbox with name",name,": argument has been changed from boolean to list", argument[name]);
+					} else if (formElements[i].checked) {
+						argument[name].push(value);
+						console.log("Extra checkbox with name",name,": argument is list", argument[name]);
+					}
 					console.log("Handled CHECKBOX element", name, argument[name]);
 				} else if (type=="file") {
 					argument[name] = "...";
@@ -558,7 +589,12 @@ class Spacecore {
 					fileReaders.push({name: name, data: data});
 				} else if ((typeof value === "string") && (name.length > 0)) {
 					if (formElements[i].classList.contains("scConvertNumber")) {
-						value = Number(value);
+						console.log("scConvertNumber", value, typeof value);
+						if (value === "") {
+							value = null;
+						} else {
+							value = Number(value);
+						}
 					}
 					argument[name] = value;
 					//console.log("Handled GENERIC element", name, value);

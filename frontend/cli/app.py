@@ -197,7 +197,7 @@ class Shell(cmd.Cmd):
 		else:
 			term.clear()
 			headerWarning("")
-			headerWarning("The cart is contains products. Enter your name to confirm the transaction!")
+			headerWarning("The cart contains products. Enter your name to confirm the transaction!")
 			headerWarning("")
 			print("")
 		usage()
@@ -243,7 +243,7 @@ def headerError(message="TkkrLab barsystem"):
 	term.color()
 
 def headerWarning(message="TkkrLab barsystem"):
-	term.header(message, 43, 97, 1, False)
+	term.header(message, 30, 103, 1, False)
 	term.color(0)
 	term.color()
 

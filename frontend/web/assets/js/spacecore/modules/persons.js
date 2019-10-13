@@ -717,11 +717,11 @@ class Persons {
 	
 	addTokenToPerson(id) {
 		var typeOptions = [];
-		for (var i in this.state.tokens.types) typeOptions.push({value: i, label: this.state.tokens.types[i].name});
+		for (var i in this.state.tokens.types) typeOptions.push({value: this.state.tokens.types[i].id, label: this.state.tokens.types[i].name});
 		this._addItemToPersonForm(id, "person/addToken", "Add token to "+this.getCurrentPersonName(), "Add token", [
 			{ type: "select",   name: "type",    label: "Type",                   options: typeOptions,  action: "spacecore.currentModule.tokenTypeAction()", id: "typeField", convertToNumber: true },
 			{ type: "text",     name: "public",  label: "Public key / identifier"                                                                                                                    },
-			{ type: "text",     name: "private", label: "Private key / secret",   id: "privateKeyField", disabled: (!this.state.tokens.types[0].requirePrivate)                                              },
+			{ type: "text",     name: "private", label: "Private key / secret",   id: "privateKeyField", disabled: (!this.state.tokens.types[0].requirePrivate)                                      },
 			{ type: "checkbox", name: "enabled", label: "Enable"                                                                                                                                     }
 		]);
 	}
@@ -746,12 +746,12 @@ class Persons {
 	editTokenOfPerson(id) {
 		var record = this._getTokenByIdFromLastSelected(id);
 		var typeOptions = [];
-		for (var i in this.state.tokens.types) typeOptions.push({value: Number(i), label: this.state.tokens.types[i].name});
+		for (var i in this.state.tokens.types) typeOptions.push({value: Number(this.state.tokens.types[i].id), label: this.state.tokens.types[i].name});
 		this._addItemToPersonForm(-1, "person/editToken", "Edit token of "+this.getCurrentPersonName(), "Edit token", [
 			{ type: "hidden",   name: "id",                                                                                                                                                           value: id,            convertToNumber: true },
 			{ type: "select",   name: "type",    label: "Type",                   options: typeOptions,  action: "spacecore.currentModule.tokenTypeAction()", id: "typeField", convertToNumber: true, value: record.type.id                       },
 			{ type: "text",     name: "public",  label: "Public key / identifier"                                                                                                                   , value: record.public                        },
-			{ type: "text",     name: "private", label: "Private key / secret",   id: "privateKeyField", disabled: (!this.state.tokens.types[0].requirePrivate)                                     , value: record.private                       },
+			{ type: "text",     name: "private", label: "Private key / secret",   id: "privateKeyField", disabled: (!this.state.tokens.types[record.type.id].requirePrivate)                        , value: record.private                       },
 			{ type: "checkbox", name: "enabled", label: "Enable"                                                                                                                                    , checked: Boolean(record.enabled)            }
 		]);
 	}

@@ -257,6 +257,7 @@ class Persons {
 		}
 
 		await dbTransaction.commit();
+		
 		return personRecord.getIndex();
 	}
 
@@ -739,8 +740,8 @@ class Persons {
 		rpc.addMethod(prefix+"edit",               this.edit.bind(this));                        //Persons: edit a person
 		rpc.addMethod(prefix+"remove",             this.remove.bind(this));                      //Persons: remove a person
 		
-		rpc.addMethod(prefix+"find",               this.find.bind(this));                        //Persons: find a person by it's nickname
-		rpc.addMethod(prefix+"findByToken",        this.findByToken.bind(this));                 //Persons: find a person by one of it's tokens
+		rpc.addMethod(prefix+"find",               this.find.bind(this));                        //Persons: find a person by its nickname
+		rpc.addMethod(prefix+"findByToken",        this.findByToken.bind(this));                 //Persons: find a person by one of its tokens
 		
 		rpc.addMethod(prefix+"addToken",           this.addTokenToPerson.bind(this));            //Persons: add a token to a person
 		rpc.addMethod(prefix+"editToken",          this.editTokenOfPerson.bind(this));           //Persons: edit a token of a person

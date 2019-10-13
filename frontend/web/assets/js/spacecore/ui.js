@@ -39,6 +39,16 @@ class SpacecoreUI {
 			},
 			isset: function (v1) {
 				return (typeof v1 !== 'undefined');
+			},
+			isin: function (list, value) {
+				return list.includes(value);
+			},
+			isinobjinlist: function (list, value, key) {
+				for (var i in list) {
+					var item = list[i];
+					if (item[key] === value) return true;
+				}
+				return false;
 			}
 		});
 		
@@ -79,6 +89,8 @@ class SpacecoreUI {
 								 + '{{#if (eq type "checkbox")}}<label class="custom-switch"><input type="checkbox" name="{{name}}" class="custom-switch-input {{#if (eq convertToNumber true)}}scConvertNumber {{/if}}" {{#if (eq checked true)}} checked{{/if}}{{#if (eq value true)}} checked{{/if}}><span class="custom-switch-indicator"></span><span class="custom-switch-description">{{label}}</span></label>{{/if}}'
 								 
 								 + '{{#if (eq type "file")}}<div class="custom-file"><input type="file" class="custom-file-input" id="{{id}}" name="{{name}}" {{#if accept}}accept="{{accept}}"{{/if}} onchange="spacecore.fileOnChangeHelper({{id}});"><label class="custom-file-label" id="{{id}}-label">{{default}}</label></div>{{/if}}'
+								 
+								 + '{{#if (eq type "selectgroup")}}<div class="selectgroup selectgroup-pills selectgroup-separated">{{#each options}}<label class="selectgroup-item"><input type="checkbox" name="{{../name}}" value="{{value}}" class="selectgroup-input {{#if (eq ../convertToNumber true)}}scConvertNumber {{/if}}" {{#if (isin ../value value)}} checked{{/if}}><span class="selectgroup-button">{{label}}</span></label>{{/each}}</div>{{/if}}'
 								 
 		);
 				
