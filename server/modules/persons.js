@@ -591,6 +591,29 @@ class Persons {
 	async listTokenTypes(session, params) {
 		return Tokens.listTypes();
 	}
+	
+	async getTokenDb(session, params) {
+		var tokens = await this._table_token.list(null);
+		var tasks = [
+			Tasks.create('person', this._getSinglePerson.bind(this), tokens, 'person_id'),
+			Tasks.create('type',   this._getTokenType.bind(this),    tokens, 'type')
+		];
+		var database = await Tasks.merge(tasks, tokens);
+		
+		var lockomaticDb = {};
+		
+		for (var i = 0; i < database.length; i++) {
+			var token = database[i];
+			if (token.type.id === 0) { //Id only iButton
+				var entry = [{type:"id", name: token.person.nick_name, mail: "", org:"", role:"Member"}];
+				lockomaticDb[token.public] = entry;
+			}
+		}
+		
+		console.log(lockomaticDb);
+		
+		return lockomaticDb;
+	}
 
 	/* Groups */
 
@@ -770,6 +793,7 @@ class Persons {
 		rpc.addMethod(prefix+"token/list",         this.listTokens.bind(this));                  //Tokens: list tokens
 		rpc.addMethod(prefix+"token/authenticate", this.authenticateToken.bind(this));           //Tokens: authenticate a token
 		rpc.addMethod(prefix+"token/type/list",    this.listTokenTypes.bind(this));              //Tokens: list token types
+		rpc.addMethod(prefix+"token/db",           this.getTokenDb.bind(this));                  //Tokens: database file in json format
 
 		/* Groups */
 		rpc.addMethod(prefix+"group/list",         this.listGroups.bind(this));                  //Groups: list groups

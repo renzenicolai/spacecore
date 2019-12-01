@@ -51,6 +51,7 @@ class Products {
 		var tasks = [
 			Tasks.create('picture',      this._opts.files.getFileAsBase64.bind(this._opts.files), products, 'picture_id'),
 			Tasks.create('groups',       this._getGroups.bind(this),                              products, 'id'),
+			Tasks.create('locations',    this._getLocations.bind(this),                           products, 'id'),
 			Tasks.create('stock',        this._getStock.bind(this),                               products, 'id'),
 			Tasks.create('brand',        this._getBrand.bind(this),                               products, 'brand_id'),
 			Tasks.create('identifiers',  this._getIdentifiers.bind(this),                         products, 'id'),
@@ -64,6 +65,7 @@ class Products {
 		var products = await this._table.list(params);
 		var tasks = [
 			Tasks.create('groups',       this._getGroups.bind(this),                              products, 'id'),
+			Tasks.create('locations',    this._getLocations.bind(this),                           products, 'id'),
 			Tasks.create('stock',        this._getStock.bind(this),                               products, 'id'),
 			Tasks.create('brand',        this._getBrand.bind(this),                               products, 'brand_id'),
 			Tasks.create('identifiers',  this._getIdentifiers.bind(this),                         products, 'id'),
@@ -100,9 +102,8 @@ class Products {
 		try {
 			await this.fillProductRecord(product, params, dbTransaction);
 			
-			//Groups (if set remove all mappings, add mappings for groups in list)
+			//Groups
 			if (typeof params.groups !== 'undefined') {
-				console.log(params.groups, typeof params.groups);
 				if (!Array.isArray(params.groups)) throw "Expected groups to be a list of group identifiers.";
 				var groupOperations = [];
 				var currentMappings = await this._table_group_mapping.selectRecords({product_id: product.getIndex()}); //List current mappings
@@ -126,7 +127,31 @@ class Products {
 				await Promise.all(groupOperations);
 			}
 			
-			//Locations (if set remove all mappings, add mappings for groups in list)
+			//Locations
+			if (typeof params.locations !== 'undefined') {
+				console.log(params.locations, typeof params.locations);
+				if (!Array.isArray(params.locations)) throw "Expected locations to be a list of location identifiers.";
+				var locationOperations = [];
+				var currentMappings = await this._table_location_mapping.selectRecords({product_id: product.getIndex()}); //List current mappings
+				var currentGroups = [];
+				for (var i in currentMappings) { //Loop through all existing mappings
+					if (!params.locations.includes(currentMappings[i].getField("product_location_id"))) { //If the mapping exists but shouldn't then...
+						locationOperations.push(currentMappings[i].destroy(dbTransaction)); //...remove the mapping
+					} else { //The mapping exists and it should keep existing
+						currentGroups.push(currentMappings[i].getField("product_location_id")); //Store the id of the location we are already in in a list
+					}
+				}
+				for (var i in params.locations) { //Loop through the identifiers of the locations we want to be in
+					var location = params.locations[i];
+					if (!currentGroups.includes(location)) { //If the product is not yet in the location we want the product to be in then create the mapping
+						var mappingRecord = this._table_location_mapping.createRecord();
+						mappingRecord.setField("product_id", product.getIndex());
+						mappingRecord.setField("product_location_id", location);
+						locationOperations.push(mappingRecord.flush(dbTransaction));
+					}
+				}
+				await Promise.all(locationOperations);
+			}
 			
 			//Identifiers
 			
@@ -284,6 +309,10 @@ class Products {
 	
 	/* Product locations */
 
+	_getLocations(product_id) {
+		return this._table_group_mapping.selectRecordsRaw("SELECT mapping.id as 'mapping_id', location.id, location.name, location.description FROM `"+this._opts.table_location_mapping+"` AS `mapping` INNER JOIN `"+this._opts.table_location+"` AS `location` ON mapping.product_location_id = location.id WHERE `product_id` = ?", [product_id], false);
+	}
+	
 	async _getProductsAtLocation(product_location_id) {
 		var mapping = await this._table_location_mapping.list({product_location_id : product_location_id});
 		var products = [];
