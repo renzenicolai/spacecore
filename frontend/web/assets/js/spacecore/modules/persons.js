@@ -169,6 +169,21 @@ class Persons {
 	}
 
 	/* Tokens */
+	
+	downloadTokenDb() {
+		spacecore.executeCommand('person/token/db', {}, this._handleTokenDbDownload.bind(this));
+	}
+	
+	_handleTokenDbDownload(res, err) {
+		if (err !== null) return this.genericErrorHandler(err);
+		var element = document.createElement('a');
+		element.setAttribute('href', 'data:'+"text/plain"+';base64,'+btoa(JSON.stringify(res)));
+		element.setAttribute('download', "database.json");
+		element.style.display = 'none';
+		document.body.appendChild(element);
+		element.click();
+		document.body.removeChild(element);
+	}
 		
 	_handleManageTokens(res, err) {
 		if (err !== null) return this.genericErrorHandler(err);
@@ -188,6 +203,7 @@ class Persons {
 			header: {
 				title: "Persons: tokens",
 				options: [
+						spacecore.ui.elemBtnSecondary("javascript:spacecore.currentModule.downloadTokenDb();", "Download lockomatic configuration", "lockomaticBtn", "download"),
 						spacecore.ui.elemSearchBox("javascript:spacecore.search('tokens');", "Search tokens...", "persons-tokens-search", "search", this.state.tokens.searchText),
 						spacecore.ui.elemBtnSecondary("javascript:spacecore.currentModule.show();", "Back", "backBtn", "chevron-left")
 					]

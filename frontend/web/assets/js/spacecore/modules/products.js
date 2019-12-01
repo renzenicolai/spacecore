@@ -20,7 +20,7 @@ class Products {
 			locations:       {lastSelected: null, lastData: null, searchText: "", searchId: 'products-locations-search',         tableId: 'table_locations',        filterFields: ['name'],              render: this._renderLocations},
 			brands:          {lastSelected: null, lastData: null, searchText: "", searchId: 'products-brands-search',            tableId: 'table_brands',           filterFields: ['name'],              render: this._renderBrands},
 			packages:        {lastSelected: null, lastData: null, searchText: "", searchId: 'products-packages-search',          tableId: 'table_packages',         filterFields: ['name'],              render: this._renderPackages},
-			personGroups:    {lastData: null /* Other functionality for this data type is in the persons module. */},
+			personGroups:    {lastData: null /* Other functionality for this data type is implemented in the persons module. */},
 		};
 	}
 	
@@ -359,6 +359,25 @@ class Products {
 		for (var i in this.state.locations.lastData) locationOptions.push({value: Number(this.state.locations.lastData[i].id), label: this.state.locations.lastData[i].name});
 		var locationValue = [];
 		for (var i in data.locations) locationValue.push(data.locations[i].id);
+		
+		var priceGroups = [];
+		var prices = data.prices;
+		for (var i in this.state.personGroups.lastData) {
+			var group = this.state.personGroups.lastData[i];
+			var groupPrice = "";
+			var groupActive = false;
+			for (var j in prices) {
+				var price = prices[j];
+				if (price.person_group_id === group.id) {
+					groupActive = true;
+					groupPrice = (price.amount/100.0).toFixed(2);
+					break;
+				}
+			}
+			console.log(group, groupPrice, groupActive);
+			priceGroups.push({id: group.id, label: group.name, value: groupPrice, enabled: groupActive});
+		}
+		
 		var elements = [
 					{ type: "text",        name: "name",        label: "Name",        value: data.name },
 					{ type: "text",        name: "description", label: "Description", value: data.description },
@@ -368,6 +387,7 @@ class Products {
 					{ type: "selectgroup", name: "groups",      label: "Groups",      options: groupOptions,                   value: groupValue, convertToNumber: true },
 					{ type: "selectgroup", name: "locations",   label: "Locations",   options: locationOptions,                value: locationValue, convertToNumber: true },
 					{ type: "file",        name: "picture",     label: "Picture",     default: "Select an image to upload...", id: "productPictureFile", value: "", picture: data.picture },
+					{ type: "pricegroup",  name: "prices",      label: "Prices",      items: priceGroups,                      convertToNumber: true, prefix: "€", placeholder: "Price", textclass:"w-8" },
 				];
 		if (typeof data.id === "number") {
 			elements.push({ type: "hidden", name: "id", value: data.id, convertToNumber: true });

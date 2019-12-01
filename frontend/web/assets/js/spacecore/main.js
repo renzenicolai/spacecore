@@ -527,12 +527,18 @@ class Spacecore {
 		var argument = {};
 		var firstCheckboxValueTemp = null;
 		var fileReaders = [];
+		var priceGroups = [];
 		for (var i in formElements) {
 			if (i === 'length') continue;
-			var name = formElements[i].name;
+			var name  = formElements[i].name;
 			var value = formElements[i].value;
-			var type = formElements[i].type;
-			if (typeof name === "string") {
+			var type  = formElements[i].type;
+			var id    = formElements[i].id;
+			if ((typeof id === "string") && (id.startsWith("pricegroup-"))) {
+				var name = id.split("-")[1];
+				console.log("Pricegroup", name, value, type);
+				//FIXME
+			} else if (typeof name === "string") {
 				if (type=="radio") {
 						if (formElements[i].checked) {
 							if (formElements[i].classList.contains("scConvertNumber")) {

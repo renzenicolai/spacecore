@@ -92,6 +92,12 @@ class SpacecoreUI {
 								 
 								 + '{{#if (eq type "selectgroup")}}<div class="selectgroup selectgroup-pills selectgroup-separated">{{#each options}}<label class="selectgroup-item"><input type="checkbox" name="{{../name}}" value="{{value}}" class="selectgroup-input {{#if (eq ../convertToNumber true)}}scConvertNumber {{/if}}" {{#if (isin ../value value)}} checked{{/if}}><span class="selectgroup-button">{{label}}</span></label>{{/each}}</div>{{/if}}'
 								 
+								 + '{{#if (eq type "pricegroup")}}<table class="table table-hover table-outline table-vcenter text-nowrap card-table"><tbody>{{#each items}}<tr>'
+								 + '<td class="w-1"><label class="custom-switch"><input type="checkbox" id="pricegroup-{{../name}}-enabled-{{id}}" class="custom-switch-input" onclick="spacecore.ui.pricegroupUpdate(\'{{../name}}\', {{id}});" {{#if (eq enabled true)}} checked{{/if}}><span class="custom-switch-indicator"></span></label></td>'
+								 + '<td>{{label}}</td>'
+								 + '<td><div class="input-group"><div class="input-group-prepend"><span class="input-group-text">{{../prefix}}</span></div><input id="pricegroup-{{../name}}-value-{{id}}" class="form-control {{../textclass}}" placeholder="{{../placeholder}}" type="text" value="{{value}}" onclick="spacecore.ui.pricegroupUpdate(\'{{../name}}\', {{id}});" onchange="spacecore.ui.pricegroupUpdate(\'{{../name}}\', {{id}});" oninput="spacecore.ui.pricegroupUpdate(\'{{../name}}\', {{id}});" {{#if (eq enabled false)}} disabled{{/if}}></div></td>'
+								 + '</tr>{{/each}}</tbody></table>{{/if}}'
+								 
 		);
 				
 		Handlebars.registerPartial('dashboardHeader', '<div class="header py-4"><div class="container"><div class="d-flex">'
@@ -256,6 +262,29 @@ class SpacecoreUI {
 			action:  actionString,
 			value: value
 		}
+	}
+	
+	pricegroupUpdate(name, id) {
+		var elem_enabled  = document.getElementById("pricegroup-"+name+"-enabled-"+id);
+		var elem_value    = document.getElementById("pricegroup-"+name+"-value-"+id);
+		var enabled       = elem_enabled.checked;
+		var value         = elem_value.value;
+		
+		elem_value.disabled = !enabled;
+		
+		var invalid       = false;
+		
+		if (enabled) {
+			invalid = isNaN(value);
+		}
+		
+		if (invalid) {
+			elem_value.classList.add("is-invalid");
+		} else {
+			elem_value.classList.remove("is-invalid");
+		}
+		
+		console.log("pricegroupUpdate result", name, id, enabled, value, invalid);
 	}
 }
 
