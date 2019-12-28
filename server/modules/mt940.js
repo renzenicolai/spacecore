@@ -8,11 +8,13 @@ class Mt940 {
 	_convertDate(date) {
 		if (typeof date !== 'string') throw "expected date to be a string";
 		if (date.length !== 6) throw "expected date to be 6 characters long";
+		console.log("DATE", date);
 		var year = Number(date.slice(0,2))+2000;
 		var month = Number(date.slice(2,4));
 		var day = Number(date.slice(4,6));
-		var date = new Date(year, month, day);
-		return date.getTime()/1000;
+		console.log("DATE", year,month,day);
+		var date = new Date(year, month-1, day,0,0,0,0);
+		return day+"-"+month+"-"+year;//date.getTime()/1000;
 	}
 	
 	_SwiftMessageParser(input) {
@@ -272,6 +274,8 @@ class Mt940 {
 					fields = {};
 					
 					//Try to fill out fields using the awefull ABN-AMRO formatted bullshit.
+
+					console.log("DEBUG!!",info);
 					
 					if (info[0].search("IBAN: ") >= 0) {
 						var tmpIban = info[0].split('IBAN: ');
@@ -283,7 +287,7 @@ class Mt940 {
 						fields.NAME = tmpName[1];
 						fields.BIC = tmpName[0].split('BIC: ').join('').trim();
 					}
-					if (info[2].search('OMSCHRIJVING: ') >= 0) {
+					if ((info.length>2)&&(info[2].search('OMSCHRIJVING: ') >= 0)) {
 						fields.REMI = info[2].split('OMSCHRIJVING: ').join('').trim();
 					}
 					
