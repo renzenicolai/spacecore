@@ -37,8 +37,8 @@ class Record {
 			this._dirty = true;
 			return true;
 		}
-		console.log("!! setField "+field+" of table "+this._table.name()+": field does not exist !!");
-		console.log(this._data);
+		//console.log("!! setField "+field+" of table "+this._table.name()+": field does not exist !!");
+		//console.log(this._data);
 		return false;
 	}
 	
@@ -99,7 +99,7 @@ class Record {
 	_flushSubRecords(transaction=null) {
 		var promises = [];
 		for (var item in this._subRecords) {
-			console.log("Now handling subrecord",item,"with key column",this._subRecords[item].key,"set to",this.getIndex());
+			//console.log("Now handling subrecord",item,"with key column",this._subRecords[item].key,"set to",this.getIndex());
 			this._subRecords[item].record.setField(this._subRecords[item].key, this.getIndex());
 			promises.push(this._subRecords[item].record.flush(transaction, true));
 		}
@@ -174,7 +174,7 @@ class dbTransaction {
 	
 	log(message) {
 		var line = "Transaction "+this.createdOn+" - "+this.description+": "+message;
-		console.log(line);
+		//console.log(line);
 		this.logFile.write(line+"\n");
 	}
 	
@@ -263,7 +263,7 @@ class Table {
 				throw "Table "+this._opts.table+" has no primary index. A primary index is required for all tables!";
 			}
 			
-			console.log(this._opts.table, this._index, this._columns);
+			//console.log(this._opts.table, this._index, this._columns);
 			
 			this._generateDefaultData();
 			
@@ -585,7 +585,7 @@ class Database {
 	_errorHandler(error, transaction=null) {
 		
 		if (transaction !== null) {
-			console.log("Error occured during database transaction, executing rollback!");
+			console.log("An error occured during database transaction, executing rollback!");
 			transaction.rollback();
 		}
 		

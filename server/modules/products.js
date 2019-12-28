@@ -76,18 +76,56 @@ class Products {
 	}
 	
 	async create(session, params) {
-		if (typeof params !== 'object')                                                              throw "Expected parameter to be an object";
-		if (typeof params.name !== 'string')                                                         throw "Missing required property 'name'";
-		if ((typeof params.description !== 'undefined') && (typeof params.description !== 'string')) throw "Expected description to to be a string";
-		if ((typeof params.active !== 'undefined') && (typeof params.active !== 'boolean'))          throw "Expected active to be a boolean";
-		if ((typeof params.brand_id !== 'undefined') && (typeof params.brand_id !== 'number'))       throw "Expected brand_id to be a number";
-		if ((typeof params.picture_id !== 'undefined') && (typeof params.picture_id !== 'number'))   throw "Expected picture_id to be a number";
-		if ((typeof params.package_id !== 'undefined') && (typeof params.package_id !== 'number'))   throw "Expected package_id to be a number";
+		if (typeof params !== 'object')                                                                                           throw "Expected parameter to be an object";
+		if (typeof params.name !== 'string')                                                                                      throw "Missing required property 'name'";
+		if ((typeof params.description !== 'undefined') && (typeof params.description !== 'string'))                              throw "Expected description to to be a string";
+		if ((typeof params.active      !== 'undefined') && (typeof params.active !== 'boolean'))                                  throw "Expected active to be a boolean";
+		if ((typeof params.brand_id    !== 'undefined') && (typeof params.brand_id !== 'number')   && (params.brand_id !== null)) throw "Expected brand_id to be a number";
+		if ((typeof params.picture_id  !== 'undefined') && (typeof params.picture_id !== 'number') && (params.brand_id !== null)) throw "Expected picture_id to be a number";
+		if ((typeof params.package_id  !== 'undefined') && (typeof params.package_id !== 'number') && (params.brand_id !== null)) throw "Expected package_id to be a number";
+		if ((typeof params.groups      !== 'undefined') && (!Array.isArray(params.groups)))                                       throw "Expected groups to be an array";
+		if ((typeof params.locations   !== 'undefined') && (!Array.isArray(params.locations)))                                    throw "Expected locations to be an array";
+		if ((typeof params.prices      !== 'undefined') && (typeof params.prices !== 'object'))                                   throw "Expected proces to be an object";
 		var dbTransaction = await this._opts.database.transaction("Add product ("+params.name+")");
 		var product = this._table.createRecord();
 		try {
 			await this.fillProductRecord(product, params, dbTransaction);
-			await product.flush(dbTransaction);
+			var product_id = await product.flush(dbTransaction);
+			
+			var operations = [];
+			
+			if (Array.isArray(params.groups)) {
+				for (var i = 0; i < params.groups.length; i++) {
+					var group = params.groups[i];
+					var groupRecord = this._table_group_mapping.createRecord();
+					groupRecord.setField("product_id", product_id);
+					groupRecord.setField("product_group_id", group);
+					operations.push(groupRecord.flush(dbTransaction));
+				}
+			}
+		
+			if (Array.isArray(params.locations)) {
+				for (var i = 0; i < params.locations.length; i++) {
+					var location = params.locations[i];
+					var locationRecord = this._table_location_mapping.createRecord();
+					locationRecord.setField("product_id", product_id);
+					locationRecord.setField("product_location_id", location);
+					operations.push(locationRecord.flush(dbTransaction));
+				}
+			}
+		
+			if (typeof params.prices === "object") {
+				for (var group in params.prices) {
+					var value = params.prices[group];
+					var priceRecord = this._table_price.createRecord();
+					priceRecord.setField("product_id", product_id);
+					priceRecord.setField("person_group_id", Number(group));
+					priceRecord.setField("amount", value);
+					operations.push(priceRecord.flush(dbTransaction));
+				}
+			}
+			
+			await Promise.all(operations);
 			await dbTransaction.commit();
 			return product.getIndex();
 		} catch(e) {
@@ -156,6 +194,40 @@ class Products {
 			//Identifiers
 			
 			//Prices
+			if (typeof params.prices !== 'undefined') {
+				var priceOperations = [];
+				var currentPrices = await this._table_price.selectRecords({product_id: product.getIndex()}); //List current prices
+				var existingPrices = [];
+				for (var i in currentPrices) { //Loop through all existing prices
+					var group = currentPrices[i].getField("person_group_id");
+					var value = currentPrices[i].getField("amount");
+					if (!(String(group) in params.prices)) { //If the mapping exists but shouldn't then...
+						console.log("Price exists for",group,"but it should not exist, removing.");
+						priceOperations.push(currentPrices[i].destroy(dbTransaction)); //...remove the price
+					} else { //The price exists and should keep existing
+						if (value != params.prices[group]) { //The price needs to be updated
+							console.log("Price exists for",group,"but it needs to be updated.");
+							currentPrices[i].setField("amount", params.prices[group]);
+							priceOperations.push(currentPrices[i].flush(dbTransaction)); //...update the price
+						}
+						existingPrices.push(group);
+					}
+				}
+				for (var group in params.prices) { //Loop through the prices we want to exist
+					var value = params.prices[group];
+					if (!existingPrices.includes(Number(group))) {
+						console.log("Price for",group,"does not yet exist, creating.");
+						var priceRecord = this._table_price.createRecord();
+						priceRecord.setField("product_id", product.getIndex());
+						priceRecord.setField("person_group_id", Number(group));
+						priceRecord.setField("amount", value);
+						priceOperations.push(priceRecord.flush(dbTransaction));
+					} else {
+						console.log("Price for",group,"exist already, ignoring.");
+					}
+				}
+				await Promise.all(priceOperations);
+			}
 			
 			await product.flush(dbTransaction);
 			await dbTransaction.commit();
