@@ -417,7 +417,7 @@ class Products {
 	}
 	
 	add() {
-		this.showEdit({name: "", description: "", active: true, picture: null}, "product/create", "createproduct-form", "Create product", "Create");
+		this.showEdit({name: "", description: "", active: true, picture: null, brand: null, package: null, prices: null}, "product/create", "createproduct-form", "Create product", "Create");
 	}
 	
 	showRemove() {

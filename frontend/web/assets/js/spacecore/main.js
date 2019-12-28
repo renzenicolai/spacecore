@@ -493,7 +493,7 @@ class Spacecore {
 				}
 			}
 		}
-		console.log("Busy", busy);
+		//console.log("Busy", busy);
 		if (busy) {
 			setTimeout(this.submitFormFileHandler.bind(this, method, argument, handler, fileReaders), 100);
 		} else {
@@ -527,7 +527,7 @@ class Spacecore {
 		var argument = {};
 		var firstCheckboxValueTemp = null;
 		var fileReaders = [];
-		var priceGroups = [];
+		var priceGroups = {};
 		for (var i in formElements) {
 			if (i === 'length') continue;
 			var name  = formElements[i].name;
@@ -535,9 +535,20 @@ class Spacecore {
 			var type  = formElements[i].type;
 			var id    = formElements[i].id;
 			if ((typeof id === "string") && (id.startsWith("pricegroup-"))) {
-				var name = id.split("-")[1];
-				console.log("Pricegroup", name, value, type);
-				//FIXME
+				var name  = id.split("-")[1];
+				var group = Number(id.split("-")[3]);
+				if (!(name in priceGroups)) {
+					priceGroups[name] = {};
+				}
+				if (!(group in priceGroups[name])) {
+					priceGroups[name][group] = {enabled: false, value: null};
+				}
+				if (type === "checkbox") {
+					priceGroups[name][group].enabled = formElements[i].checked;
+				}
+				if (type === "text") {
+					priceGroups[name][group].value = Math.round(Number(formElements[i].value)*100);
+				}
 			} else if (typeof name === "string") {
 				if (type=="radio") {
 						if (formElements[i].checked) {
@@ -568,18 +579,18 @@ class Spacecore {
 						//First checkbox with this name
 						argument[name] = formElements[i].checked;
 						firstCheckboxValueTemp = value;
-						console.log("First checkbox with name",name,": argument is now a boolean", argument[name]);
+						//console.log("First checkbox with name",name,": argument is now a boolean", argument[name]);
 					} else if (typeof argument[name] === "boolean") {
 						var firstCheckboxStateTemp = argument[name];
 						argument[name] = [];
 						if (firstCheckboxStateTemp) argument[name].push(firstCheckboxValueTemp);
 						if (formElements[i].checked) argument[name].push(value);
-						console.log("Second checkbox with name",name,": argument has been changed from boolean to list", argument[name]);
+						//console.log("Second checkbox with name",name,": argument has been changed from boolean to list", argument[name]);
 					} else if (formElements[i].checked) {
 						argument[name].push(value);
 						console.log("Extra checkbox with name",name,": argument is list", argument[name]);
 					}
-					console.log("Handled CHECKBOX element", name, argument[name]);
+					//console.log("Handled CHECKBOX element", name, argument[name]);
 				} else if (type=="file") {
 					argument[name] = "...";
 					var files = formElements[i].files;
@@ -587,7 +598,7 @@ class Spacecore {
 					var data = [];
 					for (var j = 0; j < files.length; j++) {
 						var f = files[j];
-						console.log("File "+j+": "+f.name+" ("+f.type+") with size "+f.size);
+						//console.log("File "+j+": "+f.name+" ("+f.type+") with size "+f.size);
 						var reader = new FileReader();
 						reader.readAsDataURL(f);
 						data.push({id: j, file: f, reader: reader});
@@ -595,7 +606,7 @@ class Spacecore {
 					fileReaders.push({name: name, data: data});
 				} else if ((typeof value === "string") && (name.length > 0)) {
 					if (formElements[i].classList.contains("scConvertNumber")) {
-						console.log("scConvertNumber", value, typeof value);
+						//console.log("scConvertNumber", value, typeof value);
 						if (value === "") {
 							value = null;
 						} else {
@@ -609,6 +620,21 @@ class Spacecore {
 				console.log("Unhandled element", formElements[i]);
 			}
 		}
+		
+		for (var name in priceGroups) {
+			var priceGroup = priceGroups[name];
+			if (!(name in argument)) {
+				argument[name] = {};
+			}
+			for (var group in priceGroup) {
+				var priceGroupItem = priceGroup[group];
+				if (priceGroupItem.enabled) {
+					argument[name][group] = priceGroupItem.value;
+				}
+			}
+			console.log("PGR", argument[name]);
+		}
+		
 		if (fileReaders.length > 0) {
 			if (showStatusMessage) this.showMessage2("Preparing files for upload...", "", "Busy");
 			this.submitFormFileHandler(method, argument, handler, fileReaders);
