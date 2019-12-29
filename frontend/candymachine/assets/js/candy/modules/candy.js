@@ -102,7 +102,7 @@ class Candy {
 		this.selectedProduct = null;
 		this.cancelTimeout();
 		this.app.showMessage("Fetching list of products...");
-		this.app.executeCommand("product/location/list", "candymachine", this._handleProducts.bind(this));
+		this.app.executeCommand("product/location/list", {"name": {"LIKE":"candymachine-%"}}, this._handleProducts.bind(this));
 		this.setLed(false,true,false);
 	}
 	
@@ -170,7 +170,7 @@ class Candy {
 		console.log("--- TRANSACTION RESULT ---");
 		console.log(res);
 		console.log("--- VENDING ---");
-		this.nudgeCount = 3;
+		this.nudgeCount = 4;
 		this.nudgeSlot = this.selectedProduct.slot;
 		this.app.showMessage("Starting the vending process...");
 		this.app.executeCommand('pos/vend', {device: "candymachine", slot: this.selectedProduct.slot});
@@ -275,7 +275,7 @@ class Candy {
 		for (var i = 0;  i < 21; i++) items.push({title:"Empty", big: true});
 		for (var i = 12; i < 18; i++) items[i].big = false;
 		for (var i = 0;  i < res.length; i++) {
-			var slot = this.subToSlot(res[i].sub);
+			var slot = this.subToSlot(Number(res[i].name.split('-')[1]));
 			if (slot < 0) continue; //Not a candymachine slot
 			if (res[i].products.length > 1) {
 				return this.app.genericErrorHandler("Multiple products assigned to slot "+slot+"!");
