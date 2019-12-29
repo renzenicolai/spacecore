@@ -370,6 +370,17 @@ class Persons {
 		if (results.length > 1) throw "Multiple persons with the same id found, please check the database.";
 		return results[0];
 	}
+	
+	async findByTokenForVending(session, params) {
+		if (typeof params !== 'string') throw "Parameter should be the token as a string!";
+		var tokens = await this._table_token.list({public: params});
+		if (tokens.length < 1) return null;
+		if (tokens.length > 1) throw "Multiple tokens with the same public key found, please check the database.";
+		var results = await this.listForVending(session, {id: tokens[0].person_id});
+		if (results.length < 1) return null;
+		if (results.length > 1) throw "Multiple persons with the same id found, please check the database.";
+		return results[0];
+	}
 
 	async addTokenToPerson(session, params) {
 		if (
@@ -783,6 +794,7 @@ class Persons {
 		
 		rpc.addMethod(prefix+"find",                   this.find.bind(this));                        //Persons: find a person by its nickname
 		rpc.addMethod(prefix+"findByToken",            this.findByToken.bind(this));                 //Persons: find a person by one of its tokens
+		rpc.addMethod(prefix+"findByTokenForVending",  this.findByTokenForVending.bind(this));       //Persons: find a person by one of its tokens (for vending frontends)
 		
 		rpc.addMethod(prefix+"addToken",               this.addTokenToPerson.bind(this));            //Persons: add a token to a person
 		rpc.addMethod(prefix+"editToken",              this.editTokenOfPerson.bind(this));           //Persons: edit a token of a person

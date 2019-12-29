@@ -194,7 +194,7 @@ class PosDevice {
 			sessions[i].pushIfSubscribed("pos/"+this._opts.name+"/token", message);
 		}
 
-		this._opts.persons.findByToken(null, String(message)).then((result) => {
+		this._opts.persons.findByTokenForVending(null, String(message)).then((result) => {
 			var sessions = this._opts.sessions.getSessions();
 			for (var i = 0; i < sessions.length; i++) {
 				sessions[i].pushIfSubscribed("pos/"+this._opts.name+"/token/person", {res: result});
