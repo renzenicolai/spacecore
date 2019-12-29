@@ -170,7 +170,6 @@ class Persons {
 	}
 
 	async list(session, params) {
-		console.log("List persons", params);
 		var persons = await this._table.list(params);
 		var tasks = [
 			Tasks.create('avatar',       this._opts.files.getFileAsBase64.bind(this._opts.files), persons, 'avatar_id'),
@@ -180,6 +179,23 @@ class Persons {
 			Tasks.create('addresses',    this._getAddresses.bind(this),                           persons, 'id'),
 			Tasks.create('email',        this._getEmail.bind(this),                               persons, 'id'),
 			Tasks.create('phone',        this._getPhone.bind(this),                               persons, 'id')
+		];
+		return Tasks.merge(tasks, persons);
+	}
+	
+	async listForVending(session, params) { //Limited version of the normal list function
+		var persons = await this._table.list(params);
+		var tasks = [
+			Tasks.create('avatar',       this._opts.files.getFileAsBase64.bind(this._opts.files), persons, 'avatar_id'),
+			Tasks.create('groups',       this._getGroups.bind(this),                              persons, 'id')
+		];
+		return Tasks.merge(tasks, persons);
+	}
+	
+	async listForVendingNoAvatar(session, params) { //Limited version of the normal list function
+		var persons = await this._table.list(params);
+		var tasks = [
+			Tasks.create('groups',       this._getGroups.bind(this),                              persons, 'id')
 		];
 		return Tasks.merge(tasks, persons);
 	}
@@ -758,48 +774,50 @@ class Persons {
 		if (prefix!=="") prefix = prefix + "/";
 
 		/* Persons */
-		rpc.addMethod(prefix+"list",               this.list.bind(this));                        //Persons: list persons
-		rpc.addMethod(prefix+"create",             this.create.bind(this));                      //Persons: create a person
-		rpc.addMethod(prefix+"edit",               this.edit.bind(this));                        //Persons: edit a person
-		rpc.addMethod(prefix+"remove",             this.remove.bind(this));                      //Persons: remove a person
+		rpc.addMethod(prefix+"list",                   this.list.bind(this));                        //Persons: list persons
+		rpc.addMethod(prefix+"listForVending",         this.listForVending.bind(this));              //Persons: list persons (for vending frontends)
+		rpc.addMethod(prefix+"listForVendingNoAvatar", this.listForVendingNoAvatar.bind(this));      //Persons: list persons (for vending frontends, no avatar)
+		rpc.addMethod(prefix+"create",                 this.create.bind(this));                      //Persons: create a person
+		rpc.addMethod(prefix+"edit",                   this.edit.bind(this));                        //Persons: edit a person
+		rpc.addMethod(prefix+"remove",                 this.remove.bind(this));                      //Persons: remove a person
 		
-		rpc.addMethod(prefix+"find",               this.find.bind(this));                        //Persons: find a person by its nickname
-		rpc.addMethod(prefix+"findByToken",        this.findByToken.bind(this));                 //Persons: find a person by one of its tokens
+		rpc.addMethod(prefix+"find",                   this.find.bind(this));                        //Persons: find a person by its nickname
+		rpc.addMethod(prefix+"findByToken",            this.findByToken.bind(this));                 //Persons: find a person by one of its tokens
 		
-		rpc.addMethod(prefix+"addToken",           this.addTokenToPerson.bind(this));            //Persons: add a token to a person
-		rpc.addMethod(prefix+"editToken",          this.editTokenOfPerson.bind(this));           //Persons: edit a token of a person
-		rpc.addMethod(prefix+"removeToken",        this.removeTokenFromPerson.bind(this));       //Persons: remove a token from a person
+		rpc.addMethod(prefix+"addToken",               this.addTokenToPerson.bind(this));            //Persons: add a token to a person
+		rpc.addMethod(prefix+"editToken",              this.editTokenOfPerson.bind(this));           //Persons: edit a token of a person
+		rpc.addMethod(prefix+"removeToken",            this.removeTokenFromPerson.bind(this));       //Persons: remove a token from a person
 		
-		rpc.addMethod(prefix+"addBankaccount",     this.addBankaccountToPerson.bind(this));      //Persons: add a bankaccount to a person
-		rpc.addMethod(prefix+"editBankaccount",    this.editBankaccountOfPerson.bind(this));     //Persons: edit a bankaccount of a person
-		rpc.addMethod(prefix+"removeBankaccount",  this.removeBankaccountFromPerson.bind(this)); //Persons: remove a bankaccount from a person
+		rpc.addMethod(prefix+"addBankaccount",         this.addBankaccountToPerson.bind(this));      //Persons: add a bankaccount to a person
+		rpc.addMethod(prefix+"editBankaccount",        this.editBankaccountOfPerson.bind(this));     //Persons: edit a bankaccount of a person
+		rpc.addMethod(prefix+"removeBankaccount",      this.removeBankaccountFromPerson.bind(this)); //Persons: remove a bankaccount from a person
 		
-		rpc.addMethod(prefix+"addAddress",         this.addAddressToPerson.bind(this));          //Persons: add an address to a person
-		rpc.addMethod(prefix+"editAddress",        this.editAddressOfPerson.bind(this));         //Persons: edit an addresss of a person
-		rpc.addMethod(prefix+"removeAddress",      this.removeAddressFromPerson.bind(this));     //Persons: remove an address from a person
+		rpc.addMethod(prefix+"addAddress",             this.addAddressToPerson.bind(this));          //Persons: add an address to a person
+		rpc.addMethod(prefix+"editAddress",            this.editAddressOfPerson.bind(this));         //Persons: edit an addresss of a person
+		rpc.addMethod(prefix+"removeAddress",          this.removeAddressFromPerson.bind(this));     //Persons: remove an address from a person
 		
-		rpc.addMethod(prefix+"addEmail",           this.addEmailToPerson.bind(this));            //Persons: add an email address to a person
-		rpc.addMethod(prefix+"editEmail",          this.editEmailOfPerson.bind(this));           //Persons: edit an email address of a person
-		rpc.addMethod(prefix+"removeEmail",        this.removeEmailFromPerson.bind(this));       //Persons: remove an email address from a person
+		rpc.addMethod(prefix+"addEmail",               this.addEmailToPerson.bind(this));            //Persons: add an email address to a person
+		rpc.addMethod(prefix+"editEmail",              this.editEmailOfPerson.bind(this));           //Persons: edit an email address of a person
+		rpc.addMethod(prefix+"removeEmail",            this.removeEmailFromPerson.bind(this));       //Persons: remove an email address from a person
 		
-		rpc.addMethod(prefix+"addPhone",           this.addPhoneToPerson.bind(this));            //Persons: add a phonenumber to a person
-		rpc.addMethod(prefix+"editPhone",          this.editPhoneOfPerson.bind(this));           //Persons: edit a phonenumber of a person
-		rpc.addMethod(prefix+"removePhone",        this.removePhoneFromPerson.bind(this));       //Persons: remove a phonenumber from a person
+		rpc.addMethod(prefix+"addPhone",               this.addPhoneToPerson.bind(this));            //Persons: add a phonenumber to a person
+		rpc.addMethod(prefix+"editPhone",              this.editPhoneOfPerson.bind(this));           //Persons: edit a phonenumber of a person
+		rpc.addMethod(prefix+"removePhone",            this.removePhoneFromPerson.bind(this));       //Persons: remove a phonenumber from a person
 		
-		rpc.addMethod(prefix+"addToGroup",         this.addGroupToPerson.bind(this));            //Persons: add a group to a person
-		rpc.addMethod(prefix+"removeFromGroup",    this.removeGroupFromPerson.bind(this));       //Persons: remove a group from a person
+		rpc.addMethod(prefix+"addToGroup",             this.addGroupToPerson.bind(this));            //Persons: add a group to a person
+		rpc.addMethod(prefix+"removeFromGroup",        this.removeGroupFromPerson.bind(this));       //Persons: remove a group from a person
 
 		/* Tokens */
-		rpc.addMethod(prefix+"token/list",         this.listTokens.bind(this));                  //Tokens: list tokens
-		rpc.addMethod(prefix+"token/authenticate", this.authenticateToken.bind(this));           //Tokens: authenticate a token
-		rpc.addMethod(prefix+"token/type/list",    this.listTokenTypes.bind(this));              //Tokens: list token types
-		rpc.addMethod(prefix+"token/db",           this.getTokenDb.bind(this));                  //Tokens: database file in json format
+		rpc.addMethod(prefix+"token/list",             this.listTokens.bind(this));                  //Tokens: list tokens
+		rpc.addMethod(prefix+"token/authenticate",     this.authenticateToken.bind(this));           //Tokens: authenticate a token
+		rpc.addMethod(prefix+"token/type/list",        this.listTokenTypes.bind(this));              //Tokens: list token types
+		rpc.addMethod(prefix+"token/db",               this.getTokenDb.bind(this));                  //Tokens: database file in json format
 
 		/* Groups */
-		rpc.addMethod(prefix+"group/list",         this.listGroups.bind(this));                  //Groups: list groups
-		rpc.addMethod(prefix+"group/create",       this.createGroup.bind(this));                 //Groups: create a group
-		rpc.addMethod(prefix+"group/edit",         this.editGroup.bind(this));                   //Groups: edit a group
-		rpc.addMethod(prefix+"group/remove",       this.removeGroup.bind(this));                 //Groups: remove a group
+		rpc.addMethod(prefix+"group/list",             this.listGroups.bind(this));                  //Groups: list groups
+		rpc.addMethod(prefix+"group/create",           this.createGroup.bind(this));                 //Groups: create a group
+		rpc.addMethod(prefix+"group/edit",             this.editGroup.bind(this));                   //Groups: edit a group
+		rpc.addMethod(prefix+"group/remove",           this.removeGroup.bind(this));                 //Groups: remove a group
 	}
 }
 
