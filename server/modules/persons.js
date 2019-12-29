@@ -359,6 +359,14 @@ class Persons {
 		if (results.length > 1) throw "Multiple persons with the same nickname found, please check the database.";
 		return results[0];
 	}
+	
+	async findForVending(session, params) {
+		if (typeof params !== 'string') throw "Parameter should be the nickname as a string!";
+		var results = await this.listForVending(session, {nick_name: params.toLowerCase()});
+		if (results.length < 1) return null;
+		if (results.length > 1) throw "Multiple persons with the same nickname found, please check the database.";
+		return results[0];
+	}
 
 	async findByToken(session, params) {
 		if (typeof params !== 'string') throw "Parameter should be the token as a string!";
@@ -793,6 +801,7 @@ class Persons {
 		rpc.addMethod(prefix+"remove",                 this.remove.bind(this));                      //Persons: remove a person
 		
 		rpc.addMethod(prefix+"find",                   this.find.bind(this));                        //Persons: find a person by its nickname
+		rpc.addMethod(prefix+"findForVending",         this.findForVending.bind(this));              //Persons: find a person by its nickname (for vending frontends)
 		rpc.addMethod(prefix+"findByToken",            this.findByToken.bind(this));                 //Persons: find a person by one of its tokens
 		rpc.addMethod(prefix+"findByTokenForVending",  this.findByTokenForVending.bind(this));       //Persons: find a person by one of its tokens (for vending frontends)
 		
