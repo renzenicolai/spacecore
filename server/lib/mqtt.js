@@ -46,7 +46,9 @@ class Mqttclient {
 			var rpcRequest = message.toString('utf8');
 			var returnTopic = topic+"/response";
 			if (this._opts.rpc==null) return false;
-			return this._opts.rpc.handle(rpcRequest).then((result) => {
+			var request = this._opts.rpc.handle(rpcRequest);
+			if (request == null) return false;
+			return request.then((result) => {
 				this._client.publish(returnTopic, result);
 				return true;
 			}).catch((err) => {

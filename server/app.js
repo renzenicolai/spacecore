@@ -90,7 +90,7 @@ function start() {
 	var mqttclient = new Mqttclient({
 		port: 1883,
 		host: '10.42.1.2',
-		topic: 'tkkrlab/spacecore',
+		topic: 'tkkrlab/spacecore/api',
 		rpc: {handle: (request) => { return "RPC over MQTT is disabled!"; } }
 	});
 
@@ -121,7 +121,9 @@ function start() {
 	var invoices = new Invoices({
 		database: database,
 		persons: persons,
-		products: products
+		products: products,
+		mqtt: mqttclient,
+		mqtt_topic: "tkkrlab/spacecore/transaction"
 	});
 
 	var mt940 = new Mt940({
