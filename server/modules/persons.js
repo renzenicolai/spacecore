@@ -639,7 +639,7 @@ class Persons {
 		
 		for (var i = 0; i < database.length; i++) {
 			var token = database[i];
-			if (token.type.id === 0) { //Id only iButton
+			if ((token.type.id === 0) && (token.enabled)) { //Id only iButton that is enabled
 				var entry = [{type:"id", name: token.person.nick_name, mail: "", org:"", role:"Member"}];
 				lockomaticDb[token.public] = entry;
 			}
