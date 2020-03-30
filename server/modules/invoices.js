@@ -1,9 +1,10 @@
 "use strict";
 
-const mime = require('mime-types');
-const pdf = require('./invoicesToPdf.js');
-const fs = require('fs');
+const mime   = require('mime-types');
+const pdf    = require('./invoicesToPdf.js');
+const fs     = require('fs');
 const stream = require('stream');
+const chalk  = require('chalk');
 
 class WritableBufferStream extends stream.Writable {
 		constructor(options) {
@@ -149,10 +150,12 @@ class Invoices {
 		}
 	}
 	
-	async execute(session, params) {
+	async create(session, params) {
 		// Basic checks
 		if (!("person_id" in params))                            throw "Please provide a person_id in params.";
 		if ((!("products" in params)) && (!("other" in params))) throw "Please provide products or other rows in params.";
+		
+		console.log(chalk.bgCyan.white.bold(" INVOICE ")+" Creating invoice for "+params.person_id+"...");
 		
 		// Find the person
 		var persons = await this._opts.persons.listForVendingNoAvatar(session, {"id": params.person_id});
@@ -229,11 +232,9 @@ class Invoices {
 			record.setField("description", description);
 			var price = 0xFFFFFFFFFFFFFFFF;
 			var price_valid = false;
-			console.log("!!!>>>", product.prices);
 			for (var j in product.prices) {
 				var price_available = false;
 				for (var k in person.groups) {
-					console.log(">>>>", person.groups[k], product.prices[j]);
 					if (product.prices[j].person_group_id === person.groups[k].id) {
 						price_available = true;
 						break;
@@ -363,6 +364,7 @@ class Invoices {
 				"rows": rows,
 				"person": person_record.getFields()
 			};
+			console.log(chalk.bgCyan.white.bold(" INVOICE ")+" Invoice #"+invoice.getIndex()+" for person "+chalk.red(person_record.getField("nick_name"))+" has been created (total: "+chalk.red(invoice.getField("total"))+").");
 			this._notifyMqtt(result);
 			return result;
 		} catch (error) {
@@ -490,7 +492,7 @@ class Invoices {
 		rpc.addMethod(prefix+"list", this.list.bind(this));
 		rpc.addMethod(prefix+"list/last", this.listLast.bind(this));
 		rpc.addMethod(prefix+"list/query", this.listQuery.bind(this));
-		rpc.addMethod(prefix+"create", this.execute.bind(this));
+		rpc.addMethod(prefix+"create", this.create.bind(this));
 		rpc.addMethod(prefix+"analysis/stock", this.analysisStock.bind(this));
 		rpc.addMethod(prefix+"pdf", this.pdf.bind(this));
 	}

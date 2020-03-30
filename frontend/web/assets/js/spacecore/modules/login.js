@@ -55,7 +55,7 @@ class Login {
 				"elements": [
 					{
 						"type":"text",
-						"name": "username",
+						"name": "user_name",
 						"fe_icon": "user",
 						"label":"Username",
 						"placeholder":"Username",

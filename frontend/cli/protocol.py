@@ -43,7 +43,7 @@ class RpcClient:
 			raise ApiError("Invalid response")
 		if 'error' in data:
 			#print("ERROR", data['error'])
-			if retry and data['error']['code'] == 1: #Access denied
+			if retry and data['error']['code'] == -32001: #Access denied
 				print("\u001b[33mSession interrupted. Connecting...\u001b[39m")
 				self.createSession()
 				self.login(self._username, self._password)
@@ -57,7 +57,7 @@ class RpcClient:
 
 	def ping(self):
 		try:
-			if self._request("ping", []) == "pong":
+			if self._request("ping", None) == "pong":
 				return True
 		except:
 			pass
@@ -77,7 +77,7 @@ class RpcClient:
 		self._username = username
 		self._password = password
 		try:
-			self.user = self._request("user/authenticate", {"username": username, "password": password})
+			self.user = self._request("user/authenticate", {"user_name": username, "password": password})
 			return True
 		except ApiError as e:
 			print(e)
@@ -92,10 +92,10 @@ class RpcClient:
 		return self._request("person/create", name)
 
 	def personList(self, search):
-		return self._request("person/list", search)
+		return self._request("person/listForVendingNoAvatar", search)
 
 	def personFind(self, search):
-		return self._request("person/find", search)
+		return self._request("person/findForVending", search)
 
 	# PRODUCTS MODULE
 

@@ -1,7 +1,8 @@
 "use strict";
 
-const mysql = require('mysql2');
+const mysql        = require('mysql2');
 const mysqlPromise = require('mysql2/promise');
+const chalk        = require('chalk');
 
 class Record {
 	/* This class describes a generic database record */
@@ -108,31 +109,36 @@ class Record {
 		});
 	}
 	
-	flush(transaction=null, recursive=false) {
+	async flush(transaction=null, recursive=false) {
 		if (this._dirty) {
 			var index = this.getIndex();
-			if (index == null) {
-				return this._table._createRecordInternal(this, transaction).then((result) => {
-					this.setIndex(result, true);
-					if (recursive) {
-						return this._flushSubRecords(transaction); //Sub-records
-					}
-					return this.getIndex(); //Created, return id.
-				});
+			if (index === null) {
+				// Record does not exist yet
+				var result = await this._table._createRecordInternal(this, transaction);
+				console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.magenta(this._table.name())+" record "+result+" has been created");
+				this.setIndex(result, true);
+				if (recursive) {
+					return this._flushSubRecords(transaction); //Sub-records
+				}
+				return this.getIndex(); //Created, return id.
 			} else {
-				return this._table._updateRecordInternal(this, transaction).then((result) => {
-					if (recursive) {
-						return this._flushSubRecords(transaction); //Sub-records
-					}
-					return this.getIndex(); //Updated, return id.
-				});
+				// Record exists
+				var result = await this._table._updateRecordInternal(this, transaction);
+				console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.magenta(this._table.name())+" record "+this.getIndex()+" has been updated");
+				if (recursive) {
+					return this._flushSubRecords(transaction); //Sub-records
+				}
+				return this.getIndex(); //Updated, return id.
 			}
+		} else {
+			console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.magenta(this._table.name())+" record is clean.");
 		}
 
 		if (recursive) {
 			return this._flushSubRecords(); //Sub-records
 		}
 		
+		console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.magenta(this._table.name())+" no change.");
 		return false; //No change.
 	}
 	
@@ -175,7 +181,7 @@ class dbTransaction {
 	log(message) {
 		var line = "Transaction "+this.createdOn+" - "+this.description+": "+message;
 		//console.log(line);
-		this.logFile.write(line+"\n");
+		if (this.logFile) this.logFile.write(line+"\n");
 	}
 	
 	async commit() {
@@ -253,7 +259,7 @@ class Table {
 				var type = rows[i].COLUMN_KEY;
 				if (type=="PRI") {
 					if (this._index!=null) {
-						throw "[DATABASE] Error: table '"+this._opts.table+"' has multiple primary indexes.";
+						throw "Table '"+this._opts.table+"' has multiple primary indexes.";
 					} else {
 						this._index = rows[i].COLUMN_NAME;
 					}
@@ -270,7 +276,7 @@ class Table {
 		}).catch(this._opts.db._errorHandler);
 	}
 	
-	_createRecordInternal(record, transaction=null) {
+	async _createRecordInternal(record, transaction=null) {
 		var cols = [];
 		var valuePlaceholders = [];
 		var values = [];
@@ -280,42 +286,44 @@ class Table {
 			values.push(fields[field]);
 			valuePlaceholders.push('?');
 		}
-				
-		return new Promise((resolve, reject) => {
-			var sql = "INSERT INTO "+mysql.escapeId(this._opts.table)+" ("+cols.join(", ")+") VALUES ("+valuePlaceholders.join(", ")+");";
-			var query = this._opts.db._executeQuery(sql, values, transaction).then( ([result]) => {
-				return resolve(result.insertId);
-			}).catch( (error) => {
-				if (error.code == "ER_NO_SUCH_TABLE") {
-					console.log("[DATABASE] Error: table '"+this._opts.table+"' does not exist.");
-					return reject("table '"+this._opts.table+"' does not exist");
-				} else {
-					this._opts.db._errorHandler(error);
-					return reject(error);
-				}
-			});
-		});
+		
+		var sql = "INSERT INTO "+mysql.escapeId(this._opts.table)+" ("+cols.join(", ")+") VALUES ("+valuePlaceholders.join(", ")+");";
+		
+		try {
+			var result = await this._opts.db._executeQuery(sql, values, transaction);
+			return result[0].insertId;
+		} catch (error) {
+			if (error.code == "ER_NO_SUCH_TABLE") {
+				console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.red("Table '"+this._opts.table+"' does not exist."));
+				throw "Table '"+this._opts.table+"' does not exist";
+			} else {
+				this._opts.db._errorHandler(error);
+				throw error;
+			}
+		}
 	}
 	
-	_destroyRecordInternal(record, transaction=null) {
-		return new Promise((resolve, reject) => {
-			var sql = "DELETE FROM "+mysql.escapeId(this._opts.table)+" WHERE "+mysql.escapeId(this._index)+" = ?";
-			var query = this._opts.db._executeQuery(sql, [record.getIndex()], transaction).then( ([result]) => {
-				return resolve(result);
-			}).catch( (error) => {
-				if (error.code == "ER_NO_SUCH_TABLE") {
-					console.log("[DATABASE] Error: table '"+this._opts.table+"' does not exist.");
-					return reject("table '"+this._opts.table+"' does not exist");
-				} else {
-					this._opts.db._errorHandler(error, transaction);
-					return reject(error);
-				}
-			});
-		});
+	async _destroyRecordInternal(record, transaction=null) {
+		var sql = "DELETE FROM "+mysql.escapeId(this._opts.table)+" WHERE "+mysql.escapeId(this._index)+" = ?";
+		try {
+			var result = await this._opts.db._executeQuery(sql, [record.getIndex()], transaction);
+			return result;
+		} catch (error) {
+			if (error.code == "ER_NO_SUCH_TABLE") {
+				console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.red("Table '"+this._opts.table+"' does not exist."));
+				throw "Table '"+this._opts.table+"' does not exist";
+			} else {
+				this._opts.db._errorHandler(error);
+				throw error;
+			}
+		}
 	}
 		
-	_updateRecordInternal(record, transaction=null) {
-		if (this._index == null) return new Promise((resolve, reject) => { reject("Update not possible: table has no index."); });
+	async _updateRecordInternal(record, transaction=null) {
+		if (this._index == null) {
+			throw "Update not possible: table has no index.";
+		}
+		
 		var cols = [];
 		var values = [];
 		var fields = record.getFields();
@@ -327,21 +335,20 @@ class Table {
 		}
 		
 		values.push(record.getIndex());
-				
-		return new Promise((resolve, reject) => {
+		
+		try {
 			var sql = "UPDATE "+mysql.escapeId(this._opts.table)+" SET "+cols.join(", ")+" WHERE "+mysql.escapeId(this._index)+" = ?;";
-			var query = this._opts.db._executeQuery(sql, values, transaction).then( ([result]) => {
-				return resolve(result);
-			}).catch( (error) => {
-				if (error.code == "ER_NO_SUCH_TABLE") {
-					console.log("[DATABASE] Error: table '"+this._opts.table+"' does not exist.");
-					return reject("table '"+this._opts.table+"' does not exist");
-				} else {
-					this._opts.db._errorHandler(error, transaction);
-					return reject(error);
-				}
-			});
-		});
+			var result = await this._opts.db._executeQuery(sql, values, transaction);
+			return result;
+		} catch (error) {
+			if (error.code == "ER_NO_SUCH_TABLE") {
+				console.log(chalk.white.bold.inverse(" DATABASE ")+" "+"Error: table '"+this._opts.table+"' does not exist.");
+				throw "table '"+this._opts.table+"' does not exist";
+			} else {
+				this._opts.db._errorHandler(error, transaction);
+				throw error;
+			}
+		}
 	}
 	
 	list(where={}, separator="AND") {
@@ -419,7 +426,7 @@ class Table {
 				return resolve(result);
 			}).catch( (error) => {
 				if (error.code == "ER_NO_SUCH_TABLE") {
-					console.log("[DATABASE] Error: table '"+this._opts.table+"' does not exist.");
+					console.log(chalk.white.bold.inverse(" DATABASE ")+" "+"Error: table '"+this._opts.table+"' does not exist.");
 					return reject("table '"+this._opts.table+"' does not exist");
 				} else {
 					this._opts.db._errorHandler(error);
@@ -443,7 +450,7 @@ class Table {
 				return resolve(result);
 			}).catch( (error) => {
 				if (error.code == "ER_NO_SUCH_TABLE") {
-					console.log("[DATABASE] Error: table '"+this._opts.table+"' does not exist.");
+					console.log(chalk.white.bold.inverse(" DATABASE ")+" "+"Error: table '"+this._opts.table+"' does not exist.");
 					return reject("table '"+this._opts.table+"' does not exist");
 				} else {
 					this._opts.db._errorHandler(error);
@@ -474,6 +481,17 @@ class Database {
 			logFile: null
 		}, opts);
 		
+		if (
+			(this._opts.host === null) ||
+			(this._opts.port === null) ||
+			(this._opts.user === null) ||
+			(this._opts.password === null) ||
+			(this._opts.database === null)
+		) {
+			console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.red("Unable to connect to the database due to missing database connection settings."));
+			return;
+		}
+		
 		this._tables = [];
 		
 		this.connection = null;
@@ -485,9 +503,19 @@ class Database {
 			password: this._opts.password,
 			database: this._opts.database
 		});
-		//	.then(this._connectHandler.bind(this))
-		//	.catch(this._errorHandler.bind(this));
-		this._connectHandler();
+		
+		this._pool.getConnection()
+			.then( conn => {
+				this.connection = conn;
+				console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.green("Connected to MySQL server"));
+				this._refreshTables().then((x) => {
+					if (this._opts.onConnect != null) {
+						this._opts.onConnect();
+					}
+				});
+			}).catch( err => {
+				this._errorHandler(err);
+			});
 	}
 	
 	transaction(description="") {
@@ -527,7 +555,7 @@ class Database {
 		for (var i = 0; i<this._tables.length; i++) {
 			if (this._tables[i].name()==table) return this._tables[i];
 		}
-		throw "[DATABASE] Error: table '"+table+"' does not exist!";
+		throw "Error: table '"+table+"' does not exist!";
 		return null;
 	}
 		
@@ -546,19 +574,11 @@ class Database {
 	
 	_refreshTables() {
 		return this._executeQuery("SELECT table_name FROM information_schema.tables where table_schema=?;", [this._opts.database]).then( ([rows, fields]) => {
-			
-			/*if (this._tables.length > 0) {
-				console.log("[DATABASE] Flushing cache...");
-				for (var i = 0; i < this._tables.length; i++) {
-					this._tables[i].flush();
-				}
-			}*/
-			
 			this._tables = [];
 			var promises = [];
 			
 			for (var i = 0; i < rows.length; i++) {
-				console.log("[DATABASE] Creating table '"+rows[i].table_name+"'...");
+				//console.log(chalk.white.bold.inverse(" DATABASE ")+" "+"Creating table '"+rows[i].table_name+"'...");
 				var table = new Table({
 					db: this,
 					table: rows[i].table_name
@@ -571,17 +591,6 @@ class Database {
 		}).catch(this._errorHandler);
 	}
 	
-	_connectHandler( conn ) {
-		this.connection = conn;
-		console.log("[DATABASE] Connected to MySQL server");
-		this._refreshTables().then((x) => {
-			//console.log("[DATABASE] Database layer started");
-			if (this._opts.onConnect != null) {
-				this._opts.onConnect();
-			}	
-		});
-	}
-		
 	_errorHandler(error, transaction=null) {
 		
 		if (transaction !== null) {
@@ -590,14 +599,14 @@ class Database {
 		}
 		
 		if (error.code == "ECONNREFUSED") {
-			console.log("Fatal error: could not connect to the database backend.");
+			console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.red("Fatal error: could not connect to the database backend."));
 			process.exit(1);
 		} else if(error.fatal) {
-			console.log("Fatal error in database backend: ", error);
-			process.exit(1);
+			console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.red("Fatal error in database backend: "), error);
+			throw error;
 		} else {
-			console.log('Error in database backend: ', error);
-			//process.exit(1);
+			console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.red("Error in database backend: '"), error);
+			throw error;
 		}
 	}
 }
