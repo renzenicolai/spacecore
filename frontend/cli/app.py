@@ -47,9 +47,16 @@ class Shell(cmd.Cmd):
 				[{"description":"Deposit", "price":-amount, "amount":1}]
 			)
 			
+			shell.do_clear("")
+			
 			printTransaction(transaction, True, True, person)
 			
 			msgConfirm("Deposit completed!")
+			
+			global cart
+			if len(cart) > 0:
+				print("Warning: there are still products in the cart. Either enter your name to buy the products or enter \"abort\" to cancel the pending transaction.")
+			
 		except ApiError as e:
 			msgError(e)
 			
@@ -64,7 +71,10 @@ class Shell(cmd.Cmd):
 			return
 		
 		if len(arg) == 1 and arg[0] == "":
-			amount = prompt(client, "Amount of "+lastProduct["name"]+" >")
+			if lastProduct["package"] != None:
+				amount = prompt(client, "Amount of "+lastProduct["name"]+" [unit: "+lastProduct["package"]["name"]+"] >")
+			else:
+				amount = prompt(client, "Amount of "+lastProduct["name"]+" >")
 		elif not len(arg) == 1:
 			print("Usage: amount <amount>")
 			return
@@ -81,11 +91,15 @@ class Shell(cmd.Cmd):
 			if (cart[cartRow]["product"]["id"] == lastProduct["id"]):
 				if (amount == 0):
 					cart.pop(cartRow)
+					shell.do_clear("")
 					msgWarning("Removed "+lastProduct["name"]+" from the cart")
 				else:
 					cart[cartRow]["amount"] = amount
-					msgConfirm("Changed amount of "+lastProduct["name"]+" to "+str(amount))
-				printCart()
+					shell.do_clear("")
+					unit = ""
+					if lastProduct["package"] != None:
+						unit = " "+lastProduct["package"]["name"]
+					print("(Changed amount of "+lastProduct["name"]+" to "+str(amount)+unit+")")
 				return
 		
 		if (amount != 0):
@@ -94,7 +108,7 @@ class Shell(cmd.Cmd):
 			for cartRow in cart:
 				if (cart[cartRow]["product"]["id"] == lastProduct["id"]):
 					cart[cartRow]["amount"] = amount
-					printCart()
+					shell.do_clear("")
 					return
 
 	def do_remove(self, arg):
@@ -114,8 +128,8 @@ class Shell(cmd.Cmd):
 		global cart
 		cart = {}
 		self.emptyline()
-		headerError("Transaction canceled!")
-		print("Cart is now empty.")
+		shell.do_clear("")
+		msgError("Transaction canceled!")
 		
 	def do_cyber(self, arg):
 		print("")
@@ -191,13 +205,13 @@ class Shell(cmd.Cmd):
 		if (len(cart) == 0):
 			term.clear()
 			headerConfirm("")
-			headerConfirm("The cart is empty. Scan a product to add it to the cart!")
+			headerConfirm("  The cart is empty. Scan a product to add it to the cart!")
 			headerConfirm("")
 			print("")
 		else:
 			term.clear()
 			headerWarning("")
-			headerWarning("The cart contains products. Enter your name to confirm the transaction!")
+			headerWarning("  The cart contains products. Enter your name to confirm the transaction!")
 			headerWarning("")
 			print("")
 		usage()
@@ -220,13 +234,13 @@ def halt(message, error=None):
 	sys.exit(1)
 
 def msgError(message):
-	term.color(40,91)
+	term.color(40,91,5)
 	print(message)
 	term.color(0)
 	term.color()
 
 def msgWarning(message):
-	term.color(40,93)
+	term.color(40,93,5)
 	print(message)
 	term.color(0)
 	term.color()
@@ -261,17 +275,17 @@ def usage():
 	global cart
 	if len(cart) > 0:
 		print("")
-		headerInfo("HELP")
+		#headerInfo("HELP")
 		print("Enter your name to buy the products in the cart.")
-		print("Enter the name of (/ scan) a product to add it to the cart.")
+		print("Scan or enter the name of a product to add it to the cart.")
 		print("Enter 'abort' to clear the cart.")
 		print("Enter 'help' for a list of commands.")
 		print("")
 	else:
 		print("")
-		headerInfo("HELP")
+		#headerInfo("HELP")
 		print("Enter your name to display information about your account.")
-		print("Enter the name of (/ scan) a product to add it to the cart.")
+		print("Scan or enter the name of a product to add it to the cart.")
 		print("Enter 'help' for a list of commands.")
 		print("")
 	
@@ -389,13 +403,13 @@ def product(client, name):
 		lastProduct = result
 		
 		productsToCart(client, [result])
-		
-		#usage()
-		#printCart()
+
 		shell.do_clear("")
-		
-		#print("\u001b[32mAdded\u001b[39m "+result['name']+"\u001b[32m to your cart.\u001b[39m")
-				
+
+		if result['package'] != None:
+			if result['package']['ask']:
+				shell.do_amount("")
+
 		return True
 
 	return False
@@ -416,6 +430,8 @@ def executeTransaction(client, person):
 	)
 
 	cart = {}
+
+	shell.do_clear("")
 
 	msgConfirm("Transaction completed!")
 
@@ -491,7 +507,7 @@ def printLastTransactionsOfPerson(person, amount):
 		when = datetime.fromtimestamp(transaction['timestamp']).strftime('%Y-%m-%d %H:%M:%S')+" (€ {0: <8})".format("{:.2f}".format(transaction['total']/100.0))
 		for row in transaction['rows']:
 			product = '{0: >4}'.format(str(row['amount']))+"x "+'{0: <25}'.format(row['description'])
-			print('{0: <25}'.format(when)+product)
+			print('{0: <32}'.format(when)+product)
 			when = ""
 	
 
@@ -514,7 +530,10 @@ def printCart():
 		for i in cart:
 			product = cart[i]["product"]
 			amount = cart[i]["amount"]
-			line = '{0: >4}'.format(str(amount))+"x "+'{0: <25}'.format(product['name'])
+			unit = ""
+			if product['package'] != None:
+				unit = product['package']['name']
+			line = '{0: >4}'.format(str(amount))+" "+'{0: <16}'.format(unit)+'{0: <25}'.format(product['name'])
 			line += "\t"
 			groups = client.getGroups()
 			for i in range(len(groups)):
