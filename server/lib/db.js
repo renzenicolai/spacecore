@@ -114,7 +114,7 @@ class Record {
 			var index = this.getIndex();
 			if (index === null) {
 				// Record does not exist yet
-				var result = await this._table._createRecordInternal(this, transaction);
+				let result = await this._table._createRecordInternal(this, transaction);
 				console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.magenta(this._table.name())+" record "+result+" has been created");
 				this.setIndex(result, true);
 				if (recursive) {
@@ -123,7 +123,7 @@ class Record {
 				return this.getIndex(); //Created, return id.
 			} else {
 				// Record exists
-				var result = await this._table._updateRecordInternal(this, transaction);
+				let result = await this._table._updateRecordInternal(this, transaction);
 				console.log(chalk.white.bold.inverse(" DATABASE ")+" "+chalk.magenta(this._table.name())+" record "+this.getIndex()+" has been updated");
 				if (recursive) {
 					return this._flushSubRecords(transaction); //Sub-records
@@ -556,7 +556,6 @@ class Database {
 			if (this._tables[i].name()==table) return this._tables[i];
 		}
 		throw "Error: table '"+table+"' does not exist!";
-		return null;
 	}
 		
 	_executeQuery(query, opts, transaction=null) {

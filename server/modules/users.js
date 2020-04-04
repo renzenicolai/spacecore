@@ -53,7 +53,7 @@ class Users {
 			invalid:         "Invalid username and password combination",
 			username_in_use: "The chosen username is already in use",
 			notfound:        "User not found"
-		}
+		};
 	}
 	
 	_hash(password) {
@@ -137,41 +137,41 @@ class Users {
 	/* Methods for managing users */
 
 	async listUsers(session, params) {
-		var query = {};
+		let query = {};
 		
 		if (typeof params === "object" && params != null) {
-			if (typeof params.id       === "numer")    query.id        = params.id;
+			if (typeof params.id        === "number")  query.id        = params.id;
 			if (typeof params.user_name === "string")  query.user_name = params.user_name;
 			if (typeof params.full_name === "string")  query.full_name = params.full_name;
-			if (typeof params.title    === "string")   query.title     = params.title;
-			if (typeof params.active   === "boolean")  query.active    = params.active;
+			if (typeof params.title     === "string")  query.title     = params.title;
+			if (typeof params.active    === "boolean") query.active    = params.active;
 		}
 		
 		// Query users based on the assembled query
-		var result = await this._table.list(query);
+		let result = await this._table.list(query);
 		
-		for (var i in result) {
+		for (let i in result) {
 			delete result[i].password; // Remove password column from the result
 			result[i].active = Boolean(result[i].active); // Convert the active column into a boolean
 		}
 		
 		// Avatar image
-		var avatarPromises = [];
-		for (var i in result) {
+		let avatarPromises = [];
+		for (let i in result) {
 			avatarPromises.push(this._opts.files.getFileAsBase64(result[i].avatar_id));
 		}
-		var avatarResult = await Promise.all(avatarPromises);
-		for (var i in avatarResult) {
+		let avatarResult = await Promise.all(avatarPromises);
+		for (let i in avatarResult) {
 			result[i].avatar = avatarResult[i];
 		}
 		
 		// Permissions
-		var permissionPromises = [];
-		for (var i in result) {
+		let permissionPromises = [];
+		for (let i in result) {
 			permissionPromises.push(this._getPermissions(result[i].id));
 		}
-		var permissionResult = await Promise.all(permissionPromises);
-		for (var i in permissionResult) {
+		let permissionResult = await Promise.all(permissionPromises);
+		for (let i in permissionResult) {
 			result[i].permissions = permissionResult[i];
 		}
 		
@@ -290,10 +290,9 @@ class Users {
 	
 	async removeUser(session, params) {
 		
-		if (typeof params === "number") {
-			var id = params;
-		} else {
-			var id = params.id;
+		let id = params;
+		if (typeof params !== "number") {
+			id = params.id;
 		}
 		
 		let record = await this._getUserRecord(id);

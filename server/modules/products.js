@@ -95,9 +95,9 @@ class Products {
 			var operations = [];
 			
 			if (Array.isArray(params.groups)) {
-				for (var i = 0; i < params.groups.length; i++) {
-					var group = params.groups[i];
-					var groupRecord = this._table_group_mapping.createRecord();
+				for (let i = 0; i < params.groups.length; i++) {
+					let group = params.groups[i];
+					let groupRecord = this._table_group_mapping.createRecord();
 					groupRecord.setField("product_id", product_id);
 					groupRecord.setField("product_group_id", group);
 					operations.push(groupRecord.flush(dbTransaction));
@@ -105,9 +105,9 @@ class Products {
 			}
 		
 			if (Array.isArray(params.locations)) {
-				for (var i = 0; i < params.locations.length; i++) {
-					var location = params.locations[i];
-					var locationRecord = this._table_location_mapping.createRecord();
+				for (let i = 0; i < params.locations.length; i++) {
+					let location = params.locations[i];
+					let locationRecord = this._table_location_mapping.createRecord();
 					locationRecord.setField("product_id", product_id);
 					locationRecord.setField("product_location_id", location);
 					operations.push(locationRecord.flush(dbTransaction));
@@ -115,9 +115,9 @@ class Products {
 			}
 		
 			if (typeof params.prices === "object") {
-				for (var group in params.prices) {
-					var value = params.prices[group];
-					var priceRecord = this._table_price.createRecord();
+				for (let group in params.prices) {
+					let value = params.prices[group];
+					let priceRecord = this._table_price.createRecord();
 					priceRecord.setField("product_id", product_id);
 					priceRecord.setField("person_group_id", Number(group));
 					priceRecord.setField("amount", value);
@@ -143,20 +143,20 @@ class Products {
 			//Groups
 			if (typeof params.groups !== 'undefined') {
 				if (!Array.isArray(params.groups)) throw "Expected groups to be a list of group identifiers.";
-				var groupOperations = [];
-				var currentMappings = await this._table_group_mapping.selectRecords({product_id: product.getIndex()}); //List current mappings
-				var currentGroups = [];
-				for (var i in currentMappings) { //Loop through all existing mappings
+				let groupOperations = [];
+				let currentMappings = await this._table_group_mapping.selectRecords({product_id: product.getIndex()}); //List current mappings
+				let currentGroups = [];
+				for (let i in currentMappings) { //Loop through all existing mappings
 					if (!params.groups.includes(currentMappings[i].getField("product_group_id"))) { //If the mapping exists but shouldn't then...
 						groupOperations.push(currentMappings[i].destroy(dbTransaction)); //...remove the mapping
 					} else { //The mapping exists and it should keep existing
 						currentGroups.push(currentMappings[i].getField("product_group_id")); //Store the id of the group we are already in in a list
 					}
 				}
-				for (var i in params.groups) { //Loop through the identifiers of the groups we want to be in
-					var group = params.groups[i];
+				for (let i in params.groups) { //Loop through the identifiers of the groups we want to be in
+					let group = params.groups[i];
 					if (!currentGroups.includes(group)) { //If the product is not yet in the group we want the product to be in then create the mapping
-						var mappingRecord = this._table_group_mapping.createRecord();
+						let mappingRecord = this._table_group_mapping.createRecord();
 						mappingRecord.setField("product_id", product.getIndex());
 						mappingRecord.setField("product_group_id", group);
 						groupOperations.push(mappingRecord.flush(dbTransaction));
@@ -169,20 +169,20 @@ class Products {
 			if (typeof params.locations !== 'undefined') {
 				console.log(params.locations, typeof params.locations);
 				if (!Array.isArray(params.locations)) throw "Expected locations to be a list of location identifiers.";
-				var locationOperations = [];
-				var currentMappings = await this._table_location_mapping.selectRecords({product_id: product.getIndex()}); //List current mappings
-				var currentGroups = [];
-				for (var i in currentMappings) { //Loop through all existing mappings
+				let locationOperations = [];
+				let currentMappings = await this._table_location_mapping.selectRecords({product_id: product.getIndex()}); //List current mappings
+				let currentGroups = [];
+				for (let i in currentMappings) { //Loop through all existing mappings
 					if (!params.locations.includes(currentMappings[i].getField("product_location_id"))) { //If the mapping exists but shouldn't then...
 						locationOperations.push(currentMappings[i].destroy(dbTransaction)); //...remove the mapping
 					} else { //The mapping exists and it should keep existing
 						currentGroups.push(currentMappings[i].getField("product_location_id")); //Store the id of the location we are already in in a list
 					}
 				}
-				for (var i in params.locations) { //Loop through the identifiers of the locations we want to be in
-					var location = params.locations[i];
+				for (let i in params.locations) { //Loop through the identifiers of the locations we want to be in
+					let location = params.locations[i];
 					if (!currentGroups.includes(location)) { //If the product is not yet in the location we want the product to be in then create the mapping
-						var mappingRecord = this._table_location_mapping.createRecord();
+						let mappingRecord = this._table_location_mapping.createRecord();
 						mappingRecord.setField("product_id", product.getIndex());
 						mappingRecord.setField("product_location_id", location);
 						locationOperations.push(mappingRecord.flush(dbTransaction));
@@ -195,12 +195,12 @@ class Products {
 			
 			//Prices
 			if (typeof params.prices !== 'undefined') {
-				var priceOperations = [];
-				var currentPrices = await this._table_price.selectRecords({product_id: product.getIndex()}); //List current prices
-				var existingPrices = [];
-				for (var i in currentPrices) { //Loop through all existing prices
-					var group = currentPrices[i].getField("person_group_id");
-					var value = currentPrices[i].getField("amount");
+				let priceOperations = [];
+				let currentPrices = await this._table_price.selectRecords({product_id: product.getIndex()}); //List current prices
+				let existingPrices = [];
+				for (let i in currentPrices) { //Loop through all existing prices
+					let group = currentPrices[i].getField("person_group_id");
+					let value = currentPrices[i].getField("amount");
 					if (!(String(group) in params.prices)) { //If the mapping exists but shouldn't then...
 						console.log("Price exists for",group,"but it should not exist, removing.");
 						priceOperations.push(currentPrices[i].destroy(dbTransaction)); //...remove the price
@@ -213,11 +213,11 @@ class Products {
 						existingPrices.push(group);
 					}
 				}
-				for (var group in params.prices) { //Loop through the prices we want to exist
-					var value = params.prices[group];
+				for (let group in params.prices) { //Loop through the prices we want to exist
+					let value = params.prices[group];
 					if (!existingPrices.includes(Number(group))) {
 						console.log("Price for",group,"does not yet exist, creating.");
-						var priceRecord = this._table_price.createRecord();
+						let priceRecord = this._table_price.createRecord();
 						priceRecord.setField("product_id", product.getIndex());
 						priceRecord.setField("person_group_id", Number(group));
 						priceRecord.setField("amount", value);
@@ -251,13 +251,13 @@ class Products {
 		}
 		
 		if (typeof params.picture === "number") {
-			var picture = await this._opts.files.getFileAsBase64(params.picture_id);
+			let picture = await this._opts.files.getFileAsBase64(params.picture_id);
 			if (picture === null) throw "Invalid file id supplied";
 			product.setField("picture_id", params.picture_id);
 		}
 	
 		if ((typeof params.picture === "object") && Array.isArray(params.picture) && (params.picture.length > 0)) {
-			var picture = await this._opts.files.createFileFromBase64(params.picture[0], transaction);
+			let picture = await this._opts.files.createFileFromBase64(params.picture[0], transaction);
 			product.setField('picture_id', picture.getIndex());
 		}
 		
@@ -595,13 +595,13 @@ class Products {
 			record.setField("product_id", params.product_id);
 			record.setField("amount_initial", params.amount);
 			record.setField("amount_current", params.amount);
-			await record.flush(dbTransaction);
+			let result = await record.flush(dbTransaction);
 			await dbTransaction.commit();
 			return result;
 		} catch(e) {
 			await dbTransaction.rollback();
 			throw e;
-		};
+		}
 	}
 
 	async editStock(session, params) {
@@ -833,11 +833,12 @@ class Products {
 		var dbTransaction = await this._opts.database.transaction("Remove brand #"+record.getIndex());
 		
 		try {
-			var products = await this._table.selectRecords({brand_id: params.id});
-			var operations = [];
-			for (var i in products) products[i].setField('brand_id', null);
-			var operations = [];
-			for (var i in products) operations.push(products[i].flush(dbTransaction));
+			let products = await this._table.selectRecords({brand_id: params.id});
+			let operations = [];
+			for (let i in products) {
+				products[i].setField('brand_id', null);
+				operations.push(products[i].flush(dbTransaction));
+			}
 			await Promise.all(operations);
 			await record.destroy(dbTransaction);
 			await dbTransaction.commit();
@@ -916,10 +917,12 @@ class Products {
 		var dbTransaction = await this._opts.database.transaction("Remove package #"+record.getIndex());
 		
 		try {
-			var products = await this._table.selectRecords({package_id: params.id});
-			for (var i in products) products[i].setField('package_id', null);
-			var operations = [];
-			for (var i in products) operations.push(products[i].flush(dbTransaction));
+			let products = await this._table.selectRecords({package_id: params.id});
+			let operations = [];
+			for (let i in products) {
+				products[i].setField('package_id', null);
+				operations.push(products[i].flush(dbTransaction));
+			}
 			await Promise.all(operations);
 			await record.destroy(dbTransaction);
 			await dbTransaction.commit();

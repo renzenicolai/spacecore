@@ -122,7 +122,7 @@ class Rpc {
 				accepted = true;
 				// When the object has required parameters
 				if (typeof constraints.required !== "undefined") {
-					for (var item in constraints.required) {
+					for (let item in constraints.required) {
 						if (typeof parameters[item] === "undefined") {
 							// And a required parameter is missing
 							console.log(chalk.bgBlue.white.bold(" DEBUG ")+" Required parameter "+item+" is missing.");
@@ -142,7 +142,7 @@ class Rpc {
 				}
 				
 				// Check that the object does not contain stray parameters
-				for (var item in parameters) {
+				for (let item in parameters) {
 					if ((typeof constraints.required !== "undefined") && (item in constraints.required)) {
 						// The parameter is a required parameter
 						continue;
@@ -253,7 +253,7 @@ class Rpc {
 		var requests = null;
 
 		if (data == "") { //Index / empty request
-			var index = {
+			let index = {
 				code: 0,
 				message: "Empty request received",
 				service: this._opts.identity,
@@ -282,7 +282,7 @@ class Rpc {
 		var results = [];
 
 		try {
-			for (var index = 0; index<requests.length; index++) {
+			for (let index = 0; index<requests.length; index++) {
 				var result = await this._handleRequest(requests[index], connection);
 				results.push(result);
 			}

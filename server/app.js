@@ -29,7 +29,7 @@ const Vending          = require('./modules/vending.js');
 // Project specific verification modules
 const VerifyBalance    = require('./verification/balance.js');
 
-/* Argument parser */
+// Argument parser
 const argv = yargs
 	.option('config', {
 		alias: 'c',
@@ -43,11 +43,11 @@ const argv = yargs
 var configFile = "configuration.json";
 if (argv.config) configFile = argv.config;
 
-/* Configuration */
+// Configuration
 
 var configuration = new Configuration(configFile);
 
-/* Logfile */
+// Logfile
 var logEnable = configuration.get("log", "enable");
 if (!logEnable) {
 	var logFile = null;
@@ -57,7 +57,7 @@ if (!logEnable) {
 	var logFile = fs.createWriteStream(logDir+(new Date()).getTime()+'.txt');
 }
 
-/* Error handlers */
+// Error handlers
 
 process.on('unhandledRejection', (err) => {
 	if (logFile) logFile.write("Unhandled rejection: "+err+"\n");
@@ -82,7 +82,7 @@ process.on('exit', (code) => {
 	if (logFile) logFile.end();
 });
 
-/* Database */
+// Database
 
 var database = new Database({
 	host: configuration.get("database", "host"),
@@ -93,7 +93,7 @@ var database = new Database({
 	logFile: logFile
 });
 
-/* Application elements not requiring database availability */
+// Application elements not requiring database availability
 
 var sessions = new Sessions({
 	timeout: configuration.get("sessions","timeout")

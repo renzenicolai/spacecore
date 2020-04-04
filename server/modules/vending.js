@@ -171,12 +171,12 @@ class PosDevice {
 	}
 	
 	async frontpanelLed(value) {
-		this._opts.mqtt.send(this._opts.topic+'/frontpanel/led', String(params));
+		this._opts.mqtt.send(this._opts.topic+'/frontpanel/led', String(value));
 		return true;
 	}
 	
 	async coinLed(value) {
-		this._opts.mqtt.send(this._opts.topic+'/coin/led', String(params));
+		this._opts.mqtt.send(this._opts.topic+'/coin/led', String(value));
 		return true;
 	}
 

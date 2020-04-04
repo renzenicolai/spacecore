@@ -105,7 +105,7 @@ class Session {
 	}
 
 	async unsubscribe(subject) {
-		this.subscriptions = subscriptions.filter(item => item !== subject);
+		this.subscriptions = this.subscriptions.filter(item => item !== subject);
 		return true;
 	}
 }
@@ -209,11 +209,11 @@ class Sessions {
 	/* RPC API functions: management of individual sessions */
 	
 	async createSession(session, params) {
-		var session = new Session({
+		let newSession = new Session({
 			"alwaysAllow": this.alwaysAllow
 		});
-		this.sessions.push(session);
-		return session.id;
+		this.sessions.push(newSession);
+		return newSession.id;
 	}
 
 	async destroyCurrentSession(session, params) {
