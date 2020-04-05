@@ -1,12 +1,13 @@
 /*
  * Function: MQTT frontend
- * Author: Renze Nicolai 2018
+ * Author: Renze Nicolai 2018-2020
  * License: GPLv3
  */
 
 "use strict";
 
-const mqtt = require('mqtt');
+const mqtt  = require('mqtt');
+const chalk = require('chalk');
 
 class Mqttclient {
 	constructor( opts ) {
@@ -32,12 +33,17 @@ class Mqttclient {
 		this._client.on('message', this._handle.bind(this));
 		
 		this.callbacks = {};
+		
+		this._topics = [];
 	}
 	
 	_connect() {
-		console.log("[MQTT] connected!");
+		console.log(chalk.white.bold.inverse(" MQTT ")+" "+chalk.green("connected"));
 		this._client.subscribe(this._opts.topic);
 		this._client.subscribe(this._opts.topic+"/#");
+		for (var i in this._topics) {
+			this._client.subscribe(this._topics[i]);
+		}
 	}
 	
 	_handle(topic, message) {
@@ -55,7 +61,7 @@ class Mqttclient {
 				if (typeof err==='string') {
 					this._client.publish(returnTopic, err);
 				} else {
-					console.log(err);
+					console.log(chalk.white.bold.inverse(" MQTT "),err);
 					this._client.publish(returnTopic, JSON.stringify({
 						id: null,
 						jsonrpc: "2.0",
@@ -69,20 +75,22 @@ class Mqttclient {
 				try {
 					this.callbacks[topic](message);
 				} catch(err) {
-					console.log("Error in MQTT callback for topic '"+topic+"':", err);
+					console.log(chalk.white.bold.inverse(" MQTT ")+" Error in MQTT callback for topic '"+topic+"':", err);
 				}
 			}
 		}
 	}
 	
 	subscribe(topic, callback) {
-		console.log("[MQTT] Subscribed to '"+topic+"'.");
 		this._client.subscribe(topic);
+		if (!this._topics.includes(topic)) {
+			this._topics.push(topic);
+		}
 		this.callbacks[topic] = callback;
 	}
 	
 	send(topic, message) {
-		console.log("[MQTT] Sending '"+message+"' to '"+topic+"'.");
+		console.log(chalk.white.bold.inverse(" MQTT ")+" Sending '"+message+"' to '"+topic+"'.");
 		this._client.publish(topic, message);
 	}
 }

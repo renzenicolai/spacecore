@@ -146,8 +146,8 @@ class PdfInvoice {
 				first = false;
 			}
 			
-			for (var i in row) {
-				if (typeof row[i].width != "Number") row[i].width = headerColumns[i].width;
+			for (let i in row) {
+				if (typeof row[i].width !== "number") row[i].width = headerColumns[i].width;
 			}
 			
 			offset = this._renderTableRow(doc, offset, even, false, row);
@@ -159,13 +159,15 @@ class PdfInvoice {
 	
 	_renderTotals(doc, offset, data) {
 		offset += 14;
-		var totalsHeight = 0;
-		for (var i in data) {
-			var row = data[i];
-			var linesText = row.text.split("\n").length;
-			var linesValue = row.value.split("\n").length;
-			var lines = linesText;
-			if (linesValue > linesText) lines = linesValue;
+		let totalsHeight = 0;
+		for (let i in data) {
+			let row = data[i];
+			let linesText = row.text.split("\n").length;
+			let linesValue = row.value.split("\n").length;
+			let lines = linesText;
+			if (linesValue > linesText) {
+				lines = linesValue;
+			}
 			totalsHeight = lines * 12;
 		}
 		
@@ -174,11 +176,13 @@ class PdfInvoice {
 			this._addPage(doc);
 		}
 		
-		for (var i in data) {
-			var row = data[i];
-			var xOffset = doc.page.width - 55 - 150;
-			var font = 'fonts/Roboto-Regular.ttf';
-			if ((typeof row.bold != "undefined") && (row.bold)) font = 'fonts/Roboto-Bold.ttf';
+		for (let i in data) {
+			let row = data[i];
+			let xOffset = doc.page.width - 55 - 150;
+			let font = 'fonts/Roboto-Regular.ttf';
+			if ((typeof row.bold != "undefined") && (row.bold)) {
+				font = 'fonts/Roboto-Bold.ttf';
+			}
 			doc.font(font).fontSize(12).text(row.text, xOffset, offset);
 			doc.font('fonts/Roboto-Regular.ttf').fontSize(12).text(row.value, xOffset + 100, offset);
 			offset += 14;

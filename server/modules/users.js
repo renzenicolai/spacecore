@@ -1,8 +1,9 @@
 "use strict";
 
 const shacrypt = require('shacrypt');
-const crypto = require('crypto');
-const mime  = require('mime-types');
+const crypto   = require('crypto');
+const mime     = require('mime-types');
+const chalk    = require('chalk');
 
 class Users {
 	constructor(opts) {
@@ -14,11 +15,10 @@ class Users {
 		}, opts);
 
 		if (this._opts.database === null) {
-			console.log("The users module can not be started without a database!");
-			process.exit(1);
+			throw "The users module can not be started without a database!";
 		}
 
-		this._table             = this._opts.database.table(this._opts.table_users, {
+		this._table = this._opts.database.table(this._opts.table_users, {
 			columns: {
 				id: false,
 				user_name: true,
@@ -40,14 +40,20 @@ class Users {
 		});
 
 		if (this._table === null) {
-			console.log("Users table not found.");
-			process.exit(1);
+			throw "Users table not found";
 		}
 
 		if (this._tablePermissions === null) {
-			console.log("User permissions table not found.");
-			process.exit(1);
+			throw "User permissions table not found";
 		}
+		
+		this.errors = {
+			session:         "Invalid session",
+			session_user:    "There is no user associated with your session",
+			invalid:         "Invalid username and password combination",
+			username_in_use: "The chosen username is already in use",
+			notfound:        "User not found"
+		};
 	}
 	
 	_hash(password) {
@@ -58,18 +64,42 @@ class Users {
 	_validate(enteredPassword, savedPassword) {
 		return savedPassword === shacrypt.sha512crypt(enteredPassword, savedPassword);
 	}
+	
+	async _getPermissions(id) {
+		var records = await this._tablePermissions.selectRecords({'user_id': id});
+		var result = [];
+		for (var i = 0; i<records.length; i++) {
+			result.push(records[i].getField('endpoint'));
+		}
+		return result;
+	}
+	
+	async _getUserRecord(id) {
+		var records = await this._table.selectRecords({"id":id});
+		if (records.length!==1) {
+			throw "User not found";
+		}
+		return records[0];
+	}
+	
+	/* Methods for using a user with a session */
 
 	async authenticate(session, params) {
-		if (typeof session !== 'object') throw "Invalid session";
-		if (typeof params !== 'object') throw "Expected an object to be passed for parameters";
-		if (typeof params.username !== 'string') throw "Missing username argument";
-		if ((typeof params.password !== 'undefined') && (typeof params.password !== 'string')) throw "Expected password argument to be a string";
+		if (typeof session !== 'object') {
+			throw this.errors.session;
+		}
 		
-		var records = await this._table.selectRecords({'user_name':params.username, "active":1});
+		var records = await this._table.selectRecords({
+			'user_name': params.user_name,
+			"active": 1
+		});
 		
 		for (var i in records) {
 			var hash = records[i].getField('password');
-			if (((hash === null) && (typeof params.password === 'undefined')) || ((typeof hash === 'string') && (this._validate(params.password, hash)))) {
+			if (
+				((hash === null) && (typeof params.password === 'undefined')) ||
+				((typeof hash === 'string') && (this._validate(params.password, hash)))
+			) {
 				var permissions = await this._getPermissions(records[i].getIndex());
 				var avatar = await this._opts.files.getFileAsBase64(records[i].getField('avatar_id'));
 				session.user = {
@@ -90,151 +120,368 @@ class Users {
 			}
 		}
 		
-		throw "Invalid username / password combination";
+		throw this.errors.invalid;
 	}
-
-	_getPermissions(id) {
-		return new Promise((resolve, reject) => {
-			return this._tablePermissions.selectRecords({'user_id':id}).then((records) => {
-				var result = [];
-				for (var i = 0; i<records.length; i++) {
-					result.push(records[i].getField('endpoint'));
-				}
-				return resolve(result);
-			});
-		});
+	
+	async editCurrentUser(session, params) {
+		if (typeof session !== 'object')         throw this.errors.session;
+		if (typeof session.user.id !== 'number') throw this.errors.session_user;
+		
+		var internalParams = { id: session.user.id };
+		if (typeof params.password === "string") internalParams.password = params.password;
+		if (typeof params.full_name === "string") internalParams.full_name = params.full_name;
+		if (typeof params.title    === "string") internalParams.title    = params.title;
+		return this.editUser(session, internalParams);
 	}
+	
+	/* Methods for managing users */
 
-	list(session, params) {
-		return this._table.list(params).then((result) => {
-			var promises = [];
-			for (var i in result) {
-				promises.push(this._opts.files.getFileAsBase64(result[i].avatar_id));
+	async listUsers(session, params) {
+		let query = {};
+		
+		if (typeof params === "object" && params != null) {
+			if (typeof params.id        === "number")  query.id        = params.id;
+			if (typeof params.user_name === "string")  query.user_name = params.user_name;
+			if (typeof params.full_name === "string")  query.full_name = params.full_name;
+			if (typeof params.title     === "string")  query.title     = params.title;
+			if (typeof params.active    === "boolean") query.active    = params.active;
+		}
+		
+		// Query users based on the assembled query
+		let result = await this._table.list(query);
+		
+		for (let i in result) {
+			delete result[i].password; // Remove password column from the result
+			result[i].active = Boolean(result[i].active); // Convert the active column into a boolean
+		}
+		
+		// Avatar image
+		let avatarPromises = [];
+		for (let i in result) {
+			avatarPromises.push(this._opts.files.getFileAsBase64(result[i].avatar_id));
+		}
+		let avatarResult = await Promise.all(avatarPromises);
+		for (let i in avatarResult) {
+			result[i].avatar = avatarResult[i];
+		}
+		
+		// Permissions
+		let permissionPromises = [];
+		for (let i in result) {
+			permissionPromises.push(this._getPermissions(result[i].id));
+		}
+		let permissionResult = await Promise.all(permissionPromises);
+		for (let i in permissionResult) {
+			result[i].permissions = permissionResult[i];
+		}
+		
+		return result;
+	}
+	
+	async createUser(session, params) {
+		if (typeof params.password    !== 'string')  params.password    = "";
+		if (typeof params.name        !== 'string')  params.name        = "";
+		if (typeof params.title       !== 'string')  params.title       = "";
+		if (typeof params.active      !== 'boolean') params.active      = false;
+		if (typeof params.permissions !== 'object')  params.permissions = [];
+		
+		let existingUsers = await this.listUsers(session, {user_name: params.user_name});
+		if (existingUsers.length>0) {
+			throw "A user with the username '"+params.user_name+"' exists already";
+		}
+		
+		let dbTransaction = await this._opts.database.transaction("create user "+params.user_name);
+		
+		let record = this._table.createRecord();
+		record.setField('user_name', params.user_name);
+		
+		if (params.password === "") {
+			record.setField('password', null);
+		} else {
+			record.setField('password', this._hash(params.password));
+		}
+
+		record.setField('full_name', params.name);
+		record.setField('title', params.title);
+		record.setField('active', params.active ? 1 : 0);
+		var id = await record.flush(dbTransaction);
+		
+		var permissionPromises = [];
+		for (let i = 0; i < params.permissions.length; i++) {
+			let permissionRecord = this._tablePermissions.createRecord();
+			permissionRecord.setField('user_id', id);
+			permissionRecord.setField('endpoint', params.permissions[i]);
+			permissionPromises.push(permissionRecord.flush(dbTransaction));
+		}
+		
+		await Promise.all(permissionPromises);
+		await dbTransaction.commit();
+		return id;
+	}
+	
+	async editUser(session, params) {
+		let record = await this._getUserRecord(params.id);
+		
+		if (record === null) {
+			throw this.error.notfound;
+		}
+		
+		let id = record.getIndex();
+		let dbTransaction = await this._opts.database.transaction("edit user "+params.user_name);
+		
+		if (typeof params.user_name === 'string') {
+			let existingUsers = await this.listUsers(session, {user_name: params.user_name});
+			if (existingUsers.length > 0) {
+				throw this.error.username_in_use;
 			}
-			return Promise.all(promises).then((resultArray) => {
-				for (var i in resultArray) {
-					delete result[i].password;
-					result[i].avatar = resultArray[i];
-				}
-				return Promise.resolve(result);
-			});
-		});
-	}
-
-	find(session, params) {
-		return new Promise((resolve, reject) => {
-			if(params.length != 1) return reject("invalid parameter count");
-			return this._table.selectRecords({"user_name":params[0]}).then((records) => {
-				var result = {};
-				if (records.length < 1) return resolve([]);
-				for (var i = 0; i<records.length; i++) {
-					result[records[i].getIndex()] = records[i].getFields();
-					delete result[records[i].getIndex()].password;
-				}
-				var promises = [];
-				for (i in result) {
-					promises.push(this._opts.files.getFileAsBase64(result[i].avatar_id));
-				}
-				return Promise.all(promises).then((resultArray) => {
-					for (var i in resultArray) {
-						result[i].avatar = resultArray[i];
-					}
-					return Promise.resolve(result);
-				});
-			});
-		});
-	}
-
-	_getUserRecord(id) {
-		return new Promise((resolve, reject) => {
-			return this._table.selectRecords({"id":id}).then((records) => {
-				if (records.length!==1) reject("Invalid user id");
-				resolve(records[0]);
-			});
-		});
-	}
-
-	add(session, params) {
-		return new Promise((resolve, reject) => {
-			if (typeof params !== 'object') return reject("Invalid params (object)");
-			if (typeof params.username !== 'string') return reject("Invalid params (username)");
-			if (typeof params.password !== 'string') return reject("Invalid params (password)");
-			if (typeof params.name !== 'string') return reject("Invalid params (name)");
-			if (typeof params.title !== 'string') return reject("Invalid params (title)");
-			console.log("PARAMS OK");
-			return this.find(session, [params.username]).then((existingUsers) => {
-				if (existingUsers.length>0) {
-					console.log("USER EXISTS");
-					return reject("A user with the username '"+params.username+"' exists already");
+			record.setField('user_name', params.user_name);
+		}
+		
+		if (typeof params.password === 'string') {
+			if (params.password === "") {
+				record.setField('password', null);
+			} else {
+				record.setField('password', this._hash(params.password));
+			}
+		}
+		
+		if (typeof params.full_name === 'string') {
+			record.setField('full_name', params.full_name);
+		}
+		
+		if (typeof params.title === 'string') {
+			record.setField('title', params.title);
+		}
+		
+		if (typeof params.active === 'boolean') {
+			record.setField('active', params.active ? 1 : 0);
+		}
+		
+		if (typeof params.permissions === 'object') {
+			let permissionPromises = [];
+			let currentPermissions = [];
+			
+			let currentPermissionRecords = await this._tablePermissions.selectRecords({user_id: id});
+			for (let i in currentPermissionRecords) {
+				if (!params.permissions.includes(currentPermissionRecords[i].getField("endpoint"))) {
+					permissionPromises.push(currentPermissionRecords[i].destroy(dbTransaction));
 				} else {
-					console.log("CREATING USER");
-					var record = this._table.createRecord();
-					record.setField('user_name', params.username);
-					record.setField('password', this._hash(params.password));
-					record.setField('full_name', params.name);
-					record.setField('title', params.title);
-					record.setField('active', 1);
-					return resolve(record.flush());
+					currentPermissions.push(currentPermissionRecords[i].getField("endpoint"));
 				}
-			});
-		});
-	}
-
-	changeUsername(session, params) {
-			if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
-			if (typeof params.id !== 'number') return Promise.reject("Invalid params (2)");
-			if (typeof params.username !== 'string') return Promise.reject("Invalid params (3)");
-			return this.find([params.username]).then( (existingUsers) => {
-				if (existingUsers.length > 0) {
-					return Promise.reject("A user with the username '"+params.username+"' exists already");
+			}
+			
+			for (let i in params.permissions) {
+				let endpoint = params.permissions[i];
+				if (!currentPermissions.includes(endpoint)) {
+					let permissionRecord = this._tablePermissions.createRecord();
+					permissionRecord.setField("user_id", id);
+					permissionRecord.setField("endpoint", endpoint);
+					permissionPromises.push(permissionRecord.flush(dbTransaction));
 				}
-				return this._getUserRecord(params.id).then( (user) => {
-					user.setField('user_name', params.username);
-					return user.flush();
-				});
-			});
+			}
+			
+			await Promise.all(permissionPromises);
+		}
+		
+		await record.flush(dbTransaction);
+		await dbTransaction.commit();
+		return id;
+	}
+	
+	async removeUser(session, params) {
+		
+		let id = params;
+		if (typeof params !== "number") {
+			id = params.id;
+		}
+		
+		let record = await this._getUserRecord(id);
+		
+		if (record === null) {
+			throw this.error.notfound;
+		}
+		
+		let dbTransaction = await this._opts.database.transaction("remove user "+record.getField("user_name"));
+		
+		let permissionRecords = await this._tablePermissions.selectRecords({user_id: id});
+		
+		let permissionPromises = [];
+		for (let i = 0; i < permissionRecords.length; i++) {
+			permissionPromises.push(permissionRecords[i].destroy(dbTransaction));
+		}
+		await Promise.all(permissionPromises);
+		
+		let result = await record.destroy(dbTransaction);
+		await dbTransaction.commit();
+		return result;
 	}
 
-	changePassword(session, params) {
-			if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
-			if (typeof params.id !== 'number') return Promise.reject("Invalid params (2)");
-			if (typeof params.password !== 'string') return Promise.reject("Invalid params (3)");
-			return this._getUserRecord(params.id).then( (user) => {
-				user.setField('password', this._hash(params.password));
-				return user.flush();
-			});
-	}
-
-	changeMyUsername(session, params) {
-		if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
-		if (typeof params.username !== 'string') return Promise.reject("Invalid params (2)");
-		if (typeof session.user.id !== 'number')  return Promise.reject("There is no user associated with your session");
-		return this.changeUsername({id: session.user.id, username: params.username});
-	}
-
-	changeMyPassword(session, params) {
-		if (typeof params !== 'object') return Promise.reject("Invalid params (1)");
-		if (typeof params.password !== 'string') return Promise.reject("Invalid params (2)");
-		if (typeof session.user.id !== 'number')  return Promise.reject("There is no user associated with your session");
-		this.changePassword({id: session.user.id, password: params.password});
-	}
+	/* RPC API definitions */
 
 	registerRpcMethods(rpc, prefix="user") {
 		if (prefix!=="") prefix = prefix + "/";
 
-		rpc.addMethod(prefix+"authenticate", this.authenticate.bind(this));
+		/* Methods for using a user with a session */
+		
+		rpc.addMethod(
+			prefix+"authenticate",
+			this.authenticate.bind(this),
+			[
+				{
+					type: "object",
+					required: {
+						user_name: {
+							type: "string"
+						}
+					},
+					optional: {
+						password: {
+							type: "string"
+						}
+					}
+				}
+			]
+		);
+		
+		rpc.addMethod(
+			prefix+"me/edit",
+			this.editCurrentUser.bind(this),
+			[
+				{
+					type: "object",
+					optional: {
+						password: {
+							type: "string"
+						},
+						full_name: {
+							type: "string"
+						},
+						title: {
+							type: "string"
+						}
+					}
+				}
+			]
+		);
+		
+		/* Methods for managing users */
 
-		rpc.addMethod(prefix+"list", this.list.bind(this));
-		rpc.addMethod(prefix+"find", this.find.bind(this));
+		rpc.addMethod(
+			prefix+"list",
+			this.listUsers.bind(this),
+			[
+				{ // Calling without parameters: lists all users on the system
+					type: "none"
+				},
+				{ // Calling with parameters: search for exact match to one of the following fields
+					type: "object",
+					optional: {
+						id: {
+							type: "number"
+						},
+						user_name: {
+							type: "string"
+						},
+						full_name: {
+							type: "string"
+						},
+						title: {
+							type: "string"
+						},
+						active: {
+							type: "boolean"
+						}
+					}
+				}
+			]
+		);
 
-		rpc.addMethod(prefix+"add", this.add.bind(this));
-		rpc.addMethod(prefix+"change/username", this.changeUsername.bind(this));
-		rpc.addMethod(prefix+"change/password", this.changePassword.bind(this));
-		rpc.addMethod(prefix+"change/my/username", this.changeMyUsername.bind(this));
-		rpc.addMethod(prefix+"change/my/password", this.changeMyPassword.bind(this));
-
-		//rpc.addMethod(prefix+"remove", this.add.bind(this));
-		//rpc.addMethod(prefix+"update", this.add.bind(this));
+		rpc.addMethod(
+			prefix+"create",
+			this.createUser.bind(this),
+			[
+				{ // Create a new user
+					type: "object",
+					required: {
+						user_name: {
+							type: "string"
+						}
+					},
+					optional: {
+						password: {
+							type: "string"
+						},
+						full_name: {
+							type: "string"
+						},
+						title: {
+							type: "string"
+						},
+						active: {
+							type: "boolean"
+						},
+						permissions: {
+							type: "array",
+							contains: "string"
+						}
+					}
+				}
+			]
+		);
+		
+		rpc.addMethod(
+			prefix+"edit",
+			this.editUser.bind(this),
+			[
+				{
+					type: "object",
+					required: {
+						id: {
+							type: "number"
+						}
+					},
+					optional: {
+						user_name: {
+							type: "string"
+						},
+						password: {
+							type: "string"
+						},
+						full_name: {
+							type: "string"
+						},
+						title: {
+							type: "string"
+						},
+						active: {
+							type: "boolean"
+						},
+						permissions: {
+							type: "array",
+							contains: "string"
+						}
+					}
+				}
+			]
+		);
+		
+		rpc.addMethod(
+			prefix+"remove",
+			this.removeUser.bind(this),
+			[
+				{
+					type: "object",
+					required: {
+						id: {
+							type: "number"
+						}
+					}
+				},
+				{
+					type: "number"
+				}
+			]
+		);
 	}
 }
 

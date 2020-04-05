@@ -1,9 +1,10 @@
 "use strict";
 
-const mime = require('mime-types');
-const pdf = require('./invoicesToPdf.js');
-const fs = require('fs');
+const mime   = require('mime-types');
+const pdf    = require('./invoicesToPdf.js');
+const fs     = require('fs');
 const stream = require('stream');
+const chalk  = require('chalk');
 
 class WritableBufferStream extends stream.Writable {
 		constructor(options) {
@@ -52,33 +53,35 @@ class Invoices {
 	}
 
 	async list(session, params, whereKeySeparator="AND", resolvePersons=false) {
-		var invoices = await this._table.list(params, whereKeySeparator)
-			var rowPromises = [];
-			var personPromises = [];
-			for (var i in invoices) {
-				rowPromises.push(this._table_rows.selectRecords({"invoice_id":invoices[i].id},"","AND",false));
-				if (resolvePersons) {
-					personPromises.push(this._opts.persons.list(session, {id: invoices[i].person_id}));
-				}
-			}
-			
+		let invoices = await this._table.list(params, whereKeySeparator);
+		let rowPromises = [];
+		let personPromises = [];
+		for (let i in invoices) {
+			rowPromises.push(this._table_rows.selectRecords({"invoice_id":invoices[i].id},"","AND",false));
 			if (resolvePersons) {
-				var persons = await Promise.all(personPromises);
-				for (var i in persons) {
-					if (persons[i].length < 1) throw "Unknown person in invoice";
-					invoices[i].person = persons[i][0];
-				}
+				personPromises.push(this._opts.persons.list(session, {id: invoices[i].person_id}));
 			}
-			
-			var rows = await Promise.all(rowPromises);
-			for (var i in rows) invoices[i].rows = rows[i];
-			
-			return invoices;
+		}
+		
+		if (resolvePersons) {
+			let persons = await Promise.all(personPromises);
+			for (let i in persons) {
+				if (persons[i].length < 1) throw "Unknown person in invoice";
+				invoices[i].person = persons[i][0];
+			}
+		}
+		
+		let rows = await Promise.all(rowPromises);
+		for (let i in rows) {
+			invoices[i].rows = rows[i];
+		}
+		
+		return invoices;
 	}
 	
 	async listLast(session, params) {
-		var filter = {};
-		var amount = 5;
+		let filter = {};
+		let amount = 5;
 		
 		if (typeof params === 'object') {
 			if ("amount" in params) {
@@ -98,12 +101,12 @@ class Invoices {
 		}
 				
 		return this._table.listExtra(filter, "ORDER BY `timestamp` DESC LIMIT "+amount).then((result) => {
-			var promises = [];
-			for (var i in result) {
+			let promises = [];
+			for (let i in result) {
 				promises.push(this._table_rows.selectRecords({"invoice_id":result[i].id},"","AND",false));
 			}
 			return Promise.all(promises).then((resultArray) => {
-				for (var i in resultArray) {
+				for (let i in resultArray) {
 					result[i].rows = resultArray[i];
 				}
 				return result;
@@ -111,60 +114,68 @@ class Invoices {
 		});
 	}
 	
-	listQuery(session, params) {
+	async listQuery(session, params) {
 		if ((typeof params !== "object") || (params.length < 1) || (params.length > 2)) {
-			return new Promise((resolve, reject) => {return reject("Invalid param.");});
+			throw "Invalid param.";
 		}
-		var query = params[0];
-		var amount = null;
+		
+		let query = params[0];
+		let amount = null;
+		
 		if (params.length > 1) {
 			amount = params[1];
 			if (typeof amount !== "number") {
-				return new Promise((resolve, reject) => {return reject("Invalid amount param.");});
+				throw "Invalid amount param.";
 			}
 		}
-		var limit = "";
-		if (amount != null) {
+		
+		let limit = "";
+		if (amount !== null) {
 			limit = "DESC LIMIT "+amount;
 		}
-		return this._table.listExtra(query, "ORDER BY `timestamp`"+limit).then((result) => {
-			var promises = [];
-			for (var i in result) {
-				promises.push(this._table_rows.selectRecords({"invoice_id":result[i].id},"","AND",false));
-			}
-			return Promise.all(promises).then((resultArray) => {
-				for (var i in resultArray) {
-					result[i].rows = resultArray[i];
-				}
-				return result;
-			});
-		});
+		
+		let result = await this._table.listExtra(query, "ORDER BY `timestamp`"+limit);
+		
+		let promises = [];
+		for (let i in result) {
+			promises.push(this._table_rows.selectRecords({"invoice_id":result[i].id},"","AND",false));
+		}
+		let resultArray = await Promise.all(promises);
+		for (let i in resultArray) {
+			result[i].rows = resultArray[i];
+		}
+		
+		return result;
 	}
 	
 	async _notifyMqtt(data) {
 		try {
-		if (this._opts.mqtt) this._opts.mqtt.send(this._opts.mqtt_topic, JSON.stringify(data));
+			if (this._opts.mqtt) {
+				this._opts.mqtt.send(this._opts.mqtt_topic, JSON.stringify(data));
+			}
 		} catch(error) {
 			console.log("MQTT error",error);
 		}
 	}
 	
-	async execute(session, params) {
+	async create(session, params) {
 		// Basic checks
 		if (!("person_id" in params))                            throw "Please provide a person_id in params.";
 		if ((!("products" in params)) && (!("other" in params))) throw "Please provide products or other rows in params.";
 		
+		console.log(chalk.bgCyan.white.bold(" INVOICE ")+" Creating invoice for "+params.person_id+"...");
+		
 		// Find the person
-		var persons = await this._opts.persons.listForVendingNoAvatar(session, {"id": params.person_id});
+		let persons = await this._opts.persons.listForVendingNoAvatar(session, {"id": params.person_id});
 		if (persons.length < 1 || persons.length > 1) throw "Person not found!";
-		var person = persons[0];
-		var person_record = await this._opts.persons.getRecord(person.id);
+		let person = persons[0];
+		let person_record = await this._opts.persons.getRecord(person.id);
 		
 		// Products added to the invoice
-		var product_amounts       = {};
-		var product_promises      = [];
+		let product_amounts       = {};
+		let product_promises      = [];
 		if ("products" in params) {
-			for (var i in params.products) {
+			for (let i in params.products) {
 				if (typeof params.products[i] === "number") {
 					if (params.products[i] in product_amounts) {
 						product_amounts[params.products[i]]++;
@@ -177,7 +188,7 @@ class Invoices {
 					"id" in params.products[i] &&
 					typeof params.products[i].id === "number"
 				) {
-					var amount = 1;
+					let amount = 1;
 					if ("amount" in params.products[i] && typeof params.products[i].amount === "number") {
 						amount = params.products[i].amount;
 					}
@@ -192,48 +203,43 @@ class Invoices {
 				}
 			}
 		}
-		var product_results = await Promise.all(product_promises);
+		let product_results = await Promise.all(product_promises);
 			
-		var stock_promises = [];
+		let stock_promises = [];
 		
-		for (var product in product_results) {
-			if (product_results[i].length < 0 || product_results[i].length > 1) {
-				return new Promise(function(resolve, reject) {
-					return reject("Invalid product id provided.");
-				});
+		for (let product in product_results) {
+			if (product.length < 0 || product.length > 1) {
+				throw "Invalid product id provided.";
 			}
-			var product_id = product_results[product][0].id;
+			let product_id = product_results[product][0].id;
 			stock_promises.push(this._opts.products.listStockRecords(session, {'product_id': product_id, 'amount_current':{">":0}}));
 		}
 		
-		var stockRecords = await Promise.all(stock_promises);
+		let stockRecords = await Promise.all(stock_promises);
 		
-		var invoice_rows = [];
-		var invoice = this._table.createRecord();
+		let invoice_rows = [];
+		let invoice = this._table.createRecord();
 		invoice.setField("person_id", person.id);
-		var invoice_total = 0;
-		for (var i in product_results) {
+		let invoice_total = 0;
+		let selectedStock = [];
+		for (let i in product_results) {
 			if (product_results[i].length < 0 || product_results[i].length > 1) {
-				return new Promise(function(resolve, reject) {
-					return reject("Invalid product id provided.");
-				});
+				throw "Invalid product id provided.";
 			}
-			var product = product_results[i][0];
-			var stockList = stockRecords[i];
-			var amount = product_amounts[product.id];
+			let product = product_results[i][0];
+			let stockList = stockRecords[i];
+			let amount = product_amounts[product.id];
 			
-			var record = this._table_rows.createRecord();
+			let record = this._table_rows.createRecord();
 			record.setField("product_id", product.id);
-			var description = product.name;
+			let description = product.name;
 			if (product.package_id !== null) description += " ("+product.package.name+")";
 			record.setField("description", description);
-			var price = 0xFFFFFFFFFFFFFFFF;
-			var price_valid = false;
-			console.log("!!!>>>", product.prices);
-			for (var j in product.prices) {
-				var price_available = false;
-				for (var k in person.groups) {
-					console.log(">>>>", person.groups[k], product.prices[j]);
+			let price = 0xFFFFFFFFFFFFFFFF;
+			let price_valid = false;
+			for (let j in product.prices) {
+				let price_available = false;
+				for (let k in person.groups) {
 					if (product.prices[j].person_group_id === person.groups[k].id) {
 						price_available = true;
 						break;
@@ -246,23 +252,21 @@ class Invoices {
 					}
 				}
 			}
-			if (!price_valid) return new Promise(function(resolve, reject) {
-				return reject(product.name+" can not be bought by "+person.nick_name+".");
-			});
+			if (!price_valid) {
+				throw product.name+" can not be bought by "+person.nick_name+".";
+			}
 			record.setField("price", price);
 			record.setField("amount", product_amounts[product.id]);
 			invoice_total += price*product_amounts[product.id];
 					
-			var blockIfNotInStock = false;
-					
-			var selectedStock = [];
-				
-			var amountRemaining = amount;
-			for (var item in stockList) {
+			let blockIfNotInStock = false;
+
+			let amountRemaining = amount;
+			for (let item in stockList) {
 				if (amountRemaining > 0) {
-					var currentStockId = stockList[item].getIndex();
-					var amountInCurrentStock = stockList[item].getField("amount_current");
-					var amountFromCurrentStock = 0;
+					let currentStockId = stockList[item].getIndex();
+					let amountInCurrentStock = stockList[item].getField("amount_current");
+					let amountFromCurrentStock = 0;
 					if (amountInCurrentStock >= amountRemaining) {
 						amountFromCurrentStock = amountRemaining;
 						amountRemaining = 0;
@@ -276,7 +280,7 @@ class Invoices {
 					
 					//This creates the mapping record that links each stock mutation to the invoice row responsible
 					//Note that the invoice row id still needs to be added. This is done once the invoice row id is known.
-					var mappingRecord = this._table_rows_stock_mapping.createRecord();
+					let mappingRecord = this._table_rows_stock_mapping.createRecord();
 					mappingRecord.setField("product_stock_id", currentStockId);
 					mappingRecord.setField("amount", amountFromCurrentStock);
 					record.addSubRecord("invoice_row_id", mappingRecord); //Now there is a record in your record, so you can flush your records while you flush your records \(^_^)/
@@ -285,9 +289,7 @@ class Invoices {
 			}
 			
 			if (blockIfNotInStock && amountRemaining > 0) {
-				return new Promise((resolve, reject) => {
-					reject({code: 3, message: "Not enough items in stock to complete order!"});
-				});
+				throw "Not enough items in stock to complete order!";
 			}
 			
 			invoice_rows.push(record);
@@ -295,8 +297,8 @@ class Invoices {
 		
 		// Other entries added to the invoice
 		if ("other" in params) {
-			for (i in params.other) {
-				var otherRecord = this._table_rows.createRecord();
+			for (let i in params.other) {
+				let otherRecord = this._table_rows.createRecord();
 				if ("description" in params.other[i]) {
 					otherRecord.setField("description", params.other[i].description);
 				} else {
@@ -320,49 +322,52 @@ class Invoices {
 		// Fill out the total amount and the timestamp
 		invoice.setField("total", invoice_total);
 		invoice.setField("timestamp", Math.floor(Date.now() / 1000));
-		var balance = person_record.getField("balance");
+		let balance = person_record.getField("balance");
 		
 		// Update the persons balance
 		person_record.setField("balance", balance - invoice_total);
 		
 		// Complete the invoice
-		var dbTransaction = await this._opts.database.transaction(person_record.getField("nick_name"));
+		let dbTransaction = await this._opts.database.transaction(person_record.getField("nick_name"));
 		
 		try {
-			var flushResult = await invoice.flush(dbTransaction);
+			let flushResult = await invoice.flush(dbTransaction);
 			if (!flushResult) throw "Error: invoice not created?!";
 			
-			var promise_rows = [];
-			var invoice_id = invoice.getIndex();
-			for (var i in invoice_rows) {
+			let promise_rows = [];
+			let invoice_id = invoice.getIndex();
+			for (let i in invoice_rows) {
 				invoice_rows[i].setField("invoice_id", invoice_id);
 				promise_rows.push(invoice_rows[i].flush(dbTransaction, true));
 			}
 			
-			var rowResultArray = await Promise.all(promise_rows);
-			for (var i in rowResultArray) {
+			let rowResultArray = await Promise.all(promise_rows);
+			for (let i in rowResultArray) {
 				if (!rowResultArray[i]) throw "Error: invoice row not created?!";
 			}
 				
-			var selected_stock_promises = [];
-			for (var item in selectedStock) {
+			let selected_stock_promises = [];
+			for (let item in selectedStock) {
 				selected_stock_promises.push(selectedStock[item].flush(dbTransaction));
 			}
-			var stockResultArray = await Promise.all(selected_stock_promises);
+			let stockResultArray = await Promise.all(selected_stock_promises);
 			
-			for (var i in stockResultArray) {
+			for (let i in stockResultArray) {
 				if (!stockResultArray[i]) throw "Error: stock row not created?!";
 			}
 			
-			var rows = [];
-			for (i in invoice_rows) rows.push(invoice_rows[i].getFields());
-			var personResult = await person_record.flush(dbTransaction);
+			let rows = [];
+			for (let i in invoice_rows) {
+				rows.push(invoice_rows[i].getFields());
+			}
+			let personResult = await person_record.flush(dbTransaction);
 			await dbTransaction.commit();
-			var result = {
+			let result = {
 				"invoice": invoice.getFields(),
 				"rows": rows,
 				"person": person_record.getFields()
 			};
+			console.log(chalk.bgCyan.white.bold(" INVOICE ")+" Invoice #"+invoice.getIndex()+" for person "+chalk.red(person_record.getField("nick_name"))+" has been created (total: "+chalk.red(invoice.getField("total"))+").");
 			this._notifyMqtt(result);
 			return result;
 		} catch (error) {
@@ -381,25 +386,25 @@ class Invoices {
 		}
 		
 		if (params.operation === "unknownOrigin") {
-			var rows = await this._table_rows.selectRecordsRaw("SELECT * FROM `invoice_rows` WHERE `id` NOT IN (SELECT invoice_row_id FROM `product_stock_mapping`) AND `price` > 0", [], false);
+			let rows = await this._table_rows.selectRecordsRaw("SELECT * FROM `invoice_rows` WHERE `id` NOT IN (SELECT invoice_row_id FROM `product_stock_mapping`) AND `price` > 0", [], false);
 			
-			var rowIds = [];
-			var invoiceIds = [];
+			let rowIds = [];
+			let invoiceIds = [];
 			
-			for (var i in rows) {
-				var row = rows[i];
+			for (let i in rows) {
+				let row = rows[i];
 				rowIds.push(row.id);
 				if (!(row.invoice_id in invoiceIds)) {
 					invoiceIds.push(row.invoice_id);
 				}
 			}
 			
-			var invoices = await this.list(session, {id: invoiceIds}, "OR", true);
+			let invoices = await this.list(session, {id: invoiceIds}, "OR", true);
 			
-			for (var i in invoices) {
-				for (var j in invoices[i].rows) {
-					var isUnknown = false;
-					var id = invoices[i].rows[j].id;
+			for (let i in invoices) {
+				for (let j in invoices[i].rows) {
+					let isUnknown = false;
+					let id = invoices[i].rows[j].id;
 					if (rowIds.lastIndexOf(id)>=0) {
 						isUnknown = true;
 					}
@@ -417,24 +422,24 @@ class Invoices {
 	async pdf(session, params) {
 		if (typeof params !== "number") throw "Expected parameter to be the id of the invoice.";
 		
-		var invoices = await this.list(session, {id : params}, "AND", true);
+		let invoices = await this.list(session, {id : params}, "AND", true);
 		if (invoices.length !== 1) throw "Invoice not found";
-		var invoice = invoices[0];
+		let invoice = invoices[0];
 				
 		//FIXME!!! Store name and address in the invoice itself
-		var clientAddress = invoice.person.first_name+" "+invoice.person.last_name+"\n";
+		let clientAddress = invoice.person.first_name+" "+invoice.person.last_name+"\n";
 		if (invoice.person.addresses.length > 0) {
-			var address = invoice.person.addresses[0]; //FIXME!!! Add method for selecting invoice address
+			let address = invoice.person.addresses[0]; //FIXME!!! Add method for selecting invoice address
 			clientAddress += address.street+" "+address.housenumber+"\n";
 			clientAddress += address.postalcode+" "+address.city;
 		}
 		
-		var timestamp = new Date(invoice.timestamp*1000);
+		let timestamp = new Date(invoice.timestamp*1000);
 		
-		var rows = [];
+		let rows = [];
 		
-		for (var i in invoice.rows) {
-			var row = invoice.rows[i];
+		for (let i in invoice.rows) {
+			let row = invoice.rows[i];
 			rows.push([
 					{text: row.description},
 					{text: "€ "+(row.price/100).toFixed(2)},
@@ -443,39 +448,41 @@ class Invoices {
 				]);
 		}
 		
-		var month = timestamp.getMonth()+1;
+		let month = timestamp.getMonth()+1;
 		if (month < 10) {
 			month = "0"+month.toString();
 		} else {
 			month = month.toString();
 		}
 		
-		var day = timestamp.getDate();
+		let day = timestamp.getDate();
 		if (day < 10) {
 			day = "0"+day.toString();
 		} else {
 			day = day.toString();
 		}
 		
-		var factuur = {
+		let factuur = {
 			date: day+"-"+month+"-"+timestamp.getFullYear(),
 			identifier: "SPACECORE #"+invoice.id,
 			totals: [{text: "Total", value: "€ "+(invoice.total/100).toFixed(2), bold: true}],
 			products: rows};
 			
 		//TODO: Create setting store for storing info about system owner.
-		var businessAddress = "Stichting TkkrLab\nRigtersbleek-zandvoort 10\n7521BE Enschede\nIBAN: NL57ABNA0408886641\nKvK: 51974967";
+		let businessAddress = "Stichting TkkrLab\nRigtersbleek-zandvoort 10\n7521BE Enschede\nIBAN: NL57ABNA0408886641\nKvK: 51974967";
 				
-		var converter = new WritableBufferStream();
+		let converter = new WritableBufferStream();
 		
-		var end = new Promise(function(resolve, reject) {
-			converter.on('finish', () => { resolve(converter.toBuffer()) });
+		let end = new Promise(function(resolve, reject) {
+			converter.on('finish', () => {
+				resolve(converter.toBuffer());
+			});
 		});
 		
-		var invoiceRenderer = new pdf();
+		let invoiceRenderer = new pdf();
 		invoiceRenderer.render(converter, clientAddress, businessAddress, factuur.products, factuur.totals, factuur.identifier, factuur.date);
 		
-		var buffer = await end;
+		let buffer = await end;
 		
 		return {
 			name: "invoice.pdf",
@@ -490,7 +497,7 @@ class Invoices {
 		rpc.addMethod(prefix+"list", this.list.bind(this));
 		rpc.addMethod(prefix+"list/last", this.listLast.bind(this));
 		rpc.addMethod(prefix+"list/query", this.listQuery.bind(this));
-		rpc.addMethod(prefix+"create", this.execute.bind(this));
+		rpc.addMethod(prefix+"create", this.create.bind(this));
 		rpc.addMethod(prefix+"analysis/stock", this.analysisStock.bind(this));
 		rpc.addMethod(prefix+"pdf", this.pdf.bind(this));
 	}

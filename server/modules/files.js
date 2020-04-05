@@ -76,12 +76,14 @@ class Files {
 		var operations = [];
 		if (typeof params !== 'object') throw "Parameter should be object with file list inside";
 		if (!Array.isArray(params.file)) throw "File list should be an array";
-		for (var i in params.file) {
+		for (let i in params.file) {
 			operations.push(this.createFileFromBase64(params.file[i]));
 		}
 		var files = await Promise.all(operations);
 		var result = [];
-		for (var i = 0; i < files.length; i++) result.push(files[i].getFields());
+		for (let i = 0; i < files.length; i++) {
+			result.push(files[i].getFields());
+		}
 		return result;
 	}
 	

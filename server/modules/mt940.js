@@ -8,13 +8,10 @@ class Mt940 {
 	_convertDate(date) {
 		if (typeof date !== 'string') throw "expected date to be a string";
 		if (date.length !== 6) throw "expected date to be 6 characters long";
-		console.log("DATE", date);
 		var year = Number(date.slice(0,2))+2000;
 		var month = Number(date.slice(2,4));
 		var day = Number(date.slice(4,6));
-		console.log("DATE", year,month,day);
-		var date = new Date(year, month-1, day,0,0,0,0);
-		return day+"-"+month+"-"+year;//date.getTime()/1000;
+		return day+"-"+month+"-"+year;
 	}
 	
 	_SwiftMessageParser(input) {

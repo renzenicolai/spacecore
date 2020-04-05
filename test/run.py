@@ -11,7 +11,7 @@ for f in files:
 		longName = f+" "*(80-len(f))
 		print(longName, end="")
 		if process.returncode == 0:
-			print(" [OKAY]")
+			print(" [PASS]")
 		else:
 			print(" [FAIL]")
 			exit(1)

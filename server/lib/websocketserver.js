@@ -7,6 +7,7 @@
 "use strict";
 
 const WebSocket = require('ws');
+const chalk     = require('chalk');
 
 class Websocketserver {
 	constructor( opts ) {
@@ -19,29 +20,24 @@ class Websocketserver {
 		});
 		
 		this._ws.on('connection', this._onConnect.bind(this));
-		this._ws.on('open', this._onOpen.bind(this));
-		this._ws.on('ping', this._onPing.bind(this));
-		this._ws.on('close', this._onClose.bind(this));
+		this._ws.on('error', this._onError.bind(this));
 	}
 	
 	ws() {
 		return this._ws;
 	}
 	
+	_onError(ws) {
+		console.log(chalk.bgMagenta.white.bold(" WS ")+" Error.");
+	}
+	
 	_onConnect(ws) {
+		let rAddr = ws._socket.remoteAddress;
+		let rPort = ws._socket.remotePort;
+		console.log(chalk.bgMagenta.white.bold(" WS ")+" Client "+rAddr+":"+rPort+" connected");
 		ws.on('message', this._onMessage.bind(this, ws));
-	}
-	
-	_onOpen(ws) {
-		
-	}
-	
-	_onPing(ws) {
-		
-	}
-	
-	_onClose(ws) {
-		
+		ws.on('close',   this._onClose.bind(this, ws));
+		ws.on('ping',    this._onPing.bind(this, ws));
 	}
 	
 	_onMessage(ws, message) {
@@ -50,6 +46,16 @@ class Websocketserver {
 		}).catch((error) => {
 			ws.send(error);
 		});
+	}
+	
+	_onPing(ws) {
+		//console.log(chalk.bgMagenta.white.bold(" WS ")+" Client ping.");
+	}
+	
+	_onClose(ws) {
+		let rAddr = ws._socket.remoteAddress;
+		let rPort = ws._socket.remotePort;
+		console.log(chalk.bgMagenta.white.bold(" WS ")+" Client "+rAddr+":"+rPort+" disconnected");
 	}
 }
 

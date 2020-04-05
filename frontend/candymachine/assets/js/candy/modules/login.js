@@ -29,7 +29,7 @@ class Login {
 		if (reset) this.reset();
 		this.app.currentModule = this;
 		this.app.showMessage("Authentication in progress...");
-		this.app.executeCommand('user/authenticate', {username: 'candy'}, this._login.bind(this));
+		this.app.executeCommand('user/authenticate', {user_name: 'candy'}, this._login.bind(this));
 	}
 	
 	/* Internal functions */

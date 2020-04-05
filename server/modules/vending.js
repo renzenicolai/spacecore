@@ -1,6 +1,8 @@
 "use strict";
 
-class Pos {
+const chalk = require('chalk');
+
+class Vending {
 	constructor(opts={}) {
 		this._opts = Object.assign({
 			database: null,
@@ -10,10 +12,10 @@ class Pos {
 			table: "pos_device"
 		}, opts);
 
-		if (this._opts.mqtt === null) throw "Pos module needs MQTT to function.";
-		if (this._opts.database === null) throw "Pos module needs database to function.";
-		if (this._opts.persons === null) throw "Pos module needs persons to function.";
-		if (this._opts.sessions === null) throw "Pos module needs sessions to function.";
+		if (this._opts.mqtt === null) throw "The vending module needs MQTT to function.";
+		if (this._opts.database === null) throw "The vending module needs database to function.";
+		if (this._opts.persons === null) throw "The vending module needs persons to function.";
+		if (this._opts.sessions === null) throw "The vending module needs sessions to function.";
 
 		this._table = this._opts.database.table(this._opts.table);
 		this._devices = [];
@@ -134,11 +136,11 @@ class PosDevice {
 
 		this._opts = opts;
 		this._registerMqttCallbacks();
-		console.log("[POS] Started driver for POS device '"+this._opts.name+"' listening on '"+this._opts.topic+"'.");
+		console.log(chalk.white.bold.inverse(" VENDING ")+" "+chalk.green("Started driver for point-of-sale device '"+this._opts.name+"', listening on MQTT topic '"+this._opts.topic+"'"));
 	}
 
 	stop() {
-		console.log("[POS] Stopped driver for POS device '"+this._opts.name+"'.");
+		console.log(chalk.white.bold.inverse(" VENDING ")+" "+chalk.green("Stopped driver for point-of-sale device '"+this._opts.name+"'"));
 	}
 
 	isReady() {
@@ -169,17 +171,17 @@ class PosDevice {
 	}
 	
 	async frontpanelLed(value) {
-		this._opts.mqtt.send(this._opts.topic+'/frontpanel/led', String(params));
+		this._opts.mqtt.send(this._opts.topic+'/frontpanel/led', String(value));
 		return true;
 	}
 	
 	async coinLed(value) {
-		this._opts.mqtt.send(this._opts.topic+'/coin/led', String(params));
+		this._opts.mqtt.send(this._opts.topic+'/coin/led', String(value));
 		return true;
 	}
 
 	_onDevice(message) {
-		console.log("[POS] "+this._opts.name+") Debug: "+message);
+		console.log(chalk.white.bold.inverse(" VENDING ")+" "+this._opts.name+") Debug: "+message);
 		var sessions = this._opts.sessions.getSessions();
 		for (var i = 0; i < this._opts.sessions.length; i++) {
 			sessions[i].pushIfSubscribed("pos/"+this._opts.name+"/debug", String(message));
@@ -187,7 +189,7 @@ class PosDevice {
 	}
 
 	_onIbutton(message) {
-		console.log("[POS] "+this._opts.name+") iButton "+message);
+		console.log(chalk.white.bold.inverse(" VENDING ")+" "+this._opts.name+") iButton "+message);
 
 		var sessions = this._opts.sessions.getSessions();
 		for (var i = 0; i < this._opts.sessions.length; i++) {
@@ -200,7 +202,7 @@ class PosDevice {
 				sessions[i].pushIfSubscribed("pos/"+this._opts.name+"/token/person", {res: result});
 			}
 		}).catch((err) => {
-			console.log("[POS] Error in _onIbutton for "+this._opts.name, err);
+			console.log(chalk.white.bold.inverse(" VENDING ")+" "+"Error in _onIbutton for "+this._opts.name, err);
 			var sessions = this._opts.sessions.getSessions();
 			for (var i = 0; i < sessions.length; i++) {
 				sessions[i].pushIfSubscribed("pos/"+this._opts.name+"/token/person", {err: err});
@@ -211,7 +213,7 @@ class PosDevice {
 
 	_onState(message) {
 		message = String(message);
-		console.log("[POS] onState: " + message);
+		console.log(chalk.white.bold.inverse(" VENDING ")+" "+"onState: " + message);
 		var data = JSON.parse(message);
 		this.state[data.id] = data.state;
 		var sessions = this._opts.sessions.getSessions();
@@ -222,7 +224,7 @@ class PosDevice {
 	
 	_onFrontpanelButton(message) {
 		message = Number(message);
-		console.log("[POS] onFrontpanelButton: " + message);
+		console.log(chalk.white.bold.inverse(" VENDING ")+" "+"onFrontpanelButton: " + message);
 		var sessions = this._opts.sessions.getSessions();
 		for (var i = 0; i < sessions.length; i++) {
 			sessions[i].pushIfSubscribed("pos/"+this._opts.name+"/frontpanel/button", message);
@@ -231,7 +233,7 @@ class PosDevice {
 	
 	_onCoin(message) {
 		message = Number(message);
-		console.log("[POS] onCoin: " + message);
+		console.log(chalk.white.bold.inverse(" VENDING ")+" "+"onCoin: " + message);
 		var sessions = this._opts.sessions.getSessions();
 		for (var i = 0; i < sessions.length; i++) {
 			sessions[i].pushIfSubscribed("pos/"+this._opts.name+"/coin", message);
@@ -249,4 +251,4 @@ class PosDevice {
 
 }
 
-module.exports = Pos;
+module.exports = Vending;
