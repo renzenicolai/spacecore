@@ -7,9 +7,7 @@ class WebSocketClient extends EventEmitter {
 	constructor(opts={}) {
 		super();
 		this._opts = Object.assign({
-			server: "ws://127.0.0.1:8000",
-			username: "user",
-			password: ""
+			server: "ws://127.0.0.1:8000"
 		}, opts);
 		
 		this._connection = null;
@@ -66,7 +64,8 @@ class WebSocketClient extends EventEmitter {
 	
 	connect() {
 		if (this._connection !== null) {
-			return false;
+			this.disconnect();
+			//return false;
 		}
 		
 		this._connection = new WebSocket(this._opts.server, {
@@ -78,6 +77,7 @@ class WebSocketClient extends EventEmitter {
 		this._connection.on('pong',    this._onPong.bind(this));
 		this._connection.on('close',   this._onClose.bind(this));
 		this._connection.on('message', this._onMessage.bind(this));
+		
 		return true;
 	}
 	

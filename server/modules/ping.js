@@ -5,10 +5,11 @@ class Ping {
 		//Nothing to do.
 	}
 	
-	ping(session, params) {
-		return new Promise((resolve, reject) => {
-			return resolve("pong");
-		});
+	async ping(session, params) {
+		if (session) {
+			session.use();
+		}
+		return "pong";
 	}
 	
 	registerRpcMethods(rpc, prefix="") {
