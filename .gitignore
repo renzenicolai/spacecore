@@ -1,0 +1,10 @@
+node_modules
+log/*
+*.kate-swp
+*.pyc
+__pycache__
+spacecore-cli.*
+password.js
+server/log/*
+spacecore-cli.pw
+spacecore-cli.uri
