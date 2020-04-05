@@ -1,4 +1,4 @@
-![spacecore](spacecore.svg)
+![spacecore](logo.svg)
 
 A financial administration tool for hackerspaces.
 
