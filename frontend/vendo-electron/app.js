@@ -58,7 +58,7 @@ process.on('exit', (code) => {
 
 var window = null;
 
-var debug = true;
+var debug = false;
 
 function createWindow () {
 	window = new electron.BrowserWindow({
