@@ -1,14 +1,14 @@
 {
-  "name": "spacecore-desktop",
+  "name": "spacecore-frontend-vendo",
   "version": "1.0.0",
-  "description": "Desktop GUI client for Spacecore",
+  "description": "Device specific client for Spacecore: vendo vending machine",
   "main": "app.js",
   "scripts": {
     "start": "./node_modules/electron/dist/electron .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Renze Nicolai",
-  "license": "GPL-3.0-or-later",
+  "license": "GPLv3",
   "dependencies": {
     "chalk": "^3.0.0",
     "electron": "^8.2.0",
