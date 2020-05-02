@@ -15,7 +15,10 @@
 		"timeout": 600
 	},
 	"mqtt": {
-		"enable": false
+		"enable": true,
+		"host": "10.42.1.2",
+		"port": 1883,
+		"topic": "test/spacecore"
 	},
 	"log": {
 		"enable": false

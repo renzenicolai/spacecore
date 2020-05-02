@@ -1,9 +1,3 @@
-/*
- * Function: MQTT frontend
- * Author: Renze Nicolai 2018-2020
- * License: GPLv3
- */
-
 "use strict";
 
 const mqtt  = require('mqtt');
@@ -20,25 +14,45 @@ class Mqttclient {
 			rpc: null
 		}, opts);
 		
-		var connectOpts = {
-				host: this._opts.host,
-				port: this._opts.port
-		};
+		this._client = null;
 		
-		if (this._opts.username !== null) connectOpts.username = this._opts.username;
-		if (this._opts.password !== null) connectOpts.password = this._opts.password;
-		
-		this._client = mqtt.connect(connectOpts);
-		this._client.on('connect', this._connect.bind(this));
-		this._client.on('message', this._handle.bind(this));
+		this.connect();
 		
 		this.callbacks = {};
-		
 		this._topics = [];
 	}
 	
-	_connect() {
-		console.log(chalk.white.bold.inverse(" MQTT ")+" "+chalk.green("connected"));
+	connect() {
+		if (this._client) {
+			console.log(chalk.white.bold.inverse(" MQTT ")+" "+chalk.yellow("Closing previous session."));
+			this._client.end();
+		}
+		
+		var connectOpts = {
+			host: this._opts.host,
+			port: this._opts.port
+		};
+		
+		if (this._opts.username !== null) {
+			connectOpts.username = this._opts.username;
+		}
+		
+		if (this._opts.password !== null) {
+			connectOpts.password = this._opts.password;
+		}
+		
+		this._client = mqtt.connect(connectOpts);
+		this._client.on('connect', this._onConnect.bind(this));
+		this._client.on('reconnect', this._onReconnect.bind(this));
+		this._client.on('close', this._onClose.bind(this));
+		this._client.on('disconnect', this._onDisconnect.bind(this));
+		this._client.on('offline', this._onOffline.bind(this));
+		this._client.on('error', this._onError.bind(this));
+		this._client.on('message', this._handle.bind(this));
+	}
+	
+	_onConnect() {
+		console.log(chalk.white.bold.inverse(" MQTT ")+" "+chalk.green(" Connected to the MQTT server"));
 		this._client.subscribe(this._opts.topic);
 		this._client.subscribe(this._opts.topic+"/#");
 		for (var i in this._topics) {
@@ -46,20 +60,45 @@ class Mqttclient {
 		}
 	}
 	
-	_handle(topic, message) {
+	_onReconnect() {
+		console.log(chalk.white.bold.inverse(" MQTT ")+" "+chalk.yellow(" Reconnect started"));
+	}
+	
+	_onClose() {
+		console.log(chalk.white.bold.inverse(" MQTT ")+" "+chalk.red(" Connection closed"));
+	}
+	
+	_onDisconnect() {
+		console.log(chalk.white.bold.inverse(" MQTT ")+" "+chalk.red(" Disconnect packet received from broker"));
+	}
+	
+	_onOffline() {
+		console.log(chalk.white.bold.inverse(" MQTT ")+" "+chalk.red(" Unable to connect"));
+	}
+	
+	_onError(error) {
+		console.log(chalk.white.bold.inverse(" MQTT ")+" "+chalk.red(" Error:"), error);
+	}
+	
+	
+	async _handle(topic, message) {
+		var returnTopic = topic+"/response";
 		if (topic.startsWith(this._opts.topic)) {
-			if (topic.endsWith("/response")) return; //Ignore our own messages
-			var rpcRequest = message.toString('utf8');
-			var returnTopic = topic+"/response";
-			if (this._opts.rpc==null) return false;
-			var request = this._opts.rpc.handle(rpcRequest);
-			if (request == null) return false;
-			return request.then((result) => {
+			// Message sent to the RPC command topic
+			if (topic.endsWith("/response")) {
+				// Ignore our own responses
+				return;
+			}
+			if (this._opts.rpc==null) {
+				return;
+			}
+			try {
+				var rpcRequest = message.toString('utf8');
+				var result = await this._opts.rpc.handle(rpcRequest);
 				this._client.publish(returnTopic, result);
-				return true;
-			}).catch((err) => {
-				if (typeof err==='string') {
-					this._client.publish(returnTopic, err);
+			} catch (error) {
+				if (typeof error==='string') {
+					this._client.publish(returnTopic, error);
 				} else {
 					console.log(chalk.white.bold.inverse(" MQTT "),err);
 					this._client.publish(returnTopic, JSON.stringify({
@@ -68,9 +107,9 @@ class Mqttclient {
 						error: { code: -32000, message: "Internal server error" }
 					}));
 				}
-				return false;
-			});
+			}
 		} else {
+			// Message sent to another topic
 			if (topic in this.callbacks) {
 				try {
 					this.callbacks[topic](message);
