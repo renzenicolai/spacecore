@@ -1,10 +1,12 @@
 ![spacecore](logo.svg)
 
-A financial administration tool for hackerspaces.
+Spacecore is a financial administration tool targeted at hackerspaces.
 
 # Project status
 
-Currently in use as bar accounting software at my local hackerspace. Very much a work in progress.
+The application is far from feature complete and still in active development. Currently Spacecore is mostly functional as a point-of-sale and management system for a canteen. It is being used for that exact purpose at the TkkrLab hackerspace in Enschede, the Netherlands. Come visit us if you're in the area :smiley:
+
+Use at your own risk!
 
 # License
 
