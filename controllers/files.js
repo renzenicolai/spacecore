@@ -1,11 +1,11 @@
-const GenericFile = require('../models/genericFile.js');
-const ImageFile = require('../models/imageFile.js');
+const FileRecord = require('../models/record/file.js');
+const ImageFileRecord = require('../models/record/file/image.js');
 
 class FileController {
 	constructor(database, table='files') {
 		this._fileTypes = [
-			ImageFile,
-			GenericFile
+			ImageFileRecord,
+			FileRecord
 		];
 		this._database = database;
 		this._table = table;
@@ -15,14 +15,13 @@ class FileController {
 		let file = null;
 		for (let i = 0; i < this._fileTypes.length; i++) {
 			if (this._fileTypes[i].prototype.allowedMimeTypes.lastIndexOf(record.mime)>=0) {
-				record.data = record.file; // HACK database contains a 'file' column which should be renamed to 'data'
 				file = new this._fileTypes[i](record);
 				file.setDirty(dirty);
 				break;
 			}
 		}
 		if (file === null) {
-			file = new GenericFile(record);
+			file = new FileRecord(record);
 			file.setDirty(dirty);
 		}
 		return file;
@@ -30,7 +29,7 @@ class FileController {
 	
 	/* Management of individual files */
 	
-	async createFile(name, mime, data) {
+	async create(name, mime, data) {
 		let record = {
 			name: name,
 			mime: mime,
@@ -39,7 +38,7 @@ class FileController {
 		return this._convertRecordToFileObject(record, true);
 	}
 	
-	async createFileFromBase64(name, mime, data) {
+	async createFromBase64(name, mime, data) {
 		let record = {
 			name: name,
 			mime: mime,
@@ -48,10 +47,9 @@ class FileController {
 		return this._convertRecordToFileObject(record, true);
 	}
 	
-	async getFile(identifier) {
+	async get(identifier) {
 		let [records, fields] = await this._database.query('SELECT * FROM `'+this._table+'` WHERE `id` = ?', [identifier]);
 		let file = null;
-		
 		if (records.length === 1) {
 			let record = records[0];
 			file = this._convertRecordToFileObject(record);
@@ -59,7 +57,7 @@ class FileController {
 		return file;
 	}
 	
-	async getFileAsBase64(identifier) {
+	async getAsBase64(identifier) {
 		let record = await this.getFile(identifier);
 		let result = null;
 		if (record !== null) {
@@ -68,19 +66,19 @@ class FileController {
 		return result;
 	}
 	
-	async putFile(fileObject, transaction=null) {
+	async put(fileObject, transaction=null) {
 		let result = null;
-		if (fileObject instanceof GenericFile) {
+		if (fileObject instanceof FileRecord) {
 			if (fileObject.getDirty()) {
 				// The file object is dirty, flush it to the database
 				if (fileObject.getIdentifier() === null) {
 					// The file is not yet in the database
-					let queryResult = await this._database.query('INSERT INTO `'+this._table+'` (`name`,`mime`,`file`) VALUES (?, ?, ?);', [fileObject.getName(), fileObject.getMime(), fileObject.getDataAsBuffer()], transaction);
+					let queryResult = await this._database.query('INSERT INTO `'+this._table+'` (`name`,`mime`,`data`) VALUES (?, ?, ?);', [fileObject.getName(), fileObject.getMime(), fileObject.getDataAsBuffer()], transaction);
 					result = queryResult[0].insertId;
 					fileObject.setIdentifier(result);
 				} else {
 					// The file is already in the database and needs to be updated
-					await this._database.query('UPDATE `'+this._table+'` SET `name` = ?, `mime` = ?, `file` = ? WHERE `id` = ?;', [fileObject.getName(), fileObject.getMime(), fileObject.getDataAsBuffer(), fileObject.getIdentifier()], transaction);
+					await this._database.query('UPDATE `'+this._table+'` SET `name` = ?, `mime` = ?, `data` = ? WHERE `id` = ?;', [fileObject.getName(), fileObject.getMime(), fileObject.getDataAsBuffer(), fileObject.getIdentifier()], transaction);
 					result = fileObject.getIdentifier();
 				}
 			} else {
@@ -89,28 +87,28 @@ class FileController {
 			}
 			fileObject.setDirty(false);
 		} else {
-			throw 'putFile called with an argument that is not a file object';
+			throw 'put called with an argument that is not a file object';
 		}
 		return result;
 	}
 	
-	async deleteFile(input, transaction=null) {
+	async remove(input, transaction=null) {
 		if (typeof input === 'number') {
-			var identifier = identifier;
-		} else if (input instanceof GenericFile) {
+			var identifier = input;
+		} else if (input instanceof FileRecord) {
 			// The file to be deleted is a file record
 			var identifier = input.getIdentifier();
 		} else {
-			throw 'Invalid argument supplied to deleteFile, expected the identifier of a file (number) or a file object';
+			throw 'Invalid argument supplied, expected the identifier of a file (number) or a file object';
 		}
 		
 		if (identifier !== null) {
-			await this._database.query('DELETE FROM `'+this._table+'` WHERE `id` = ?', [identifier], transaction);
-			if (input instanceof GenericFile) {
+			let result = await this._database.query('DELETE FROM `'+this._table+'` WHERE `id` = ?', [identifier], transaction);
+			if (input instanceof FileRecord) {
 				input.setIdentifier(null);
 				input.setDirty(true);
 			}
-			return true;
+			return (result[0].affectedRows>0);
 		} else {
 			return false;
 		}
@@ -118,7 +116,7 @@ class FileController {
 	
 	/* Management of file storage in database */
 	
-	async findFilesByName(name='%', mime=null) {
+	async findByName(name='%', mime=null) {
 		if (typeof name !== 'string') {
 			throw 'Expected name to be a string';
 		}

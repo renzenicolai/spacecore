@@ -6,15 +6,18 @@ class Ping {
 	}
 	
 	async ping(session, params) {
-		if (session) {
-			session.use();
-		}
 		return "pong";
 	}
 	
 	registerRpcMethods(rpc, prefix="") {
 		if (prefix!=="") prefix = prefix + "/";
 		
+		/*
+		 * Ping
+		 * 
+		 * Returns the string "pong"
+		 * 
+		 */
 		rpc.addMethod(
 			prefix+"ping",
 			this.ping.bind(this),

@@ -8,6 +8,10 @@ The application is far from feature complete and still in active development. Cu
 
 Use at your own risk!
 
+# Structure
+
+The application is divided into three components: models describing types of objects, controllers for managing the objects and views that describe the API through which the objects can be used.
+
 # License
 
 Copyright 2020 Renze Nicolai

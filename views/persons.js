@@ -80,11 +80,11 @@ class Persons {
 		if (typeof file.data !== 'string') throw 'Data should be a base64 encoded string';
 		if (typeof file.mime !== 'string')  throw 'MIME type missing';
 		if (typeof file.name !== 'string')  throw 'Name missing';
-		return this._fileController.createFileFromBase64(file.name, file.mime, file.data);
+		return this._fileController.createFromBase64(file.name, file.mime, file.data);
 	}
 	
 	async _getFileAndSerialize(identifier) {
-		let record = await this._fileController.getFile(identifier);
+		let record = await this._fileController.get(identifier);
 		let result = null;
 		if (record !== null) {
 			result = record.serialize();
@@ -142,18 +142,6 @@ class Persons {
 			throw "Invalid parameters supplied";
 		}
 
-		if ((typeof params.avatar === "object") && (typeof params.avatar_id !== "undefined")) {
-			throw "Supply either a picture as file or the id of an existing picture, but not both";
-		}
-
-		if (typeof params.avatar_id === "number") {
-			if (this._fileController.getFileAsBase64(params.avatar_id) === null) {
-				await dbTransaction.rollback();
-				throw "Invalid picture id supplied";
-			}
-			personRecord.setField("avatar_id", params.avatar_id);
-		}
-
 		var checks = await Promise.all([
 			this.list(session, {nick_name: nick_name}),
 			this._products.find(session, nick_name)
@@ -163,9 +151,7 @@ class Persons {
 		if (checks[1].length > 0) throw "This nickname would conflict with a product!";
 
 		var defaultGroups = await this.listGroups(session, {addToNew:1});
-
 		var dbTransaction = await this._database.transaction("Add person ("+nick_name+")");
-
 		var personRecord = this._table.createRecord();
 
 		personRecord.setField("nick_name", nick_name);
@@ -176,7 +162,7 @@ class Persons {
 		try {
 			if (Array.isArray(avatar) && (avatar.length > 0)) {
 				var avatarRecord = await this._createFileFromPostData(avatar[0]);
-				await this._fileController.putFile(avatarRecord, dbTransaction);
+				await this._fileController.put(avatarRecord, dbTransaction);
 				personRecord.setField('avatar_id', avatarRecord.getIdentifier());
 			}
 
@@ -242,7 +228,7 @@ class Persons {
 
 		if ((typeof params.avatar === 'object') && Array.isArray(params.avatar) && (params.avatar.length > 0)) {
 			var avatarRecord = await this._createFileFromPostData(params.avatar[0]);
-			await this._fileController.putFile(avatarRecord);
+			await this._fileController.put(avatarRecord);
 			person.setField('avatar_id', avatarRecord.getIdentifier());
 		}
 
@@ -695,10 +681,6 @@ class Persons {
 		return Tasks.merge(tasks, tokens);
 	}
 
-	authenticateToken(session, params) {
-		throw "Not implemented";
-	}
-
 	/* Exported helper functions */
 
 	select(where={}, extra="", separator="AND") {
@@ -717,53 +699,945 @@ class Persons {
 	registerRpcMethods(rpc, prefix="person") {
 		if (prefix!=="") prefix = prefix + "/";
 
-		/* Persons */
-		rpc.addMethod(prefix+"list",                   this.list.bind(this));                        //Persons: list persons
-		rpc.addMethod(prefix+"listForVending",         this.listForVending.bind(this));              //Persons: list persons (for vending frontends)
-		rpc.addMethod(prefix+"listForVendingNoAvatar", this.listForVendingNoAvatar.bind(this));      //Persons: list persons (for vending frontends, no avatar)
-		rpc.addMethod(prefix+"create",                 this.create.bind(this));                      //Persons: create a person
-		rpc.addMethod(prefix+"edit",                   this.edit.bind(this));                        //Persons: edit a person
-		rpc.addMethod(prefix+"remove",                 this.remove.bind(this));                      //Persons: remove a person
-		
-		rpc.addMethod(prefix+"find",                   this.find.bind(this));                        //Persons: find a person by its nickname
-		rpc.addMethod(prefix+"findForVending",         this.findForVending.bind(this));              //Persons: find a person by its nickname (for vending frontends)
-		rpc.addMethod(prefix+"findByToken",            this.findByToken.bind(this));                 //Persons: find a person by one of its tokens
-		rpc.addMethod(prefix+"findByTokenForVending",  this.findByTokenForVending.bind(this));       //Persons: find a person by one of its tokens (for vending frontends)
-		
-		rpc.addMethod(prefix+"addToken",               this.addTokenToPerson.bind(this));            //Persons: add a token to a person
-		rpc.addMethod(prefix+"editToken",              this.editTokenOfPerson.bind(this));           //Persons: edit a token of a person
-		rpc.addMethod(prefix+"removeToken",            this.removeTokenFromPerson.bind(this));       //Persons: remove a token from a person
-		
-		rpc.addMethod(prefix+"addBankaccount",         this.addBankaccountToPerson.bind(this));      //Persons: add a bankaccount to a person
-		rpc.addMethod(prefix+"editBankaccount",        this.editBankaccountOfPerson.bind(this));     //Persons: edit a bankaccount of a person
-		rpc.addMethod(prefix+"removeBankaccount",      this.removeBankaccountFromPerson.bind(this)); //Persons: remove a bankaccount from a person
-		
-		rpc.addMethod(prefix+"addAddress",             this.addAddressToPerson.bind(this));          //Persons: add an address to a person
-		rpc.addMethod(prefix+"editAddress",            this.editAddressOfPerson.bind(this));         //Persons: edit an addresss of a person
-		rpc.addMethod(prefix+"removeAddress",          this.removeAddressFromPerson.bind(this));     //Persons: remove an address from a person
-		
-		rpc.addMethod(prefix+"addEmail",               this.addEmailToPerson.bind(this));            //Persons: add an email address to a person
-		rpc.addMethod(prefix+"editEmail",              this.editEmailOfPerson.bind(this));           //Persons: edit an email address of a person
-		rpc.addMethod(prefix+"removeEmail",            this.removeEmailFromPerson.bind(this));       //Persons: remove an email address from a person
-		
-		rpc.addMethod(prefix+"addPhone",               this.addPhoneToPerson.bind(this));            //Persons: add a phonenumber to a person
-		rpc.addMethod(prefix+"editPhone",              this.editPhoneOfPerson.bind(this));           //Persons: edit a phonenumber of a person
-		rpc.addMethod(prefix+"removePhone",            this.removePhoneFromPerson.bind(this));       //Persons: remove a phonenumber from a person
-		
-		rpc.addMethod(prefix+"addToGroup",             this.addGroupToPerson.bind(this));            //Persons: add a group to a person
-		rpc.addMethod(prefix+"removeFromGroup",        this.removeGroupFromPerson.bind(this));       //Persons: remove a group from a person
+		/*
+		 * Persons: list
+		 *
+		 * Retrieve a list of persons that fits the supplied query
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"list",
+			this.list.bind(this),
+			[
+				{
+					name: 'query',
+					type: 'any',
+					description: 'Database query'
+				}
+			]
+		);
 
-		/* Tokens */
-		rpc.addMethod(prefix+"token/list",             this.listTokens.bind(this));                  //Tokens: list tokens
-		rpc.addMethod(prefix+"token/authenticate",     this.authenticateToken.bind(this));           //Tokens: authenticate a token
-		rpc.addMethod(prefix+"token/type/list",        this.listTokenTypes.bind(this));              //Tokens: list token types
-		rpc.addMethod(prefix+"token/db",               this.getTokenDb.bind(this));                  //Tokens: database file in json format
+		/*
+		 * Persons: list for vending
+		 *
+		 * Retrieve a list of persons that fits the supplied query
+		 * Without sensitive information
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"listForVending",
+			this.listForVending.bind(this),
+			[
+				{
+					name: 'query',
+					type: 'any',
+					description: 'Database query'
+				}
+			]
+		);
 
-		/* Groups */
-		rpc.addMethod(prefix+"group/list",             this.listGroups.bind(this));                  //Groups: list groups
-		rpc.addMethod(prefix+"group/create",           this.createGroup.bind(this));                 //Groups: create a group
-		rpc.addMethod(prefix+"group/edit",             this.editGroup.bind(this));                   //Groups: edit a group
-		rpc.addMethod(prefix+"group/remove",           this.removeGroup.bind(this));                 //Groups: remove a group
+		/*
+		 * Persons: list for vending without avatar
+		 *
+		 * Retrieve a list of persons that fits the supplied query
+		 * Without sensitive information or avatars
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"listForVendingNoAvatar",
+			this.listForVendingNoAvatar.bind(this),
+			[
+				{
+					name: 'query',
+					type: 'any',
+					description: 'Database query'
+				}
+			]
+		);
+
+		/*
+		 * Persons: create
+		 *
+		 * Create a person
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"create",
+			this.create.bind(this),
+			[
+				{
+					type: 'string',
+					desciption: 'Nickname of the person to be created'
+				},
+				{
+					type: 'object',
+					desciption: 'Object describing the person to be created',
+					required: {
+						nick_name: {
+							type: 'string',
+							description: 'Nickname of the person'
+						}
+					},
+					optional: {
+						first_name: {
+							type: 'string',
+							description: 'Fist name of the person'
+						},
+						last_name: {
+							type: 'string',
+							description: 'Last name of the person'
+						},
+						avatar: {
+							type: 'object',
+							description: 'Avatar of the person (file object)',
+							required: {
+								mime: {
+									type: 'string'
+								},
+								name: {
+									type: 'string'
+								},
+								data: {
+									type: 'string'
+								}
+							}
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Persons: edit
+		 *
+		 * Edit a person
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"edit",
+			this.edit.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the changes to be made to the person',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the person to be edited'
+						}
+					},
+					optional: {
+						nick_name: {
+							type: 'string',
+							description: 'Nickname of the person'
+						},
+						first_name: {
+							type: 'string',
+							description: 'First name of the person'
+						},
+						last_name: {
+							type: 'string',
+							description: 'Last name of the person'
+						},
+						avatar: {
+							type: 'object',
+							description: 'Avatar of the person (file object)',
+							required: {
+								mime: {
+									type: 'string'
+								},
+								name: {
+									type: 'string'
+								},
+								data: {
+									type: 'string'
+								}
+							}
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Persons: remove
+		 *
+		 * Delete a person
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"remove",
+			this.remove.bind(this),
+			{
+				type: 'number',
+				description: 'Identifier of the person to be removed'
+			},
+			{
+				type: 'object',
+				required: {
+					type: 'number',
+					description: 'Identifier of the person to be removed'
+				}
+			}
+		);
+		
+		/*
+		 * Persons: find
+		 *
+		 * Find a person by nickname
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"find",
+			this.find.bind(this),
+			[
+				{
+					type: 'string',
+					description: 'Nickname of the person'
+				}
+			]
+		);
+
+		/*
+		 * Persons: find for vending
+		 *
+		 * Find a person by nickname
+		 * Without sensitive information
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"findForVending",
+			this.findForVending.bind(this),
+			[
+				{
+					type: 'string',
+					description: 'Nickname of the person'
+				}
+			]
+		);
+
+		/*
+		 * Persons: find by token
+		 *
+		 * Find a person by token
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"findByToken",
+			this.findByToken.bind(this),
+			[
+				{
+					type: 'string',
+					description: 'Token number'
+				}
+			]
+		);
+
+		/*
+		 * Persons: find by token
+		 *
+		 * Find a person by token
+		 * Without sensitive information
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"findByTokenForVending",
+			this.findByTokenForVending.bind(this),
+			[
+				{
+					type: 'string',
+					description: 'Token number'
+				}
+			]
+		);
+		
+		/*
+		 * Tokens: add
+		 *
+		 * Add a token to a person
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"addToken",
+			this.addTokenToPerson.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the token and the person to add it to',
+					required: {
+						person: {
+							type: 'number',
+							description: 'Identifier of the person that the token will be added to'
+						},
+						type: {
+							type: 'number',
+							description: 'Identifier of the type of the token'
+						},
+						public: {
+							type: 'string',
+							description: 'Public key of the token'
+						},
+						enabled: {
+							type: 'boolean',
+							description: 'Flag that determines if the token is enabled for use'
+						}
+					},
+					optional: {
+						private: {
+							type: 'string',
+							description: 'Private key of the token'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Tokens: edit
+		 *
+		 * Edit a token
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"editToken",
+			this.editTokenOfPerson.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the token to be edited',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the token to edit'
+						}
+					},
+					optional: {
+						type: {
+							type: 'number',
+							description: 'Type of the token (0: generic iButton, 1: iButton with SHA1, 2: generic NFC tag)'
+						},
+						public: {
+							type: 'string',
+							description: 'Public key of the token'
+						},
+						enabled: {
+							type: 'boolean',
+							description: 'Flag that determines if the token is enabled for use'
+						},
+						private: {
+							type: 'string',
+							description: 'Private key of the token'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Tokens: remove
+		 *
+		 * Delete a token
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"removeToken",
+			this.removeTokenFromPerson.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the token to be removed and the person to remove it from',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the token'
+						},
+						person: {
+							type: 'number',
+							description: 'Identifier of the person'
+						}
+					}
+				}
+			]
+		);
+		
+		/*
+		 * Bankaccount: add
+		 *
+		 * Add a bankaccount to a person
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"addBankaccount",
+			this.addBankaccountToPerson.bind(this),
+			[
+				{
+					type: 'object',
+					required: {
+						person: {
+							type: 'number',
+							description: 'Identifier of the person the bankaccount will be added to'
+						},
+						iban: {
+							type: 'string',
+							description: 'IBAN account number'
+						},
+						name: {
+							type: 'string',
+							description: 'Name of the account holder'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Bankaccount: edit
+		 *
+		 * Edit a bankaccount
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"editBankaccount",
+			this.editBankaccountOfPerson.bind(this),
+			[
+				{
+					type: 'object',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the bankaccount'
+						}
+					},
+					optional: {
+						iban: {
+							type: 'string',
+							description: 'IBAN account number'
+						},
+						name: {
+							type: 'string',
+							description: 'Name of the account holder'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Bankaccount: remove
+		 *
+		 * Delete a bankaccount
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"removeBankaccount",
+			this.removeBankaccountFromPerson.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the baknaccount to be removed and the person to remove it from',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the bankaccount'
+						},
+						person: {
+							type: 'number',
+							description: 'Identifier of the person'
+						}
+					}
+				}
+			]
+		);
+		
+		/*
+		 * Address: add
+		 *
+		 * Add an address to a person
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"addAddress",
+			this.addAddressToPerson.bind(this),
+			[
+				{
+					type: 'object',
+					required: {
+						person: {
+							type: 'number',
+							description: 'Identifier of the person'
+						},
+						street: {
+							type: 'string',
+							desciption: 'Street'
+						},
+						housenumber: {
+							type: 'string',
+							desciption: 'Housenumber'
+						},
+						postalcode: {
+							type: 'string',
+							desciption: 'Postal code'
+						},
+						city: {
+							type: 'string',
+							desciption: 'City'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Address: edit
+		 *
+		 * Edit an address of a person
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"editAddress",
+			this.editAddressOfPerson.bind(this),
+			[
+				{
+					type: 'object',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the address'
+						}
+					},
+					optional: {
+						street: {
+							type: 'string',
+							desciption: 'Street'
+						},
+						housenumber: {
+							type: 'string',
+							desciption: 'Housenumber'
+						},
+						postalcode: {
+							type: 'string',
+							desciption: 'Postal code'
+						},
+						city: {
+							type: 'string',
+							desciption: 'City'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Address: remove
+		 *
+		 * Remove an address from a person
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"removeAddress",
+			this.removeAddressFromPerson.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the address to be removed and the person to remove it from',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the address'
+						},
+						person: {
+							type: 'number',
+							description: 'Identifier of the person'
+						}
+					}
+				}
+			]
+		);
+		
+		/*
+		 * E-mail: add
+		 *
+		 * Add an e-mail address to a person
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"addEmail",
+			this.addEmailToPerson.bind(this),
+			[
+				{
+					type: 'object',
+					required: {
+						person: {
+							type: 'number',
+							description: 'Identifier of the person'
+						},
+						address: {
+							type: 'string',
+							desciption: 'Email address'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * E-mail: edit
+		 *
+		 * Edit an e-mail address of a person
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"editEmail",
+			this.editEmailOfPerson.bind(this),
+			[
+				{
+					type: 'object',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the email address'
+						}
+					},
+					optional: {
+						address: {
+							type: 'string',
+							description: 'Email address'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * E-mail: remove
+		 *
+		 * Remove an e-mail address from a person
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"removeEmail",
+			this.removeEmailFromPerson.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the email address to be removed and the person to remove it from',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the email address'
+						},
+						person: {
+							type: 'number',
+							description: 'Identifier of the person'
+						}
+					}
+				}
+			]
+		);
+		
+		/*
+		 * Phone: add
+		 *
+		 * Add a phonenumber to a person
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"addPhone",
+			this.addPhoneToPerson.bind(this),
+			[
+				{
+					type: 'object',
+					required: {
+						person: {
+							type: 'number',
+							description: 'Identifier of the person'
+						},
+						phonenumber: {
+							type: 'string',
+							desciption: 'Phonenumber'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Phone: edit
+		 *
+		 * Edit a phonenumber of a person
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"editPhone",
+			this.editPhoneOfPerson.bind(this),
+			[
+				{
+					type: 'object',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the phonenumber'
+						}
+					},
+					optional: {
+						phonenumber: {
+							type: 'string',
+							description: 'Phonenumber'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Phone: remove
+		 *
+		 * Remove a phonenumber from a person
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"removePhone",
+			this.removePhoneFromPerson.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the phonenumber to be removed and the person to remove it from',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the phonenumber'
+						},
+						person: {
+							type: 'number',
+							description: 'Identifier of the person'
+						}
+					}
+				}
+			]
+		);
+		
+		/*
+		 * Group: add person
+		 *
+		 * Add a person to a group
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"addToGroup",
+			this.addGroupToPerson.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the person and the group it is to be added to',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the group'
+						},
+						person: {
+							type: 'number',
+							description: 'Identifier of the person'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Group: remove person
+		 *
+		 * Remove a person from a group
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"removeFromGroup",
+			this.removeGroupFromPerson.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the person and the group it is to be removed from',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the group'
+						},
+						person: {
+							type: 'number',
+							description: 'Identifier of the person'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Token: list
+		 *
+		 * List tokens
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"token/list",
+			this.listTokens.bind(this),
+			[
+				{
+					name: 'query',
+					type: 'any',
+					description: 'Database query'
+				}
+			]
+		);
+
+		/*
+		 * Token type: list
+		 *
+		 * List token types
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"token/type/list",
+			this.listTokenTypes.bind(this),
+			[
+				{
+					type: 'none'
+				}
+			]
+		);
+
+		/*
+		 * Token: database
+		 *
+		 * Export the token database as configuration file for the Lock-O-matic
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"token/db",
+			this.getTokenDb.bind(this),
+			[
+				{
+					type: 'none'
+				}
+			]
+		);
+
+		/*
+		 * Group: list
+		 *
+		 * List person groups
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"group/list",
+			this.listGroups.bind(this),
+			[
+				{
+					name: 'query',
+					type: 'any',
+					description: 'Database query'
+				}
+			]
+		);
+
+		/*
+		 * Group: create
+		 *
+		 * Create a person group
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"group/create",
+			this.createGroup.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the group',
+					required: {
+						name: {
+							type: 'string',
+							description: 'Name of the group'
+						},
+						description: {
+							type: 'string',
+							description: 'Description of the group'
+						},
+						default: {
+							type: 'boolean',
+							description: 'Flag indicating weither or not the group should be added to new persons by default'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Group: edit
+		 *
+		 * Edit a person group
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"group/edit",
+			this.editGroup.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the group to be edited',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the group'
+						}
+					},
+					optional: {
+						name: {
+							type: 'string',
+							description: 'Name of the group'
+						},
+						description: {
+							type: 'string',
+							description: 'Description of the group'
+						},
+						default: {
+							type: 'boolean',
+							description: 'Flag indicating weither or not the group should be added to new persons by default'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Group: remove
+		 *
+		 * Delete a person group
+		 *
+		 */
+		rpc.addMethod(
+			prefix+"group/remove",
+			this.removeGroup.bind(this),
+			[
+				{
+					type: 'number',
+					description: 'Identifier of the group to be removed'
+				},
+				{
+					type: 'object',
+					description: 'Object describing the group to be removed',
+					required: {
+						id: {
+							type: 'number',
+							description: 'Identifier of the group to be removed'
+						}
+					},
+					optional: {
+						force: {
+							type: 'boolean',
+							description: 'Flag that indicates weither or not the group should be removed when there are persons in the group'
+						}
+					}
+				}
+			]
+		);
 	}
 }
 

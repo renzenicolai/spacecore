@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 // System libraries
 const fs               = require('fs');
@@ -15,18 +15,17 @@ const Websocketserver  = require('./lib/websocketserver.js');
 const Mqttclient       = require('./lib/mqtt.js');
 const Database         = require('./lib/db.js');
 
-// Project specific modules
-const Ping             = require('./modules/ping.js');
-const Sessions         = require('./modules/sessions.js');
-const Files            = require('./modules/files.js');
-const Users            = require('./modules/users.js');
-const Persons          = require('./modules/persons.js');
-const Products         = require('./modules/products.js');
-const Invoices         = require('./modules/invoices.js');
-const Mt940            = require('./modules/mt940.js');
-const Vending          = require('./modules/vending.js');
+// Views
+const Ping             = require('./views/ping.js');
+const Sessions         = require('./views/sessions.js');
+const Files            = require('./views/files.js');
+const Users            = require('./views/users.js');
+const Persons          = require('./views/persons.js');
+const Products         = require('./views/products.js');
+const Invoices         = require('./views/invoices.js');
+const Mt940            = require('./views/mt940.js');
 
-// Project specific verification modules
+// Verification modules
 const VerifyBalance    = require('./verification/balance.js');
 
 // Argument parser
@@ -40,7 +39,7 @@ const argv = yargs
 	.alias('help', 'h')
 	.argv;
 
-var configFile = "configuration.json";
+var configFile = 'configuration.json';
 if (argv.config) configFile = argv.config;
 
 // Configuration
@@ -48,48 +47,48 @@ if (argv.config) configFile = argv.config;
 var configuration = new Configuration(configFile);
 
 // Logfile
-var logEnable = configuration.get("log", "enable");
+var logEnable = configuration.get('log', 'enable');
 if (!logEnable) {
 	var logFile = null;
 } else {
-	var logDir = configuration.get("log", "directory");
-	if (logDir === null) logDir = "log/";
+	var logDir = configuration.get('log', 'directory');
+	if (logDir === null) logDir = 'log/';
 	var logFile = fs.createWriteStream(logDir+(new Date()).getTime()+'.txt');
 }
 
 // Error handlers
 
 process.on('unhandledRejection', (err) => {
-	if (logFile) logFile.write("Unhandled rejection: "+err+"\n");
-	console.log(chalk.bgRed.white.bold(" ERROR ")+" Unhandled rejection:", err);
+	if (logFile) logFile.write('Unhandled rejection: '+err+'\n');
+	console.log(chalk.bgRed.white.bold(' ERROR ')+' Unhandled rejection:', err);
 	process.exit(1);
 });
 
 process.on('uncaughtException', (err) => {
-	if (logFile) logFile.write("Uncaught exception: "+err+"\n");
-	console.log(chalk.bgRed.white.bold(" ERROR ")+" Uncaught exception:", err);
+	if (logFile) logFile.write('Uncaught exception: '+err+'\n');
+	console.log(chalk.bgRed.white.bold(' ERROR ')+' Uncaught exception:', err);
 	process.exit(1);
 });
 
 process.on('SIGINT', () => {
-	if (logFile) logFile.write("Application interrupted.\n");
-	console.log(chalk.bgRed.white.bold(" ERROR ")+" Application interrupted");
+	if (logFile) logFile.write('Application interrupted.\n');
+	console.log(chalk.bgRed.white.bold(' ERROR ')+' Application interrupted');
 	process.exit(0);
 });
 
 process.on('exit', (code) => {
-	console.log("Exit with code", code);
-	if (logFile) logFile.write("Application terminated with code "+code+"\n");
+	console.log('Exit with code', code);
+	if (logFile) logFile.write('Application terminated with code '+code+'\n');
 	if (logFile) logFile.end();
 });
 
 // Database
 
 var database = new Database({
-	host: configuration.get("database", "host"),
-	user: configuration.get("database", "user"),
-	password: configuration.get("database", "password"),
-	database: configuration.get("database", "name"),
+	host: configuration.get('database', 'host'),
+	user: configuration.get('database', 'user'),
+	password: configuration.get('database', 'password'),
+	database: configuration.get('database', 'name'),
 	onConnect: start,
 	logFile: logFile
 });
@@ -97,23 +96,23 @@ var database = new Database({
 // Application elements not requiring database availability
 
 var sessions = new Sessions({
-	timeout: configuration.get("sessions","timeout")
+	timeout: configuration.get('sessions','timeout')
 });
 
 var rpc = new Rpc({
 	strict: true,
 	auth: sessions,
-	identity: configuration.get("rpc","identity")
+	identity: configuration.get('rpc','identity')
 });
 
 sessions.registerRpcMethods(rpc);
 rpc.addAlwaysAllow('session/create');
 
-if (configuration.get("rpc","webserver","enabled")) {
+if (configuration.get('rpc','webserver','enabled')) {
 	
 	var ws = null;
 	
-	if (configuration.get("rpc","webserver","websocket","enabled")) {
+	if (configuration.get('rpc','webserver','websocket','enabled')) {
 		var websocketserver = new Websocketserver({
 			application: rpc
 		});
@@ -121,9 +120,9 @@ if (configuration.get("rpc","webserver","enabled")) {
 	}
 	
 	var webserver = new Webserver({
-		port: configuration.get("rpc","webserver","port"),
-		host: configuration.get("rpc","webserver","listen"),
-		queue: configuration.get("rpc","webserver","queue"),
+		port: configuration.get('rpc','webserver','port'),
+		host: configuration.get('rpc','webserver','listen'),
+		queue: configuration.get('rpc','webserver','queue'),
 		application: rpc,
 		mime: 'application/json',
 		ws: ws
@@ -131,14 +130,14 @@ if (configuration.get("rpc","webserver","enabled")) {
 }
 
 var mqttclient = null;
-if (configuration.get("mqtt", "enable")) {
+if (configuration.get('mqtt', 'enable')) {
 	mqttclient = new Mqttclient({
-		port: configuration.get("mqtt", "port"),
-		host: configuration.get("mqtt", "host"),
-		topic: configuration.get("mqtt", "topic"),
+		port: configuration.get('mqtt', 'port'),
+		host: configuration.get('mqtt', 'host'),
+		topic: configuration.get('mqtt', 'topic'),
 		rpc: {
 			handle: (request) => {
-				return "RPC over MQTT is disabled!";
+				return 'RPC over MQTT is disabled!';
 			}
 		}
 	});
@@ -176,20 +175,10 @@ function start() {
 		persons: persons,
 		products: products,
 		mqtt: mqttclient,
-		mqtt_topic: "tkkrlab/spacecore/transaction"
+		mqtt_topic: 'tkkrlab/spacecore/transaction'
 	});
 	
 	invoices.registerRpcMethods(rpc);
-
-	if (mqttclient) {
-		var vending = new Vending({
-			database: database,
-			mqtt: mqttclient,
-			sessions: sessions,
-			persons: persons
-		});
-		vending.registerRpcMethods(rpc);
-	}
 
 	var verifications = [];
 

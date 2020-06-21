@@ -1,21 +1,18 @@
 'use strict';
 
-const GenericFile = require('./genericFile.js');
+const GenericFileRecord = require('../file.js');
 
-class ImageFile extends GenericFile {
+class ImageFileRecord extends GenericFileRecord {
 	/*
 	 * An image file
 	 */
 	
 	constructor(input=null) {
-		super();
-		if (input !== null) {
-			this.deserialize(input);
-		}
+		super(input);
 	}
 }
 
-ImageFile.prototype.allowedMimeTypes = [
+ImageFileRecord.prototype.allowedMimeTypes = [
 	"image/apng",    // Animated Portable Network Graphics
 	"image/bmp",     // Bitmap file
 	"image/gif",     // Graphics Interchange Format
@@ -26,4 +23,4 @@ ImageFile.prototype.allowedMimeTypes = [
 	"image/webp",    // Web Picture format
 ];
 
-module.exports = ImageFile;
+module.exports = ImageFileRecord;

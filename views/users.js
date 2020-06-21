@@ -32,7 +32,7 @@ class Users {
 	}
 	
 	async _getPermissions(id) {
-		var records = await this._tablePermissions.selectRecords({'user_id': id});
+		var records = await this._tablePermissions.selectRecords({user: id});
 		var result = [];
 		for (var i = 0; i<records.length; i++) {
 			result.push(records[i].getField('endpoint'));
@@ -67,7 +67,7 @@ class Users {
 				((typeof hash === 'string') && (this._validate(params.password, hash)))
 			) {
 				var permissions = await this._getPermissions(records[i].getIndex());
-				var avatar = await this._fileController.getFileAsBase64(records[i].getField('avatar_id'));
+				var avatar = await this._fileController.getAsBase64(records[i].getField('picture'));
 				session.setUser({
 					id: records[i].getIndex(),
 					user_name: records[i].getField('user_name'),
@@ -125,7 +125,7 @@ class Users {
 		// Avatar image
 		let avatarPromises = [];
 		for (let i in result) {
-			avatarPromises.push(this._fileController.getFileAsBase64(result[i].avatar_id));
+			avatarPromises.push(this._fileController.getAsBase64(result[i].picture));
 		}
 				
 		let avatarResult = await Promise.all(avatarPromises);
@@ -177,7 +177,7 @@ class Users {
 		var permissionPromises = [];
 		for (let i = 0; i < params.permissions.length; i++) {
 			let permissionRecord = this._tablePermissions.createRecord();
-			permissionRecord.setField('user_id', id);
+			permissionRecord.setField('user', id);
 			permissionRecord.setField('endpoint', params.permissions[i]);
 			permissionPromises.push(permissionRecord.flush(dbTransaction));
 		}
@@ -230,7 +230,7 @@ class Users {
 			let permissionPromises = [];
 			let currentPermissions = [];
 			
-			let currentPermissionRecords = await this._tablePermissions.selectRecords({user_id: id});
+			let currentPermissionRecords = await this._tablePermissions.selectRecords({user: id});
 			for (let i in currentPermissionRecords) {
 				if (!params.permissions.includes(currentPermissionRecords[i].getField('endpoint'))) {
 					permissionPromises.push(currentPermissionRecords[i].destroy(dbTransaction));
@@ -243,7 +243,7 @@ class Users {
 				let endpoint = params.permissions[i];
 				if (!currentPermissions.includes(endpoint)) {
 					let permissionRecord = this._tablePermissions.createRecord();
-					permissionRecord.setField('user_id', id);
+					permissionRecord.setField('user', id);
 					permissionRecord.setField('endpoint', endpoint);
 					permissionPromises.push(permissionRecord.flush(dbTransaction));
 				}
@@ -272,7 +272,7 @@ class Users {
 		
 		let dbTransaction = await this._opts.database.transaction('remove user '+record.getField('user_name'));
 		
-		let permissionRecords = await this._tablePermissions.selectRecords({user_id: id});
+		let permissionRecords = await this._tablePermissions.selectRecords({user: id});
 		
 		let permissionPromises = [];
 		for (let i = 0; i < permissionRecords.length; i++) {

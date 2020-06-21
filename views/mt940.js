@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 class Mt940 {
 	constructor(opts={}) {
@@ -342,7 +342,20 @@ class Mt940 {
 	
 	registerRpcMethods(rpc, prefix="mt940") {
 		if (prefix!=="") prefix = prefix + "/";
-		rpc.addMethod(prefix+"parse", this.parse.bind(this));
+		rpc.addMethod(
+			prefix+"parse",
+			this.parse.bind(this),
+			[
+				{
+					type: 'object',
+					required: {
+						mt940: {
+							type: 'object'
+						}
+					}
+				}
+			]
+		);
 	}
 }
 

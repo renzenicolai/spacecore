@@ -114,11 +114,7 @@ class Invoices {
 		});
 	}
 	
-	async listQuery(session, params) {
-		if ((typeof params !== "object") || (params.length < 1) || (params.length > 2)) {
-			throw "Invalid param.";
-		}
-		
+	/*async listQuery(session, params) {		
 		let query = params[0];
 		let amount = null;
 		
@@ -146,7 +142,7 @@ class Invoices {
 		}
 		
 		return result;
-	}
+	}*/
 	
 	async _notifyMqtt(data) {
 		try {
@@ -377,7 +373,7 @@ class Invoices {
 		}
 	}
 	
-	async analysisStock(session, params) {
+	/*async analysisStock(session, params) {
 		if (typeof params !== 'object') {
 			throw "Expected a parameter object.";
 		}
@@ -417,7 +413,7 @@ class Invoices {
 		} else {
 			throw "Unsupported operation.";
 		}
-	}
+	}*/
 	
 	async pdf(session, params) {
 		if (typeof params !== "number") throw "Expected parameter to be the id of the invoice.";
@@ -494,12 +490,128 @@ class Invoices {
 	
 	registerRpcMethods(rpc, prefix="invoice") {
 		if (prefix!=="") prefix = prefix + "/";
-		rpc.addMethod(prefix+"list", this.list.bind(this));
-		rpc.addMethod(prefix+"list/last", this.listLast.bind(this));
-		rpc.addMethod(prefix+"list/query", this.listQuery.bind(this));
-		rpc.addMethod(prefix+"create", this.create.bind(this));
-		rpc.addMethod(prefix+"analysis/stock", this.analysisStock.bind(this));
-		rpc.addMethod(prefix+"pdf", this.pdf.bind(this));
+
+		/*
+		 * List invoices
+		 *
+		 * Retrieve a list of invoices that fits the supplied query
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"list",
+			this.list.bind(this),
+			[
+				{
+					name: 'query',
+					type: 'any',
+					description: 'Database query'
+				}
+			]
+		);
+
+		/*
+		 * List latest invoices
+		 *
+		 * Retrieve a list containing the latest invoices that fits the supplied query
+		 * The amount of invoices returned can be controlled using the amount parameter and defaults to 5
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"list/last",
+			this.listLast.bind(this),
+			[
+				{
+					name: 'amount',
+					type: 'number',
+					description: 'Amount of invoices'
+				},
+				{
+					type: 'object',
+					optional: {
+						amount: {
+							type: 'number',
+							description: 'Amount of invoices'
+						},
+						query: {
+							type: 'any',
+							description: 'Database query'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * List invoices by query
+		 *
+		 * 
+		 * 
+		 */
+		/*rpc.addMethod(
+			prefix+"list/query",
+			this.listQuery.bind(this)
+		);*/
+
+		/*
+		 * Create invoice
+		 *
+		 * Create an invoice for a person containing products, other invoice rows or both
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"create",
+			this.create.bind(this),
+			[
+				{
+					type: 'object',
+					required: {
+						person_id: {
+							type: 'number',
+							description: 'Identifier of a person'
+						}
+					},
+					optional: {
+						products: {
+							type: 'array',
+							description: 'List of products'
+						},
+						other: {
+							type: 'array',
+							description: 'List of other invoice rows'
+						}
+					}
+				}
+			]
+		);
+
+		/*
+		 * Analysis: stock
+		 *
+		 * 
+		 * 
+		 */
+		/*rpc.addMethod(
+			prefix+"analysis/stock",
+			this.analysisStock.bind(this)
+		);*/
+
+		/*
+		 * PDF invoice
+		 *
+		 * Export an invoice as PDF
+		 * 
+		 */
+		rpc.addMethod(
+			prefix+"pdf",
+			this.pdf.bind(this),
+			[
+				{
+					name: 'id',
+					type: 'number',
+					description: 'Invoice identifier'
+				}
+			]
+		);
 	}
 }
 

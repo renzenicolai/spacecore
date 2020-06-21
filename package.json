@@ -11,6 +11,7 @@
   "license": "GPLv3",
   "dependencies": {
     "chalk": "^4.0.0",
+    "clone": "^2.1.2",
     "mime-types": "^2.1.27",
     "mqtt": "^3.0.0",
     "mysql2": "^2.1.0",

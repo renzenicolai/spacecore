@@ -27,11 +27,11 @@ class Products {
 		if (typeof file.data !== 'string') throw 'Data should be a base64 encoded string';
 		if (typeof file.mime !== 'string')  throw 'MIME type missing';
 		if (typeof file.name !== 'string')  throw 'Name missing';
-		return this._fileController.createFileFromBase64(file.name, file.mime, file.data);
+		return this._fileController.createFromBase64(file.name, file.mime, file.data);
 	}
 	
 	async _getFileAndSerialize(identifier) {
-		let record = await this._fileController.getFile(identifier);
+		let record = await this._fileController.get(identifier);
 		let result = null;
 		if (record !== null) {
 			result = record.serialize();
@@ -71,16 +71,16 @@ class Products {
 	}
 	
 	async create(session, params) {
-		if (typeof params !== 'object')                                                                                           throw 'Expected parameter to be an object';
-		if (typeof params.name !== 'string')                                                                                      throw 'Missing required property \'name\'';
-		if ((typeof params.description !== 'undefined') && (typeof params.description !== 'string'))                              throw 'Expected description to to be a string';
-		if ((typeof params.active      !== 'undefined') && (typeof params.active !== 'boolean'))                                  throw 'Expected active to be a boolean';
-		if ((typeof params.brand_id    !== 'undefined') && (typeof params.brand_id !== 'number')   && (params.brand_id !== null)) throw 'Expected brand_id to be a number';
-		if ((typeof params.picture_id  !== 'undefined') && (typeof params.picture_id !== 'number') && (params.brand_id !== null)) throw 'Expected picture_id to be a number';
-		if ((typeof params.package_id  !== 'undefined') && (typeof params.package_id !== 'number') && (params.brand_id !== null)) throw 'Expected package_id to be a number';
-		if ((typeof params.groups      !== 'undefined') && (!Array.isArray(params.groups)))                                       throw 'Expected groups to be an array';
-		if ((typeof params.locations   !== 'undefined') && (!Array.isArray(params.locations)))                                    throw 'Expected locations to be an array';
-		if ((typeof params.prices      !== 'undefined') && (typeof params.prices !== 'object'))                                   throw 'Expected proces to be an object';
+		if (typeof params !== 'object')                                                                                             throw 'Expected parameter to be an object';
+		if (typeof params.name !== 'string')                                                                                        throw 'Missing required property \'name\'';
+		if ((typeof params.description !== 'undefined') && (typeof params.description !== 'string'))                                throw 'Expected description to to be a string';
+		if ((typeof params.active      !== 'undefined') && (typeof params.active !== 'boolean'))                                    throw 'Expected active to be a boolean';
+		if ((typeof params.brand_id    !== 'undefined') && (typeof params.brand_id !== 'number')   && (params.brand_id !== null))   throw 'Expected brand_id to be a number';
+		if ((typeof params.picture_id  !== 'undefined') && (typeof params.picture_id !== 'number') && (params.picture_id !== null)) throw 'Expected picture_id to be a number';
+		if ((typeof params.package_id  !== 'undefined') && (typeof params.package_id !== 'number') && (params.package_id !== null)) throw 'Expected package_id to be a number';
+		if ((typeof params.groups      !== 'undefined') && (!Array.isArray(params.groups)))                                         throw 'Expected groups to be an array';
+		if ((typeof params.locations   !== 'undefined') && (!Array.isArray(params.locations)))                                      throw 'Expected locations to be an array';
+		if ((typeof params.prices      !== 'undefined') && (typeof params.prices !== 'object'))                                     throw 'Expected proces to be an object';
 		var dbTransaction = await this._database.transaction('Add product ('+params.name+')');
 		var product = this._table.createRecord();
 		try {
@@ -246,14 +246,14 @@ class Products {
 		}
 		
 		if (typeof params.picture === 'number') {
-			let picture = await this._fileController.getFileAsBase64(params.picture_id);
+			let picture = await this._fileController.getAsBase64(params.picture_id);
 			if (picture === null) throw 'Invalid file id supplied';
 			product.setField('picture_id', params.picture_id);
 		}
 	
 		if ((typeof params.picture === 'object') && Array.isArray(params.picture) && (params.picture.length > 0)) {
 			let picture = await this._createFileFromPostData(params.picture[0]);
-			await this._fileController.putFile(picture, transaction);
+			await this._fileController.put(picture, transaction);
 			product.setField('picture_id', picture.getIdentifier());
 		}
 		
@@ -659,7 +659,7 @@ class Products {
 			record.setField('description', params.description);
 			if ((typeof params.picture === 'object') && Array.isArray(params.picture) && (params.picture.length > 0)) {
 				let picture = await this._createFileFromPostData(params.picture[0]);
-				await this._fileController.putFile(picture, dbTransaction);
+				await this._fileController.put(picture, dbTransaction);
 				record.setField('picture_id', picture.getIdentifier());
 			}
 			await record.flush(dbTransaction);
@@ -691,7 +691,7 @@ class Products {
 			}
 			if ((typeof params.picture === 'object') && Array.isArray(params.picture) && (params.picture.length > 0)) {
 				let picture = await this._createFileFromPostData(params.picture[0]);
-				await this._fileController.putFile(picture, dbTransaction);
+				await this._fileController.put(picture, dbTransaction);
 				record.setField('picture_id', picture.getIdentifier());
 			}
 			await record.flush(dbTransaction);
@@ -767,7 +767,7 @@ class Products {
 			record.setField('description', params.description);
 			if ((typeof params.picture === 'object') && Array.isArray(params.picture) && (params.picture.length > 0)) {
 				let picture = await this._createFileFromPostData(params.picture[0]);
-				await this._fileController.putFile(picture, dbTransaction);
+				await this._fileController.put(picture, dbTransaction);
 				record.setField('picture_id', picture.getIdentifier());
 			}
 			await record.flush(dbTransaction);
@@ -799,7 +799,7 @@ class Products {
 			}
 			if ((typeof params.picture === 'object') && Array.isArray(params.picture) && (params.picture.length > 0)) {
 				let picture = await this._createFileFromPostData(params.picture[0]);
-				await this._fileController.putFile(picture, dbTransaction);
+				await this._fileController.put(picture, dbTransaction);
 				record.setField('picture_id', picture.getIdentifier());
 			}
 			await record.flush(dbTransaction);
@@ -926,49 +926,252 @@ class Products {
 		if (prefix!=='') prefix = prefix + '/';
 
 		/* Products */
-		rpc.addMethod(prefix+'list',                   this.list.bind(this));                        //Products: list products
-		rpc.addMethod(prefix+'list/noimg',             this.listNoImg.bind(this));                   //Products: list products (No images)
-		rpc.addMethod(prefix+'create',                 this.create.bind(this));                      //Products: create a product
-		rpc.addMethod(prefix+'edit',                   this.edit.bind(this));                        //Products: edit a product
+		rpc.addMethod(
+			prefix+'list',
+			this.list.bind(this),
+			{
+				name: 'query',
+				type: 'any',
+				description: 'Database query'
+			}
+		);
 
-		rpc.addMethod(prefix+'remove',                 this.remove.bind(this));                      //Products: remove a product
-		rpc.addMethod(prefix+'find',                   this.find.bind(this));                        //Products: find a product by it's name
+		rpc.addMethod(
+			prefix+'list/noimg',
+			this.listNoImg.bind(this),
+			{
+				name: 'query',
+				type: 'any',
+				description: 'Database query'
+			}
+		);
 
-		rpc.addMethod(prefix+'findByIdentifier',       this.findByIdentifier.bind(this));            //Products: find a product by one of it's identifiers
+		rpc.addMethod(
+			prefix+'find',
+			this.find.bind(this),
+			{
+				type: 'string',
+				description: 'Search string'
+			}
+		);
 
-		rpc.addMethod(prefix+'addStock',               this.addStock.bind(this));                    //Products: add stock
-		rpc.addMethod(prefix+'editStock',              this.editStock.bind(this));                   //Products: edit stock
-		rpc.addMethod(prefix+'removeStock',            this.removeStock.bind(this));                 //Products: remove stock
+		rpc.addMethod(
+			prefix+'findByIdentifier',
+			this.findByIdentifier.bind(this),
+			{
+				type: 'string',
+				description: 'Identifier'
+			}
+		);
+
+		rpc.addMethod(
+			prefix+'create',
+			this.create.bind(this),
+			[
+				{
+					type: 'object',
+					desciption: 'Object describing the product to be created',
+					required: {
+						name: {
+							type: 'string',
+							description: 'Name of the product'
+						}
+					},
+					optional: {
+						description: {
+							type: 'string',
+							description: 'Description'
+						},
+						active: {
+							type: 'boolean'
+						},
+						brand_id: {
+							type: ['number', 'null']
+						},
+						picture_id: {
+							type: ['number', 'null']
+						},
+						package_id: {
+							type: ['number', 'null']
+						},
+						groups: {
+							type: 'array'
+						},
+						locations: {
+							type: 'array'
+						},
+						prices: {
+							type: 'object'
+						}
+					}
+				}
+			]
+		);
+
+		rpc.addMethod(
+			prefix+'edit',
+			this.edit.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'remove',
+			this.remove.bind(this)
+		);
+
+		/* Stock */
+
+		rpc.addMethod(
+			prefix+'addStock',
+			this.addStock.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'editStock',
+			this.editStock.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'removeStock',
+			this.removeStock.bind(this)
+		);
 
 		/* Groups */
-		rpc.addMethod(prefix+'group/list',             this.listGroups.bind(this));                  //Groups: list groups
-		rpc.addMethod(prefix+'group/create',           this.createGroup.bind(this));                 //Groups: create a group
-		rpc.addMethod(prefix+'group/edit',             this.editGroup.bind(this));                   //Groups: edit a group
-		rpc.addMethod(prefix+'group/remove',           this.removeGroup.bind(this));                 //Groups: remove a group
+		rpc.addMethod(
+			prefix+'group/list',
+			this.listGroups.bind(this),
+			{
+				name: 'query',
+				type: 'any',
+				description: 'Database query'
+			}
+		);
+
+		rpc.addMethod(
+			prefix+'group/create',
+			this.createGroup.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'group/edit',
+			this.editGroup.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'group/remove',
+			this.removeGroup.bind(this)
+		);
 
 		/* Identifiers */
-		rpc.addMethod(prefix+'identifier/type/list',   this.listIdentifierTypes.bind(this));         //Identifiers: list identifier types
-		rpc.addMethod(prefix+'identifier/type/create', this.addIdentifierType.bind(this));           //Identifiers: add an identifier type
-		rpc.addMethod(prefix+'identifier/type/edit',   this.editIdentifierType.bind(this));          //Identifiers: edit an identifier type
-		rpc.addMethod(prefix+'identifier/type/remove', this.removeIdentifierType.bind(this));        //Identifiers: remove an identifier type
+		rpc.addMethod(
+			prefix+'identifier/type/list',
+			this.listIdentifierTypes.bind(this),
+			[
+				{
+					name: 'query',
+					type: 'any',
+					description: 'Database query'
+				}
+			]
+		);
+
+		rpc.addMethod(
+			prefix+'identifier/type/create',
+			this.addIdentifierType.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'identifier/type/edit',
+			this.editIdentifierType.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'identifier/type/remove',
+			this.removeIdentifierType.bind(this)
+		);
 
 		/* Locations */
-		rpc.addMethod(prefix+'location/list',          this.listLocations.bind(this));               //Locations: list locations
-		rpc.addMethod(prefix+'location/create',        this.createLocation.bind(this));              //Locations: create a location
-		rpc.addMethod(prefix+'location/edit',          this.editLocation.bind(this));                //Locations: edit a location
-		rpc.addMethod(prefix+'location/remove',        this.removeLocation.bind(this));              //Locations: remove a location
+		rpc.addMethod(
+			prefix+'location/list',
+			this.listLocations.bind(this),
+			[
+				{
+					name: 'query',
+					type: 'any',
+					description: 'Database query'
+				}
+			]
+		);
+
+		rpc.addMethod(
+			prefix+'location/create',
+			this.createLocation.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'location/edit',
+			this.editLocation.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'location/remove',
+			this.removeLocation.bind(this)
+		);
 
 		/* Brands */
-		rpc.addMethod(prefix+'brand/list',             this.listBrands.bind(this));                  //Brands: list brands
-		rpc.addMethod(prefix+'brand/create',           this.createBrand.bind(this));                 //Brands: create a brand
-		rpc.addMethod(prefix+'brand/edit',             this.editBrand.bind(this));                   //Brands: edit a brand
-		rpc.addMethod(prefix+'brand/remove',           this.removeBrand.bind(this));                 //Brands: remove a brand
+		rpc.addMethod(
+			prefix+'brand/list',
+			this.listBrands.bind(this),
+			[
+				{
+					name: 'query',
+					type: 'any',
+					description: 'Database query'
+				}
+			]
+		);
+
+		rpc.addMethod(
+			prefix+'brand/create',
+			this.createBrand.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'brand/edit',
+			this.editBrand.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'brand/remove',
+			this.removeBrand.bind(this)
+		);
 
 		/* Packages */
-		rpc.addMethod(prefix+'package/list',           this.listPackages.bind(this));                //Packages: list 	
-		rpc.addMethod(prefix+'package/create',         this.createPackage.bind(this));               //Packages: create a package
-		rpc.addMethod(prefix+'package/edit',           this.editPackage.bind(this));                 //Packages: edit a package
-		rpc.addMethod(prefix+'package/remove',         this.removePackage.bind(this));               //Packages: remove a package
+		rpc.addMethod(
+			prefix+'package/list',
+			this.listPackages.bind(this),
+			[
+				{
+					name: 'query',
+					type: 'any',
+					description: 'Database query'
+				}
+			]
+		);
+
+		rpc.addMethod(
+			prefix+'package/create',
+			this.createPackage.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'package/edit',
+			this.editPackage.bind(this)
+		);
+
+		rpc.addMethod(
+			prefix+'package/remove',
+			this.removePackage.bind(this)
+		);
 	}
 }
 
