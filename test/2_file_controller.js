@@ -3,40 +3,35 @@
 const expect = require('chai').expect;
 const env = require('../test-environment.js');
 
-const User = require('../models/record/user.js');
-const Controller = require('../controllers/user.js');
+const FileRecord = require('../models/record/file.js');
+const Controller = require('../controllers/file.js');
 
 var testData = {
-	username: 'testUsername',
-	password: '$6$c0aT5tDyxN9DVLEM$Ofun4nZfzQ/g2ySgcUvpPcjlPtW7EKBXL64WrZZNHVEtOPlBm1EyBZySf4QmxViBXWeYOezN7n4R3b8A9mGwe0',
-	title: 'testTitle',
-	permissions: [
-		'testPermission'
-	],
-	picture: {
-		name: 'testPicture',
-		mime: 'image/jpeg',
-		data: 'SGVsbG8gd29ybGQ='
-	}
+	name: "testName",
+	mime: "testMime",
+	data: 'SGVsbG8gd29ybGQ='
 };
 
 var identifier = null;
 
-describe('Controller: user', () => {
+describe('Controller: file', () => {
+	before(() => {
+		env.start();
+	});
 	after(() => {
-		env.database.end();
+		env.stop();
 	});
 	it('Create (put)', async () => {
-		let controller = new Controller(env.database);
-		let user = new User(testData);
-		expect(user.getDirty()).to.equal(true);
-		identifier = await controller.put(user);
+		let controller = new Controller(env.database());
+		let file = new FileRecord(testData);
+		expect(file.getDirty()).to.equal(true);
+		identifier = await controller.put(file);
 		expect(identifier).to.be.a('number');
 		expect(identifier).to.be.above(0);
-		expect(user.getDirty()).to.equal(false);
+		expect(file.getDirty()).to.equal(false);
 	});
-	/*it('Edit (get)', async () => {
-		let controller = new Controller(env.database);
+	it('Edit (get)', async () => {
+		let controller = new Controller(env.database());
 		let file = await controller.get(identifier);
 		expect(file).to.be.an.instanceof(FileRecord);
 		expect(file.getName()).to.equal(testData.name);
@@ -54,7 +49,7 @@ describe('Controller: user', () => {
 	});
 	
 	it('Remove by id', async () => {
-		let controller = new Controller(env.database);
+		let controller = new Controller(env.database());
 		let deleted = await controller.remove(identifier);
 		expect(deleted).to.equal(true); // Deleted
 		deleted = await controller.remove(identifier);
@@ -62,7 +57,7 @@ describe('Controller: user', () => {
 	});
 	
 	it('Remove by object', async () => {
-		let controller = new Controller(env.database);
+		let controller = new Controller(env.database());
 		let file = new FileRecord(testData);
 		let deleted = await controller.remove(file);
 		expect(deleted).to.equal(false); // Non existent
@@ -73,9 +68,9 @@ describe('Controller: user', () => {
 		expect(deleted).to.equal(false); // Already deleted
 	});
 	
-	it('Find by username', async () => {
+	it('Find by name', async () => {
 		// Preparation
-		let controller = new Controller(env.database);
+		let controller = new Controller(env.database());
 		let file = await controller.create('file_for_testing_list_query','mimetype/forlist','SGVsbG8gd29ybGQ=');
 		await controller.put(file);
 		
@@ -105,8 +100,8 @@ describe('Controller: user', () => {
 		expect(result).to.have.lengthOf(1);
 		
 		// Cleanup
-		controller.remove(file);
-	});*/
+		await controller.remove(file);
+	});
 });
 
 

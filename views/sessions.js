@@ -1,7 +1,6 @@
 "use strict";
 
 const chalk  = require('chalk');
-
 const Session = require('../models/session.js');
 
 class Sessions {

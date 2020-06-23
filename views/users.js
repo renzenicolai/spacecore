@@ -5,7 +5,8 @@ const crypto = require('crypto');
 const mime = require('mime-types');
 const chalk = require('chalk');
 
-const FileController = require('../controllers/files.js');
+const UserController = require('../controllers/user.js');
+const FileController = require('../controllers/file.js');
 
 class Users {
 	constructor(database) {
@@ -56,7 +57,7 @@ class Users {
 		}
 		
 		var records = await this._table.selectRecords({
-			'user_name': params.user_name,
+			'username': params.username,
 			'active': 1
 		});
 		
@@ -70,15 +71,15 @@ class Users {
 				var avatar = await this._fileController.getAsBase64(records[i].getField('picture'));
 				session.setUser({
 					id: records[i].getIndex(),
-					user_name: records[i].getField('user_name'),
-					full_name: records[i].getField('full_name'),
+					username: records[i].getField('username'),
+					realname: records[i].getField('realname'),
 					title: records[i].getField('title'),
 					avatar: avatar,
 					permissions: permissions
 				});
 				var result = {
-					user_name: records[i].getField('user_name'),
-					full_name: records[i].getField('full_name'),
+					username: records[i].getField('username'),
+					realname: records[i].getField('realname'),
 					title: records[i].getField('title'),
 					avatar: avatar,
 					permissions: permissions
@@ -96,7 +97,7 @@ class Users {
 		
 		var internalParams = { id: session.user.id };
 		if (typeof params.password === 'string') internalParams.password = params.password;
-		if (typeof params.full_name === 'string') internalParams.full_name = params.full_name;
+		if (typeof params.realname === 'string') internalParams.realname = params.realname;
 		if (typeof params.title    === 'string') internalParams.title    = params.title;
 		return this.editUser(session, internalParams);
 	}
@@ -108,8 +109,8 @@ class Users {
 		
 		if (typeof params === 'object' && params != null) {
 			if (typeof params.id        === 'number')  query.id        = params.id;
-			if (typeof params.user_name === 'string')  query.user_name = params.user_name;
-			if (typeof params.full_name === 'string')  query.full_name = params.full_name;
+			if (typeof params.username  === 'string')  query.username = params.username;
+			if (typeof params.realname  === 'string')  query.realname = params.realname;
 			if (typeof params.title     === 'string')  query.title     = params.title;
 			if (typeof params.active    === 'boolean') query.active    = params.active;
 		}
@@ -153,15 +154,15 @@ class Users {
 		if (typeof params.active      !== 'boolean') params.active      = false;
 		if (typeof params.permissions !== 'object')  params.permissions = [];
 		
-		let existingUsers = await this.listUsers(session, {user_name: params.user_name});
+		let existingUsers = await this.listUsers(session, {username: params.username});
 		if (existingUsers.length>0) {
-			throw 'A user with the username \''+params.user_name+'\' exists already';
+			throw 'A user with the username \''+params.username+'\' exists already';
 		}
 		
-		let dbTransaction = await this._opts.database.transaction('create user '+params.user_name);
+		let dbTransaction = await this._opts.database.transaction('create user '+params.username);
 		
 		let record = this._table.createRecord();
-		record.setField('user_name', params.user_name);
+		record.setField('username', params.username);
 		
 		if (params.password === '') {
 			record.setField('password', null);
@@ -169,7 +170,7 @@ class Users {
 			record.setField('password', this._hash(params.password));
 		}
 
-		record.setField('full_name', params.name);
+		record.setField('realname', params.name);
 		record.setField('title', params.title);
 		record.setField('active', params.active ? 1 : 0);
 		var id = await record.flush(dbTransaction);
@@ -196,14 +197,14 @@ class Users {
 		}
 		
 		let id = record.getIndex();
-		let dbTransaction = await this._opts.database.transaction('edit user '+params.user_name);
+		let dbTransaction = await this._opts.database.transaction('edit user '+params.username);
 		
-		if (typeof params.user_name === 'string') {
-			let existingUsers = await this.listUsers(session, {user_name: params.user_name});
+		if (typeof params.username === 'string') {
+			let existingUsers = await this.listUsers(session, {username: params.username});
 			if (existingUsers.length > 0) {
 				throw this.error.username_in_use;
 			}
-			record.setField('user_name', params.user_name);
+			record.setField('username', params.username);
 		}
 		
 		if (typeof params.password === 'string') {
@@ -214,8 +215,8 @@ class Users {
 			}
 		}
 		
-		if (typeof params.full_name === 'string') {
-			record.setField('full_name', params.full_name);
+		if (typeof params.realname === 'string') {
+			record.setField('realname', params.realname);
 		}
 		
 		if (typeof params.title === 'string') {
@@ -270,7 +271,7 @@ class Users {
 			throw this.error.notfound;
 		}
 		
-		let dbTransaction = await this._opts.database.transaction('remove user '+record.getField('user_name'));
+		let dbTransaction = await this._opts.database.transaction('remove user '+record.getField('username'));
 		
 		let permissionRecords = await this._tablePermissions.selectRecords({user: id});
 		
@@ -299,7 +300,7 @@ class Users {
 				{
 					type: 'object',
 					required: {
-						user_name: {
+						username: {
 							type: 'string'
 						}
 					},
@@ -322,7 +323,7 @@ class Users {
 						password: {
 							type: 'string'
 						},
-						full_name: {
+						realname: {
 							type: 'string'
 						},
 						title: {
@@ -348,10 +349,10 @@ class Users {
 						id: {
 							type: 'number'
 						},
-						user_name: {
+						username: {
 							type: 'string'
 						},
-						full_name: {
+						realname: {
 							type: 'string'
 						},
 						title: {
@@ -372,7 +373,7 @@ class Users {
 				{ // Create a new user
 					type: 'object',
 					required: {
-						user_name: {
+						username: {
 							type: 'string'
 						}
 					},
@@ -380,7 +381,7 @@ class Users {
 						password: {
 							type: 'string'
 						},
-						full_name: {
+						realname: {
 							type: 'string'
 						},
 						title: {
@@ -410,13 +411,13 @@ class Users {
 						}
 					},
 					optional: {
-						user_name: {
+						username: {
 							type: 'string'
 						},
 						password: {
 							type: 'string'
 						},
-						full_name: {
+						realname: {
 							type: 'string'
 						},
 						title: {

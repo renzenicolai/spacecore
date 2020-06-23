@@ -7,8 +7,10 @@ const User = require('../models/record/user.js');
 
 let exampleData = {
 	username: 'testUsername',
+	realname: 'testRealname',
 	password: null,
 	title: 'testTitle',
+	active: false,
 	permissions: [
 		'testPermission'
 	],
@@ -62,8 +64,10 @@ describe('Model: user', () => {
 		let user = new User(exampleDataWithPictureAndPassword);
 		let serializedUser = user.serialize();
 		expect(serializedUser).to.have.property('username');
+		expect(serializedUser).to.have.property('realname');
 		expect(serializedUser).to.not.have.property('password');
 		expect(serializedUser).to.have.property('title');
+		expect(serializedUser).to.have.property('active');
 		expect(serializedUser).to.have.property('permissions');
 		expect(serializedUser).to.have.property('picture');
 		expect(serializedUser.username).to.equal('testUsername');
@@ -90,12 +94,30 @@ describe('Model: user', () => {
 		expect(user.getDirty()).to.equal(true);
 	});
 	
+	it('Realname', async () => {
+		let user = new User(exampleData);
+		expect(user.getRealname()).to.equal('testRealname');
+		user.setDirty(false);
+		user.setRealname('Hello world');
+		expect(user.getRealname()).to.equal('Hello world');
+		expect(user.getDirty()).to.equal(true);
+	});
+	
 	it('Title', async () => {
 		let user = new User(exampleData);
 		expect(user.getTitle()).to.equal('testTitle');
 		user.setDirty(false);
 		user.setTitle('Hello world');
 		expect(user.getTitle()).to.equal('Hello world');
+		expect(user.getDirty()).to.equal(true);
+	});
+	
+	it('Active', async () => {
+		let user = new User(exampleData);
+		expect(user.getActive()).to.equal(false);
+		user.setDirty(false);
+		user.setActive(true);
+		expect(user.getActive()).to.equal(true);
 		expect(user.getDirty()).to.equal(true);
 	});
 	

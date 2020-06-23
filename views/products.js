@@ -1,7 +1,7 @@
 'use strict';
 
 const Tasks = require('../lib/tasks.js');
-const FileController = require('../controllers/files.js');
+const FileController = require('../controllers/file.js');
 
 class Products {
 	constructor(database) {

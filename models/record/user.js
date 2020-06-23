@@ -21,16 +21,22 @@ class User extends Record {
 		
 		// Data storage
 		this._data.username = null;
-		this._data.password = null;
+		this._data.realname = null;
 		this._data.title = null;
+		this._data.active = false;
+		this._data.password = null;
 		this._data.picture = null;
 		this._data.permissions = [];
 		
 		// Helper functions
 		this.getUsername = BasicHelper.get.bind(this, 'username', 'string');
 		this.setUsername = BasicHelper.set.bind(this, 'username', 'string');
+		this.getRealname = BasicHelper.get.bind(this, 'realname', 'string');
+		this.setRealname = BasicHelper.set.bind(this, 'realname', 'string');
 		this.getTitle = BasicHelper.get.bind(this, 'title', 'string');
 		this.setTitle = BasicHelper.set.bind(this, 'title', 'string');
+		this.getActive = BasicHelper.get.bind(this, 'active', 'boolean');
+		this.setActive = BasicHelper.set.bind(this, 'active', 'boolean');
 		this.getPicture = ObjectHelper.get.bind(this, 'picture', ImageFile);
 		this.setPicture = ObjectHelper.set.bind(this, 'picture', ImageFile);
 		this.getPermissions = ArrayHelper.get.bind(this, 'permissions', 'string');
@@ -42,17 +48,21 @@ class User extends Record {
 		// Load initial dataset
 		if (input !== null) {
 			this.setUsername(input.username);
-			this.setPasswordHash(input.password);
+			this.setRealname(input.realname);
 			this.setTitle(input.title);
+			this.setActive(input.active);
 			this.setPicture(input.picture);
 			this.setPermissions(input.permissions);
+			this.setPasswordHash(input.password);
 		}
 	}
 	
 	serialize(includeSecrets=false) {
 		let output = Object.assign(super.serialize(includeSecrets), {
 			username: this._data.username, // String
+			realname: this._data.realname, // String
 			title: this._data.title, // String
+			active: this._data.active, // Boolean
 			picture: this._data.picture ? this._data.picture.serialize() : null, // Object
 			permissions: this._data.permissions, // List
 		});
@@ -86,6 +96,10 @@ class User extends Record {
 		} else {
 			throw 'Expected the password to be a string or NULL';
 		}
+	}
+	
+	getPasswordHash() {
+		return this._data.password;
 	}
 	
 	setPasswordHash(passwordHash) {

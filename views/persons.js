@@ -2,7 +2,7 @@
 
 const Tasks = require('../lib/tasks.js');
 const Tokens = require('../lib/tokens.js');
-const FileController = require('../controllers/files.js');
+const FileController = require('../controllers/file.js');
 
 class Persons {
 	constructor(database, products) {

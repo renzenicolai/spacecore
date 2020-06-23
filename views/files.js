@@ -1,6 +1,6 @@
 'use strict';
 
-const FileController = require('../controllers/files.js');
+const FileController = require('../controllers/file.js');
 
 class Files {
 	constructor(database) {
