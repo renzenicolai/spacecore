@@ -1,5 +1,7 @@
 'use strict';
 
+const BasicHelper = require("./helpers/basicHelper.js");
+
 class Record {
 	/*
 	 * The base class from which the most of the other models are derrived
@@ -9,10 +11,18 @@ class Record {
 	 */
 	
 	constructor(input=null) {
+		// Data storage
 		this._data = {
 			id: null,
 			dirty: true
 		};
+		
+		// Helper functions
+		this.getIdentifier = BasicHelper.get.bind(this, 'id', 'number');
+		this.setIdentifier = BasicHelper.setOrNull.bind(this, 'id', 'number');
+		this.getDirty = BasicHelper.get.bind(this, 'dirty', 'boolean');
+		this.setDirty = BasicHelper.set.bind(this, 'dirty', 'boolean');
+		
 		if (input !== null) {
 			if (typeof input !== 'object') {
 				throw 'Expected an object';
@@ -35,41 +45,6 @@ class Record {
 		return {
 			id: this._data.id
 		};
-	}
-	
-	/* 
-	 * Dirty
-	 * The dirty marker allows the database library to track which records need to be flushed to the database
-	 */
-	
-	getDirty() {
-		return this._data.dirty;
-	}
-	
-	setDirty(dirty) {
-		if (typeof dirty !== 'boolean') {
-			throw 'Expected the dirty flag to be a boolean';
-		} else {
-			this._data.dirty = dirty;
-		}
-	}
-
-	/* 
-	 * Identifier
-	 * Used to uniquely identify this user record in the database
-	 */
-	
-	getIdentifier() {
-		return this._data.id;
-	}
-	
-	setIdentifier(identifier) {
-		if ((typeof identifier !== 'number') && (identifier !== null)) {
-			throw 'Expected the identifier to be a number';
-		} else if (identifier !== this._id) {
-			this.setDirty(true);
-			this._data.id = identifier;
-		}
 	}
 }
 

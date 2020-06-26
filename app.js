@@ -16,14 +16,14 @@ const Mqttclient       = require('./lib/mqtt.js');
 const Database         = require('./lib/db.js');
 
 // Views
-const Ping             = require('./views/ping.js');
-const Sessions         = require('./views/sessions.js');
-const Files            = require('./views/files.js');
-const Users            = require('./views/users.js');
-const Persons          = require('./views/persons.js');
-const Products         = require('./views/products.js');
-const Invoices         = require('./views/invoices.js');
-const Mt940            = require('./views/mt940.js');
+const PingView         = require('./views/ping.js');
+const SessionView      = require('./views/session.js');
+const FileView         = require('./views/file.js');
+const UserView         = require('./views/user.js');
+const RelationView     = require('./views/relation.js');
+const ProductView      = require('./views/product.js');
+const InvoiceView      = require('./views/invoice.js');
+const MT940View        = require('./views/mt940.js');
 
 // Verification modules
 const VerifyBalance    = require('./verification/balance.js');
@@ -95,82 +95,82 @@ var database = new Database({
 
 // Application elements not requiring database availability
 
-var sessions = new Sessions({
+var sessionView = new SessionView({
 	timeout: configuration.get('sessions','timeout')
 });
 
 var rpc = new Rpc({
 	strict: true,
-	auth: sessions,
+	auth: sessionView,
 	identity: configuration.get('rpc','identity')
 });
 
-sessions.registerRpcMethods(rpc);
+/* Views */
+var pingView = new PingView();
+var mt940View = new MT940View();
+var fileView = new FileView(database);
+var userView = new UserView(database);
+
+/* Registration of RPC methods */
+sessionView.registerRpcMethods(rpc);
+pingView.registerRpcMethods(rpc);
+mt940View.registerRpcMethods(rpc);
+fileView.registerRpcMethods(rpc);
+userView.registerRpcMethods(rpc);
+
+/* Permission overrides */
+rpc.addAlwaysAllow('ping');
 rpc.addAlwaysAllow('session/create');
+rpc.addAlwaysAllow('user/authenticate');
+
+/* Webserver */
+let websocketserver = null;
+let webserver = null;
 
 if (configuration.get('rpc','webserver','enabled')) {
-	
-	var ws = null;
-	
 	if (configuration.get('rpc','webserver','websocket','enabled')) {
-		var websocketserver = new Websocketserver({
+		websocketserver = new Websocketserver({
 			application: rpc
 		});
-		ws = websocketserver.ws();
 	}
-	
-	var webserver = new Webserver({
+	webserver = new Webserver({
 		port: configuration.get('rpc','webserver','port'),
 		host: configuration.get('rpc','webserver','listen'),
 		queue: configuration.get('rpc','webserver','queue'),
 		application: rpc,
 		mime: 'application/json',
-		ws: ws
+		ws: websocketserver ? websocketserver.ws() : null
 	});
 }
 
-var mqttclient = null;
+/* MQTT client */
+let mqttclient = null;
 if (configuration.get('mqtt', 'enable')) {
+	let dummyRpcHandler = {
+		handle: (request) => {
+			return 'RPC over MQTT is disabled!';
+		}
+	};
 	mqttclient = new Mqttclient({
 		port: configuration.get('mqtt', 'port'),
 		host: configuration.get('mqtt', 'host'),
 		topic: configuration.get('mqtt', 'topic'),
-		rpc: {
-			handle: (request) => {
-				return 'RPC over MQTT is disabled!';
-			}
-		}
+		rpc: configuration.get('mqtt', 'rpc') ? rpc : dummyRpcHandler
 	});
 }
 
-var ping = new Ping();
-ping.registerRpcMethods(rpc);
-rpc.addAlwaysAllow('ping');
-
-var mt940 = new Mt940();
-mt940.registerRpcMethods(rpc);
-
-/* Application elements depending on database availability */
+/* Application elements depending on availability of legacy database tables */
 
 function start() {
-	/* File storage */
-	var files = new Files(database);
-	files.registerRpcMethods(rpc);
-
-	/* User accounts */
-	var users = new Users(database);
-	users.registerRpcMethods(rpc);
-	rpc.addAlwaysAllow('user/authenticate');
-
 	/* Products */
-	var products = new Products(database);
-	products.registerRpcMethods(rpc);
+	//var productView = new ProductView(database);
+	//productView.registerRpcMethods(rpc);
 
-	/* Persons */
-	var persons = new Persons(database, products);
-	persons.registerRpcMethods(rpc);
+	/* Relations */
+	//var relationView = new RelationView(database, productView);
+	//relationView.registerRpcMethods(rpc);
 
-	var invoices = new Invoices({
+	/*var invoices = new Invoices({
 		database: database,
 		persons: persons,
 		products: products,
@@ -189,5 +189,5 @@ function start() {
 
 	for (var i in verifications) {
 		verifications[i].verify();
-	}
+	}*/
 }

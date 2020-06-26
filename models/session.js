@@ -47,29 +47,6 @@ class Session {
 		this._dateLastUsed = Math.floor(Date.now() / 1000);
 	}
 	
-	checkPermission(method) {
-		let result = false;
-		if (this._user !== null) {
-			if (typeof this._user.permissions === 'object') {
-				for (let i in this._user.permissions) {
-					if (method.startsWith(this._user.permissions[i])) {
-						result = true;
-						break;
-					}
-				}
-			}
-		}
-		return result;
-	}
-	
-	listPermissions() {
-		let result = null;
-		if (this._user !== null) {
-			result = this._user.permissions;
-		}
-		return result;
-	}
-	
 	getConnection() {
 		return this._connection;
 	}
@@ -82,7 +59,7 @@ class Session {
 		this._user = user;
 	}
 	
-	getUser(user) {
+	getUser() {
 		return this._user;
 	}
 	

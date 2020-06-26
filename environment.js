@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * This file supplies the tests with a basic environment containing a database connection
+ * This file supplies the tools with a basic environment containing a database connection
  */
 
 const Configuration = require('./lib/configuration.js');
@@ -12,11 +12,10 @@ var database = null;
 
 function start() {
 	database = new Database({
-		host: configuration.get('test', 'database', 'host'),
-		user: configuration.get('test', 'database', 'user'),
-		password: configuration.get('test', 'database', 'password'),
-		database: configuration.get('test', 'database', 'name'),
-		verbose: configuration.get('test', 'database', 'verbose')
+		host: configuration.get('database', 'host'),
+		user: configuration.get('database', 'user'),
+		password: configuration.get('database', 'password'),
+		database: configuration.get('database', 'name')
 	});
 }
 

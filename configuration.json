@@ -18,7 +18,8 @@
 		"enable": true,
 		"host": "10.42.1.2",
 		"port": 1883,
-		"topic": "test/spacecore"
+		"topic": "test/spacecore",
+		"rpc": false
 	},
 	"log": {
 		"enable": false
@@ -27,6 +28,16 @@
 		"host": "127.0.0.1",
 		"user": "spacecore",
 		"password": "CV5U3Pb4si1S6h9x",
-		"name": "spacecore"
+		"name": "spacecore_dev",
+		"verbose": false
+	},
+	"test": {
+		"database": {
+			"host": "127.0.0.1",
+			"user": "spacecore",
+			"password": "CV5U3Pb4si1S6h9x",
+			"name": "spacecore_test",
+			"verbose": false
+		}
 	}
 }

@@ -1,35 +1,15 @@
+'use strict';
+const Controller = require('../models/controller.js');
 const User = require('../models/record/user.js');
 const FileController = require('./file.js');
 
-class UserController {
-	constructor(database, table='users', tablePermissions='user_permissions') {
+class UserController extends Controller {
+	constructor(database) {
+		super(database);
 		this._database = database;
-		this._table = table;
-		this._tablePermissions = tablePermissions;
+		this._table = 'users';
+		this._tablePermissions = 'user_permissions';
 		this._fileController = new FileController(database);
-	}
-	
-	_compareArrays(old, current)
-	{
-		let toRemove = [];
-		let toCreate = [];
-		for (let i = 0; i < old.length; i++) {
-			if (current.indexOf(old[i]) < 0) {
-				toRemove.push(old[i]);
-			}
-		}
-		for (let i = 0; i < current.length; i++) {
-			if (old.indexOf(current[i]) < 0) {
-				toCreate.push(current[i]);
-			}
-		}
-		return [toRemove, toCreate];
-	}
-	
-	async _getPermissionRecords(identifier)
-	{
-		let [permissionRecords, permissionFields] = await this._database.query('SELECT * FROM `'+this._tablePermissions+'` WHERE `user` = ?', [identifier]);
-		return permissionRecords;
 	}
 	
 	async _convertRecordToUser(record) {
@@ -37,13 +17,13 @@ class UserController {
 			record.picture = await this._fileController.get(record.picture);
 		}
 		record.permissions = [];
-		let permissionRecords = await this._getPermissionRecords(record.id);
+		let permissionRecords = await this._getSubRecords(record.id, this._tablePermissions, 'user');
 		for (let i = 0; i < permissionRecords.length; i++) {
 			if (record.permissions.indexOf(permissionRecords[i].endpoint) < 0) {
 				record.permissions.push(permissionRecords[i].endpoint);
 			}
 		}
-		record.active = Boolean(record.active);
+		record.enabled = Boolean(record.enabled);
 		let object = new User(record);
 		object.setDirty(false);
 		return object;
@@ -66,31 +46,31 @@ class UserController {
 			if (object.getDirty()) {
 				if (object.getIdentifier() === null) {
 					let queryResult = await this._database.query(
-						'INSERT INTO `'+this._table+'` (`username`,`realname`, `title`, `password`, `active`, `picture`) VALUES (?, ?, ?, ?, ? , ?);', [
+						'INSERT INTO `'+this._table+'` (`username`,`realname`, `title`, `password`, `enabled`, `picture`) VALUES (?, ?, ?, ?, ? , ?);', [
 						object.getUsername(),
 						object.getRealname(),
 						object.getTitle(),
 						object.getPasswordHash(),
-						object.getActive(),
+						object.getEnabled(),
 						pictureIdentifier
 					], transaction);
 					result = queryResult[0].insertId;
 					object.setIdentifier(result);
 				} else {
 					await this._database.query(
-						'UPDATE `'+this._table+'` SET `username` = ?, `realname` = ?, `title` = ?, `password` = ?, `active` = ?, `picture` = ? WHERE `id` = ?;', [
+						'UPDATE `'+this._table+'` SET `username` = ?, `realname` = ?, `title` = ?, `password` = ?, `enabled` = ?, `picture` = ? WHERE `id` = ?;', [
 						object.getUsername(),
 						object.getRealname(),
 						object.getTitle(),
 						object.getPasswordHash(),
-						object.getActive() ? 1 : 0,
+						object.getEnabled() ? 1 : 0,
 						pictureIdentifier,
 						object.getIdentifier()
 					], transaction);
 					result = object.getIdentifier();
 				}
 				// ---- PERMISSIONS ----
-				let currentPermissions = await this._getPermissionRecords(object.getIdentifier());
+				let currentPermissions = await this._getSubRecords(object.getIdentifier(), this._tablePermissions, 'user');
 				let currentPermissionEndpoints = [];
 				for (let i = 0; i < currentPermissions.length; i++) {
 					currentPermissionEndpoints.push(currentPermissions[i].endpoint);
@@ -156,8 +136,58 @@ class UserController {
 		return true;
 	}
 	
-	async findByUsername(name='%') {
-		let [records, fields] = await this._database.query('SELECT * FROM `'+this._table+'` WHERE `username` = ?', [name]);
+	async findForAuthentication(username) {
+		let [records, fields] = await this._database.query('SELECT * FROM `'+this._table+'` WHERE `username` = ? AND `enabled` = ?', [username, 1]);
+		let objects = [];
+		for (let i = 0; i<records.length; i++) {
+			objects.push(this._convertRecordToUser(records[i]));
+		}
+		return Promise.all(objects);
+	}
+	
+	async find(identifier=null, username=null, realname=null, title=null, enabled=null) {
+		let query = '';
+		let values = [];
+		
+		if (typeof identifier === 'number') {
+			query += ((query!=='')?' AND ':'')+'`id` = ?';
+			values.push(identifier);
+		} else if (identifier !== null) {
+			throw 'Expected identifier to be a number or null';
+		}
+		
+		if (typeof username === 'string') {
+			query += ((query!=='')?' AND ':'')+'`username` LIKE ?';
+			values.push(username);
+		} else if (username !== null) {
+			throw 'Expected username to be a string or null';
+		}
+		
+		if (typeof realname === 'string') {
+			query += ((query!=='')?' AND ':'')+'`realname` LIKE ?';
+			values.push(realname);
+		} else if (realname !== null) {
+			throw 'Expected realname to be a string or null';
+		}
+		
+		if (typeof title === 'string') {
+			query += ((query!=='')?' AND ':'')+'`title` LIKE ?';
+			values.push(title);
+		} else if (title !== null) {
+			throw 'Expected title to be a string or null';
+		}
+		
+		if (typeof enabled === 'boolean') {
+			query += ((query!=='')?' AND ':'')+'`enabled` = ?';
+			values.push(enabled?1:0);
+		} else if (enabled !== null) {
+			throw 'Expected enabled to be a boolean or null';
+		}
+		
+		if (query !== '') query = ' WHERE '+query;
+		
+		let [records, fields] = await this._database.query('SELECT * FROM `'+this._table+'`'+query, values);
+		
 		let objects = [];
 		for (let i = 0; i<records.length; i++) {
 			objects.push(this._convertRecordToUser(records[i]));

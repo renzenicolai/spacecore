@@ -14,11 +14,23 @@ function set(field, type, input) {
 		throw 'Expected '+field+' to be of type '+type;
 	} else {
 		this._data[field] = input;
+		if (field !== 'dirty') {
+			this.setDirty(true);
+		}
+	}
+}
+
+function setOrNull(field, type, input) {
+	if ((typeof input !== type) && (input !== null)) {
+		throw 'Expected '+field+' to be of type '+type+' or null';
+	} else {
+		this._data[field] = input;
 		this.setDirty(true);
 	}
 }
 
 module.exports = {
 	get: get,
-	set: set
+	set: set,
+	setOrNull: setOrNull
 };

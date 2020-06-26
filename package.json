@@ -10,6 +10,7 @@
   "author": "Renze Nicolai",
   "license": "GPLv3",
   "dependencies": {
+    "chai-as-promised": "^7.1.1",
     "chalk": "^4.0.0",
     "clone": "^2.1.2",
     "mime-types": "^2.1.27",

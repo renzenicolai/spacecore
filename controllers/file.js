@@ -1,14 +1,17 @@
+'use strict';
+const Controller = require('../models/controller.js');
 const FileRecord = require('../models/record/file.js');
 const ImageFileRecord = require('../models/record/file/image.js');
 
-class FileController {
-	constructor(database, table='files') {
+class FileController extends Controller {
+	constructor(database) {
+		super(database);
 		this._fileTypes = [
 			ImageFileRecord,
 			FileRecord
 		];
 		this._database = database;
-		this._table = table;
+		this._table = 'files';
 	}
 	
 	_convertRecordToFileObject(record, dirty=false) {
@@ -58,7 +61,7 @@ class FileController {
 	}
 	
 	async getAsBase64(identifier) {
-		let record = await this.getFile(identifier);
+		let record = await this.get(identifier);
 		let result = null;
 		if (record !== null) {
 			result = record.getDataAsBase64();

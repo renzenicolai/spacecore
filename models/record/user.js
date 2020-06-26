@@ -23,7 +23,7 @@ class User extends Record {
 		this._data.username = null;
 		this._data.realname = null;
 		this._data.title = null;
-		this._data.active = false;
+		this._data.enabled = false;
 		this._data.password = null;
 		this._data.picture = null;
 		this._data.permissions = [];
@@ -35,13 +35,13 @@ class User extends Record {
 		this.setRealname = BasicHelper.set.bind(this, 'realname', 'string');
 		this.getTitle = BasicHelper.get.bind(this, 'title', 'string');
 		this.setTitle = BasicHelper.set.bind(this, 'title', 'string');
-		this.getActive = BasicHelper.get.bind(this, 'active', 'boolean');
-		this.setActive = BasicHelper.set.bind(this, 'active', 'boolean');
+		this.getEnabled = BasicHelper.get.bind(this, 'enabled', 'boolean');
+		this.setEnabled = BasicHelper.set.bind(this, 'enabled', 'boolean');
 		this.getPicture = ObjectHelper.get.bind(this, 'picture', ImageFile);
 		this.setPicture = ObjectHelper.set.bind(this, 'picture', ImageFile);
 		this.getPermissions = ArrayHelper.get.bind(this, 'permissions', 'string');
 		this.setPermissions = ArrayHelper.set.bind(this, 'permissions', 'string');
-		this.hasPermission = ArrayHelper.has.bind(this, 'permissions', 'string');
+		this.hasPermission = ArrayHelper.hasItemThatStartsWith.bind(this, 'permissions', 'string');
 		this.addPermission = ArrayHelper.add.bind(this, 'permissions', 'string');
 		this.removePermission = ArrayHelper.remove.bind(this, 'permissions', 'string');
 		
@@ -50,7 +50,7 @@ class User extends Record {
 			this.setUsername(input.username);
 			this.setRealname(input.realname);
 			this.setTitle(input.title);
-			this.setActive(input.active);
+			this.setEnabled(input.enabled);
 			this.setPicture(input.picture);
 			this.setPermissions(input.permissions);
 			this.setPasswordHash(input.password);
@@ -62,7 +62,7 @@ class User extends Record {
 			username: this._data.username, // String
 			realname: this._data.realname, // String
 			title: this._data.title, // String
-			active: this._data.active, // Boolean
+			enabled: this._data.enabled, // Boolean
 			picture: this._data.picture ? this._data.picture.serialize() : null, // Object
 			permissions: this._data.permissions, // List
 		});
@@ -80,8 +80,10 @@ class User extends Record {
 	 */
 	
 	validatePassword(password) {
-		let valid = (this._data.password === null);
-		if ((!valid) && (typeof password === 'string')) {
+		let valid = false;
+		if ((this._data.password === null) && (password === null)) {
+			valid = true;
+		} else if (typeof password === 'string') {
 			valid = (this._data.password === shacrypt.sha512crypt(password, this._data.password));
 		}
 		return valid;

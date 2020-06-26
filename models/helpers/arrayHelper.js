@@ -158,10 +158,25 @@ function has(field, type, input) {
 	return result;
 }
 
+function hasItemThatStartsWith(field, type, input) {
+	if (typeof input !== 'string') {
+		throw 'Expected type of input to be a string';
+	}
+	let result = false;
+	for (let i = 0; i < this._data[field].length; i++) {
+		if (input.startsWith(this._data[field][i])) {
+			result = true;
+			break;
+		}
+	}
+	return result;
+}
+
 module.exports = {
 	get: get,
 	set: set,
 	add: add,
 	remove: remove,
-	has: has
+	has: has,
+	hasItemThatStartsWith: hasItemThatStartsWith
 };

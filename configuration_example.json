@@ -1,6 +1,6 @@
 {
 	"rpc": {
-		"identity": "Example",
+		"identity": "Spacecore server with example configuration",
 		"webserver": {
 			"enabled": true,
 			"listen": "0.0.0.0",
@@ -16,17 +16,28 @@
 	},
 	"mqtt": {
 		"enable": false,
-		"host": "example.com",
+		"host": "test.mosquitto.org",
 		"port": 1883,
-		"topic": "test/spacecore"
+		"topic": "spacecore/example",
+		"rpc": false
 	},
 	"log": {
 		"enable": false
 	},
 	"database": {
 		"host": "127.0.0.1",
-		"user": "username",
-		"password": "password",
-		"name": "database"
+		"user": "root",
+		"password": "",
+		"name": "spacecore_dev",
+		"verbose": false
+	},
+	"test": {
+		"database": {
+			"host": "127.0.0.1",
+			"user": "root",
+			"password": "",
+			"name": "spacecore_test",
+			"verbose": false
+		}
 	}
 }
