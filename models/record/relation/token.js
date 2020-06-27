@@ -1,30 +1,49 @@
 'use strict';
 
-const GenericRecord = require('../../record.js');
+const Record = require('../../record.js');
+const BasicHelper = require("../../helpers/basicHelper.js");
 
-class RelationTokenRecord extends GenericRecord {
+class TokenRecord extends Record {
 	/*
 	 * A token of a relation
 	 */
 	
 	constructor(input=null) {
-		super();
-		this._type = null; // Type of the token
-		this._public = null; // Public key of the token
-		this._private = null; // Private key of the token
+		super(input);
+		
+		// Data storage
+		this._data.type = '';
+		this._data.public = '';
+		this._data.private = null;
+		
+		// Helper functions
+		this.getType = BasicHelper.get.bind(this, 'type', 'string');
+		this.setType = BasicHelper.set.bind(this, 'type', 'string');
+		this.getPublic = BasicHelper.get.bind(this, 'public', 'string');
+		this.setPublic = BasicHelper.set.bind(this, 'public', 'string');
+		this.getPrivate = BasicHelper.get.bind(this, 'private', 'string');
+		this.setPrivate = BasicHelper.set.bind(this, 'private', 'string');
 
 		if (input !== null) {
-			this.deserialize(input);
+			this.setType(input.type);
+			this.setPublic(input.public);
+			this.setPrivate(input.private);
 		}
 	}
 	
 	serialize(includeSecrets=false) {
-		return super.serialize(includeSecrets);
-	}
-	
-	deserialize(input) {
-		super.deserialize(input);
+		let result = Object.assign(
+			super.serialize(includeSecrets),
+			{
+				type: this.getType(),
+				public: this.getPublic()
+			}
+		);
+		if (includeSecrets) {
+			result.private = this.getPrivate();
+		}
+		return result;
 	}
 }
 
-module.exports = RelationTokenRecord;
+module.exports = TokenRecord;

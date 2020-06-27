@@ -26,23 +26,26 @@ class GroupRecord extends Record {
 		this.setDescription = BasicHelper.set.bind(this, 'description', 'string');
 		this.getDefault = BasicHelper.get.bind(this, 'default', 'boolean');
 		this.setDefault = BasicHelper.set.bind(this, 'default', 'boolean');
-		this.getPicture = ObjectHelper.get.bind(this, 'picture');
-		this.setPicture = ObjectHelper.set.bind(this, 'picture');
+		this.getPicture = ObjectHelper.get.bind(this, 'picture', ImageFile);
+		this.setPicture = ObjectHelper.set.bind(this, 'picture', ImageFile);
 
 		if (input !== null) {
 			this.setName(input.name);
 			this.setDescription(input.description);
+			this.setDefault(input.default);
+			this.setPicture(input.picture);
 		}
 	}
 	
 	serialize(includeSecrets=false) {
+		let picture = this.getPicture();
 		return Object.assign(
 			super.serialize(includeSecrets),
 			{
 				name: this.getName(),
 				description: this.getDescription(),
 				default: this.getDefault(),
-				picture: this.getPicture()
+				picture: picture ? picture.serialize() : null
 			}
 		);
 	}

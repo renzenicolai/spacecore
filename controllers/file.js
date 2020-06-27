@@ -119,7 +119,7 @@ class FileController extends Controller {
 	
 	/* Management of file storage in database */
 	
-	async findByName(name='%', mime=null) {
+	async find(name='%', mime=null) {
 		if (typeof name !== 'string') {
 			throw 'Expected name to be a string';
 		}

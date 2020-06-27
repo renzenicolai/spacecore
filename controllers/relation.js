@@ -15,17 +15,30 @@ class RelationController extends Controller {
 		if (record.picture !== null) {
 			record.picture = await this._fileController.get(record.picture);
 		}
-		record.permissions = [];
-		let permissionRecords = await this._getPermissionRecords(record.id);
-		for (let i = 0; i < permissionRecords.length; i++) {
-			if (record.permissions.indexOf(permissionRecords[i].endpoint) < 0) {
-				record.permissions.push(permissionRecords[i].endpoint);
-			}
-		}
-		record.active = Boolean(record.active);
-		let object = new User(record);
+		let object = new Relation(record);
 		object.setDirty(false);
 		return object;
+	}
+
+	async get(identifier) {
+		let [records, fields] = await this._database.query('SELECT * FROM `'+this._table+'` WHERE `id` = ?', [identifier]);
+		let object = null;
+		if (records.length === 1) {
+			object = await this._convertRecordToRelation(records[0]);
+		}
+		return object;
+	}
+	
+	async put(object) {
+		
+	}
+	
+	async remove(object) {
+		
+	}
+	
+	async find(identifier) {
+		
 	}
 }
 

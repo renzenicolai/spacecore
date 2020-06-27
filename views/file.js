@@ -15,17 +15,17 @@ class FileView {
 				name = params.name;
 			}
 			if (typeof params.mime === 'string') {
-				name = params.mime;
+				mime = params.mime;
 			}
 		} else if (typeof params === 'string') {
 			name = params;
 		}
-		return this._controller.findByName(name, mime);
+		return this._controller.find(name, mime);
 	}
 	
 	async get(session, identifier) {
 		let file = await this._controller.get(identifier);
-		return file.serialize();
+		return (file !== null) ? file.serialize() : null;
 	}
 	
 	async put(session, params) {
@@ -44,7 +44,7 @@ class FileView {
 			return result;
 		} else {
 			// Single file object
-			let file = await this._controller.createFile(params.name, params.mime, params.data);
+			let file = await this._controller.create(params.name, params.mime, params.data);
 			let result = await this._controller.put(file);
 			return result;
 		}

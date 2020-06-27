@@ -75,14 +75,14 @@ describe('Controller: file', () => {
 		expect(deleted).to.equal(false); // Already deleted
 	});
 	
-	it('Find by name', async () => {
+	it('Find', async () => {
 		// Preparation
 		let controller = new Controller(env.database());
 		let file = await controller.create('file_for_testing_list_query','mimetype/forlist','SGVsbG8gd29ybGQ=');
 		await controller.put(file);
 		
 		// Test
-		let result = await controller.findByName('file_for_testing_list_query');
+		let result = await controller.find('file_for_testing_list_query');
 		expect(result).to.have.lengthOf(1);
 		expect(result[0]).to.have.property('id');
 		expect(result[0]).to.have.property('name');
@@ -91,7 +91,7 @@ describe('Controller: file', () => {
 		expect(result[0].name).to.equal(file.getName());
 		expect(result[0].mime).to.equal(file.getMime());
 		
-		result = await controller.findByName('%', 'mimetype/forlist');
+		result = await controller.find('%', 'mimetype/forlist');
 		expect(result).to.have.lengthOf(1);
 		expect(result[0]).to.have.property('id');
 		expect(result[0]).to.have.property('name');
@@ -100,10 +100,10 @@ describe('Controller: file', () => {
 		expect(result[0].name).to.equal(file.getName());
 		expect(result[0].mime).to.equal(file.getMime());
 		
-		result = await controller.findByName('%', 'mimetype/nonexistent');
+		result = await controller.find('%', 'mimetype/nonexistent');
 		expect(result).to.have.lengthOf(0);
 		
-		result = await controller.findByName('file_for_testing_list_query', 'mimetype/forlist');
+		result = await controller.find('file_for_testing_list_query', 'mimetype/forlist');
 		expect(result).to.have.lengthOf(1);
 		
 		// Cleanup

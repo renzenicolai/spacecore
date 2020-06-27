@@ -4,11 +4,18 @@ const clone = require('clone');
 const expect = require('chai').expect;
 const ImageFile = require('../models/record/file/image.js');
 const Relation = require('../models/record/relation.js');
+const RelationGroup = require('../models/record/relation/group.js');
+const RelationToken = require('../models/record/relation/token.js');
+
 
 let exampleData = {
 	nickname: 'testNickname',
 	realname: 'testRealname',
-	picture: null,
+	picture: {
+		name: 'testAvatar',
+		mime: 'image/jpeg',
+		data: 'SGVsbG8gd29ybGQ='
+	},
 	addresses: [
 		"testAddress"
 	],
@@ -29,38 +36,80 @@ let exampleData = {
 	]
 };
 
-let examplePicture = {
-	name: 'testAvatar',
-	mime: 'image/jpeg',
-	data: 'SGVsbG8gd29ybGQ='
+let exampleGroupData = {
+	name: 'testName',
+	description: 'testDescription',
+	default: false,
+	picture: {
+		name: 'testGroupPicture',
+		mime: 'image/jpeg',
+		data: 'SGVsbG8gd29ybGQ='
+	}
 };
 
-let exampleDataWithPictureAsSerializedData = Object.assign(clone(exampleData), {
-	picture: examplePicture
+let exampleTokenData = {
+	type: 'DS1337A',
+	public: '1337DEADBEEF',
+	private: 'FEED42'
+};
+
+describe('Model: relation group', () => {
+	it('Create', async () => {
+		let group = new RelationGroup(exampleGroupData);
+		expect(group.getName()).to.equal(exampleGroupData.name);
+		expect(group.getDescription()).to.equal(exampleGroupData.description);
+		expect(group.getDefault()).to.equal(exampleGroupData.default);
+		expect(group.getPicture()).to.be.an.instanceof(ImageFile);
+		expect(group.getPicture().getName()).to.equal(exampleGroupData.picture.name);
+	});
+
+	it('Serialize', async () => {
+		let group = new RelationGroup(exampleGroupData);
+		let serializedGroup = group.serialize();
+		expect(serializedGroup.name).to.equal('testName');
+		expect(serializedGroup.description).to.equal('testDescription');
+		expect(serializedGroup.default).to.equal(false);
+		expect(serializedGroup.picture).to.be.an('object');
+		expect(serializedGroup.picture.name).to.equal('testGroupPicture');
+	});
 });
 
-let exampleDataWithPictureAsImageFile = Object.assign(clone(exampleData), {
-	picture: new ImageFile(examplePicture)
+describe('Model: relation token', () => {
+	it('Create', async () => {
+		let token = new RelationToken(exampleTokenData);
+		expect(token.getType()).to.equal(exampleTokenData.type);
+		expect(token.getPublic()).to.equal(exampleTokenData.public);
+		expect(token.getPrivate()).to.equal(exampleTokenData.private);
+	});
+
+	it('Serialize', async () => {
+		let token = new RelationToken(exampleTokenData);
+		let serializedToken = token.serialize();
+		expect(serializedToken.type).to.equal(exampleTokenData.type);
+		expect(serializedToken.public).to.equal(exampleTokenData.public);
+		expect(serializedToken).to.not.have.property('private');
+		let serializedTokenP = token.serialize(true);
+		expect(serializedTokenP.type).to.equal(exampleTokenData.type);
+		expect(serializedTokenP.public).to.equal(exampleTokenData.public);
+		expect(serializedTokenP.private).to.equal(exampleTokenData.private);
+	});
 });
 
 describe('Model: relation', () => {
 	it('Create relation', async () => {
 		let relation = new Relation(exampleData);
-		expect(relation.getPicture()).to.equal(null);
-	});
-	
-	it('Create relation with picture from ImageFile object', async () => {
-		let relation = new Relation(exampleDataWithPictureAsImageFile);
-		expect(relation.getPicture().getName()).to.equal('testAvatar');
-	});
-	
-	it('Create relation with picture from serialized image file data', async () => {
-		let relation = new Relation(exampleDataWithPictureAsSerializedData);
+		expect(relation.getNickname()).to.equal(exampleData.nickname);
+		expect(relation.getRealname()).to.equal(exampleData.realname);
+		expect(relation.getAddresses()).to.be.an('array').that.includes('testAddress');
+		expect(relation.getBankaccounts()).to.be.an('array').that.includes('testBankaccount');
+		expect(relation.getEmailaddresses()).to.be.an('array').that.includes('testEmailaddress');
+		expect(relation.getPhonenumbers()).to.be.an('array').that.includes('testPhonenumber');
+		expect(relation.getPicture()).to.be.an.instanceof(ImageFile);
 		expect(relation.getPicture().getName()).to.equal('testAvatar');
 	});
 	
 	it('Serialize', async () => {
-		let relation = new Relation(exampleDataWithPictureAsSerializedData);
+		let relation = new Relation(exampleData);
 		let serializedRelation = relation.serialize();
 		expect(serializedRelation).to.have.property('nickname');
 		expect(serializedRelation).to.have.property('realname');
