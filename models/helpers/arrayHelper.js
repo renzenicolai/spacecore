@@ -8,13 +8,17 @@ const clone = require('clone');
  */
 
 function get(field, type) {
+	return this._data[field];
+}
+
+function serialize(field, type, includeSecrets) {
 	let result = null;
 	if (typeof type === 'string') {
 		result = this._data[field];
 	} else if (typeof type === 'function') {
 		result = [];
 		for (let i = 0; i < this._data[field].length; i++) {
-			result.push(this._data[field][i].serialize());
+			result.push(this._data[field][i].serialize(includeSecrets));
 		}
 	} else {
 		throw 'Expected type of '+field+' to be a string or class';
@@ -95,7 +99,15 @@ function remove(field, type, input) {
 			// Input is an object
 			if (input instanceof type) {
 				// Input is an instance of type
-				index = this._data[field].indexOf(input);
+				index = this._data[field].indexOf(input); // Exact match (same instance)
+				if ((index < 0) && (typeof input.getIdentifier === 'function')) { // Matching identifier
+					for (let i = 0; i < this._data[field].length; i++) {
+						if (input.getIdentifier() === this._data[field][i].getIdentifier()) {
+							index = i;
+							break;
+						}
+					}
+				}
 			} else {
 				throw 'Expected item to be removed to be an instance of '+type.name;
 			}
@@ -136,9 +148,18 @@ function has(field, type, input) {
 			// Input is an object
 			if (input instanceof type) {
 				// Input is an instance of type
-				index = this._data[field].indexOf(input);
+				index = this._data[field].indexOf(input); // Exact match (same instance)
+				if ((index < 0) && (typeof input.getIdentifier === 'function')) { // Matching identifier
+					let searchFor = input.getIdentifier();
+					for (let i = 0; i < this._data[field].length; i++) {
+						if (searchFor === this._data[field][i].getIdentifier()) {
+							index = i;
+							break;
+						}
+					}
+				}
 			} else {
-				throw 'Expected item to be removed to be an instance of '+type.name;
+				throw 'Expected item to be an instance of '+type.name;
 			}
 		} else if (typeof input === 'number') {
 			// Input is an object identifier
@@ -174,6 +195,7 @@ function hasItemThatStartsWith(field, type, input) {
 
 module.exports = {
 	get: get,
+	serialize: serialize,
 	set: set,
 	add: add,
 	remove: remove,

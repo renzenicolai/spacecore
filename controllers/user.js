@@ -38,69 +38,83 @@ class UserController extends Controller {
 		return object;
 	}
 	
-	async put(object, transaction=null) {
+	async put(object, parentTransaction=null) {
 		let result = null;
 		if (object instanceof User) {
-			let picture = object.getPicture();
-			let pictureIdentifier = picture ? await this._fileController.put(picture, transaction) : null;
-			if (object.getDirty()) {
-				if (object.getIdentifier() === null) {
-					let queryResult = await this._database.query(
-						'INSERT INTO `'+this._table+'` (`username`,`realname`, `title`, `password`, `enabled`, `picture`) VALUES (?, ?, ?, ?, ? , ?);', [
-						object.getUsername(),
-						object.getRealname(),
-						object.getTitle(),
-						object.getPasswordHash(),
-						object.getEnabled(),
-						pictureIdentifier
-					], transaction);
-					result = queryResult[0].insertId;
-					object.setIdentifier(result);
-				} else {
-					await this._database.query(
-						'UPDATE `'+this._table+'` SET `username` = ?, `realname` = ?, `title` = ?, `password` = ?, `enabled` = ?, `picture` = ? WHERE `id` = ?;', [
-						object.getUsername(),
-						object.getRealname(),
-						object.getTitle(),
-						object.getPasswordHash(),
-						object.getEnabled() ? 1 : 0,
-						pictureIdentifier,
-						object.getIdentifier()
-					], transaction);
-					result = object.getIdentifier();
-				}
-				// ---- PERMISSIONS ----
-				let currentPermissions = await this._getSubRecords(object.getIdentifier(), this._tablePermissions, 'user');
-				let currentPermissionEndpoints = [];
-				for (let i = 0; i < currentPermissions.length; i++) {
-					currentPermissionEndpoints.push(currentPermissions[i].endpoint);
-				}
-				let [permissionsToRemove, permissionsToCreate] = this._compareArrays(
-					currentPermissionEndpoints,
-					object.getPermissions()
-				);
-				let permissionQueries = [];
-				for (let i = 0; i < currentPermissions.length; i++) {
-					if (currentPermissions[i].endpoint === permissionsToRemove[i]) {
+			let transaction = parentTransaction;
+			if (parentTransaction === null) {
+				transaction = await this._database.transaction('Put user '+object.getUsername());
+			}
+			try {
+				let picture = object.getPicture();
+				let pictureIdentifier = picture ? await this._fileController.put(picture, transaction) : null;
+				if (object.getDirty()) {
+					if (object.getIdentifier() === null) {
+						let queryResult = await this._database.query(
+							'INSERT INTO `'+this._table+'` (`username`,`realname`, `title`, `password`, `enabled`, `picture`) VALUES (?, ?, ?, ?, ? , ?);', [
+							object.getUsername(),
+							object.getRealname(),
+							object.getTitle(),
+							object.getPasswordHash(),
+							object.getEnabled(),
+							pictureIdentifier
+						], transaction);
+						result = queryResult[0].insertId;
+						object.setIdentifier(result);
+					} else {
+						await this._database.query(
+							'UPDATE `'+this._table+'` SET `username` = ?, `realname` = ?, `title` = ?, `password` = ?, `enabled` = ?, `picture` = ? WHERE `id` = ?;', [
+							object.getUsername(),
+							object.getRealname(),
+							object.getTitle(),
+							object.getPasswordHash(),
+							object.getEnabled() ? 1 : 0,
+							pictureIdentifier,
+							object.getIdentifier()
+						], transaction);
+						result = object.getIdentifier();
+					}
+					// ---- PERMISSIONS ----
+					let currentPermissions = await this._getSubRecords(object.getIdentifier(), this._tablePermissions, 'user');
+					let currentPermissionEndpoints = [];
+					for (let i = 0; i < currentPermissions.length; i++) {
+						currentPermissionEndpoints.push(currentPermissions[i].endpoint);
+					}
+					let [permissionsToRemove, permissionsToCreate] = this._compareArrays(
+						currentPermissionEndpoints,
+						object.getPermissions()
+					);
+					let permissionQueries = [];
+					for (let i = 0; i < currentPermissions.length; i++) {
+						if (currentPermissions[i].endpoint === permissionsToRemove[i]) {
+							permissionQueries.push(this._database.query(
+								'DELETE FROM `'+this._tablePermissions+'` WHERE `id` = ?', [
+								currentPermissions[i].id
+							], transaction));
+						}
+					}
+					for (let i = 0; i < permissionsToCreate.length; i++) {
 						permissionQueries.push(this._database.query(
-							'DELETE FROM `'+this._tablePermissions+'` WHERE `id` = ?', [
-							currentPermissions[i].id
+							'INSERT INTO `'+this._tablePermissions+'` (`user`,`endpoint`) VALUES (?, ?);', [
+							result,
+							permissionsToCreate[i]
 						], transaction));
 					}
+					await Promise.all(permissionQueries);
+					// ----             ----
+				} else {
+					result = object.getIdentifier();
 				}
-				for (let i = 0; i < permissionsToCreate.length; i++) {
-					permissionQueries.push(this._database.query(
-						'INSERT INTO `'+this._tablePermissions+'` (`user`,`endpoint`) VALUES (?, ?);', [
-						result,
-						permissionsToCreate[i]
-					], transaction));
+			} catch (error) {
+				if (parentTransaction === null) {
+					await transaction.rollback();
 				}
-				await Promise.all(permissionQueries);
-				// ----             ----
-			} else {
-				result = object.getIdentifier();
+				throw error;
 			}
 			object.setDirty(false);
+			if (parentTransaction === null) {
+				await transaction.commit();
+			}
 		} else {
 			throw 'put called with an argument that is not a user object';
 		}

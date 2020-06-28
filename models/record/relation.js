@@ -2,6 +2,7 @@
 
 const Record = require('../record.js');
 const ImageFile = require('./file/image.js');
+const RelationBankaccountRecord = require('./relation/bankaccount.js');
 const RelationGroupRecord = require('./relation/group.js');
 const RelationTokenRecord = require('./relation/token.js');
 const BasicHelper = require("../helpers/basicHelper.js");
@@ -37,15 +38,9 @@ class RelationRecord extends Record {
 
 		this.getAddresses = ArrayHelper.get.bind(this, 'addresses', 'string');
 		this.setAddresses = ArrayHelper.set.bind(this, 'addresses', 'string');
-		this.hasAdress = ArrayHelper.has.bind(this, 'addresses', 'string');
-		this.addAdress = ArrayHelper.add.bind(this, 'addresses', 'string');
-		this.removeAdress = ArrayHelper.remove.bind(this, 'addresses', 'string');
-		
-		this.getBankaccounts = ArrayHelper.get.bind(this, 'bankaccounts', 'string');
-		this.setBankaccounts = ArrayHelper.set.bind(this, 'bankaccounts', 'string');
-		this.hasBankaccount = ArrayHelper.has.bind(this, 'bankaccounts', 'string');
-		this.addBankaccount = ArrayHelper.add.bind(this, 'bankaccounts', 'string');
-		this.removeBankaccount = ArrayHelper.remove.bind(this, 'bankaccounts', 'string');
+		this.hasAddress = ArrayHelper.has.bind(this, 'addresses', 'string');
+		this.addAddress = ArrayHelper.add.bind(this, 'addresses', 'string');
+		this.removeAddress = ArrayHelper.remove.bind(this, 'addresses', 'string');
 		
 		this.getEmailaddresses = ArrayHelper.get.bind(this, 'emailaddresses', 'string');
 		this.setEmailaddresses = ArrayHelper.set.bind(this, 'emailaddresses', 'string');
@@ -58,15 +53,24 @@ class RelationRecord extends Record {
 		this.hasPhonenumber = ArrayHelper.has.bind(this, 'phonenumbers', 'string');
 		this.addPhonenumber = ArrayHelper.add.bind(this, 'phonenumbers', 'string');
 		this.removePhonenumber = ArrayHelper.remove.bind(this, 'phonenumbers', 'string');
+
+		this.getBankaccounts = ArrayHelper.get.bind(this, 'bankaccounts', RelationBankaccountRecord);
+		this.setBankaccounts = ArrayHelper.set.bind(this, 'bankaccounts', RelationBankaccountRecord);
+		this.serializeBankaccounts = ArrayHelper.serialize.bind(this, 'bankaccounts', RelationBankaccountRecord);
+		this.hasBankaccount = ArrayHelper.has.bind(this, 'bankaccounts', RelationBankaccountRecord);
+		this.addBankaccount = ArrayHelper.add.bind(this, 'bankaccounts', RelationBankaccountRecord);
+		this.removeBankaccount = ArrayHelper.remove.bind(this, 'bankaccounts', RelationBankaccountRecord);
 		
 		this.getGroups = ArrayHelper.get.bind(this, 'groups', RelationGroupRecord);
 		this.setGroups = ArrayHelper.set.bind(this, 'groups', RelationGroupRecord);
+		this.serializeGroups = ArrayHelper.serialize.bind(this, 'groups', RelationGroupRecord);
 		this.hasGroup = ArrayHelper.has.bind(this, 'groups', RelationGroupRecord);
 		this.addGroup = ArrayHelper.add.bind(this, 'groups', RelationGroupRecord);
 		this.removeGroup = ArrayHelper.remove.bind(this, 'groups', RelationGroupRecord);
 		
 		this.getTokens = ArrayHelper.get.bind(this, 'tokens', RelationTokenRecord);
 		this.setTokens = ArrayHelper.set.bind(this, 'tokens', RelationTokenRecord);
+		this.serializeTokens = ArrayHelper.serialize.bind(this, 'tokens', RelationTokenRecord);
 		this.hasToken = ArrayHelper.has.bind(this, 'tokens', RelationTokenRecord);
 		this.addToken = ArrayHelper.add.bind(this, 'tokens', RelationTokenRecord);
 		this.removeToken = ArrayHelper.remove.bind(this, 'tokens', RelationTokenRecord);
@@ -76,9 +80,9 @@ class RelationRecord extends Record {
 			this.setRealname(input.realname);
 			this.setPicture(input.picture);
 			this.setAddresses(input.addresses);
-			this.setBankaccounts(input.bankaccounts);
 			this.setEmailaddresses(input.emailaddresses);
 			this.setPhonenumbers(input.phonenumbers);
+			this.setBankaccounts(input.bankaccounts);
 			this.setGroups(input.groups);
 			this.setTokens(input.tokens);
 		}
@@ -90,11 +94,11 @@ class RelationRecord extends Record {
 			realname: this.getRealname(),
 			picture: (this._data.picture===null) ? null : this._data.picture.serialize(includeSecrets),
 			addresses: this.getAddresses(),
-			bankaccounts: this.getBankaccounts(),
 			emailaddresses: this.getEmailaddresses(),
 			phonenumbers: this.getPhonenumbers(),
-			/*groups: this._serializeArray(this._groups, includeSecrets),
-			tokens: this._serializeArray(this._tokens, includeSecrets)*/
+			bankaccounts: this.serializeBankaccounts(includeSecrets),
+			groups: this.serializeGroups(includeSecrets),
+			tokens: this.serializeTokens(includeSecrets)
 		});
 	}
 }

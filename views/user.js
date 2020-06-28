@@ -76,9 +76,7 @@ class UserView {
 			user.setTitle(params.title);
 		}
 
-		let transaction = await this._database.transaction('Edit current user '+user.getUsername());
-		let result = await this._controller.put(user, transaction);
-		await transaction.commit();
+		let result = await this._controller.put(user);
 		return result;
 	}
 	
@@ -148,9 +146,7 @@ class UserView {
 			user.setPermissions(params.permissions);
 		}
 		
-		let transaction = await this._database.transaction('Create user '+user.getUsername());
-		let result = await this._controller.put(user, transaction);
-		await transaction.commit();
+		let result = await this._controller.put(user);
 		return result;
 	}
 	
@@ -200,9 +196,7 @@ class UserView {
 		}
 		
 		
-		let transaction = await this._database.transaction('Edit user '+user.getUsername());
-		let result = await this._controller.put(user, transaction);
-		await transaction.commit();
+		let result = await this._controller.put(user);
 		return result;
 	}
 	
