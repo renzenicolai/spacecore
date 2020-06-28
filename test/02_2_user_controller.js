@@ -26,7 +26,9 @@ var testData = {
 
 var identifier = null;
 
-describe('Controller: user', () => {
+describe('Controller: user', function () {
+	this.timeout(10000);
+
 	before(async () => {
 		env.start();
 		let fileSchema = new FileSchema(env.database());
@@ -38,6 +40,7 @@ describe('Controller: user', () => {
 		await schema.create();
 		expect((await schema.check()).length).to.equal(0);
 	});
+
 	after(async () => {
 		let schema = new Schema(env.database());
 		let fileSchema = new FileSchema(env.database());
@@ -45,7 +48,8 @@ describe('Controller: user', () => {
 		await fileSchema.drop();
 		env.stop();
 	});
-	it('Create (put)', async () => {
+
+	it('Put', async () => {
 		let controller = new Controller(env.database());
 		let user = new User(testData);
 		expect(user.getDirty()).to.equal(true);
@@ -54,7 +58,8 @@ describe('Controller: user', () => {
 		expect(identifier).to.be.above(0);
 		expect(user.getDirty()).to.equal(false);
 	});
-	it('Edit (get)', async () => {
+	
+	it('Get, edit, put', async () => {
 		let controller = new Controller(env.database());
 		let user = await controller.get(identifier);
 		expect(user).to.be.an.instanceof(User);

@@ -1,25 +1,30 @@
 'use strict';
-const Controller = require('../models/controller.js');
+const Controller = require('./controller.js');
 const Relation = require('../models/record/relation.js');
 const FileController = require('./file.js');
 
 class RelationController extends Controller {
 	constructor(database) {
 		super(database);
-		this._database = database;
-		this._table = 'relations';
-		this._fileController = new FileController(database);
+		this._database            = database;
+		this._table               = 'relations';
+		this._tableAddresses      = 'relation_addresses';
+		this._tableEmailAddresses = 'relation_emailaddresses';
+		this._tablePhonenumbers   = 'relation_phonenumbers';
+		this._tableBankaccounts   = 'relation_bankaccounts';
+		this._tableGroups         = 'relation_groups';
+		this._tableGroupMappings  = 'relation_group_mappings';
+		this._tableTokens         = 'relation_tokens';
+		this._fileController      = new FileController(database);
 	}
 
 	async _convertRecordToRelation(record) {
 		if (record.picture !== null) {
 			record.picture = await this._fileController.get(record.picture);
 		}
-
-		//FIXME
-		record.addresses = [];
-		record.emailaddresses = [];
-		record.phonenumbers = [];
+		record.addresses = await this._getArraySubRecords(this._tableAddresses, record.id, 'relation', 'address');
+		record.emailaddresses = await this._getArraySubRecords(this._tableEmailAddresses, record.id, 'relation', 'address');
+		record.phonenumbers = await this._getArraySubRecords(this._tablePhonenumbers, record.id, 'relation', 'phonenumber');
 		record.bankaccounts = [];
 		record.groups = [];
 		record.tokens = [];
@@ -71,6 +76,9 @@ class RelationController extends Controller {
 				} else {
 					result = object.getIdentifier();
 				}
+				await this._putArraySubRecords(this._tableAddresses, object.getIdentifier(), 'relation', 'address', object.getAddresses(), transaction);
+				await this._putArraySubRecords(this._tableEmailAddresses, object.getIdentifier(), 'relation', 'address', object.getEmailaddresses(), transaction);
+				await this._putArraySubRecords(this._tablePhonenumbers, object.getIdentifier(), 'relation', 'phonenumber', object.getPhonenumbers(), transaction);
 			} catch (error) {
 				if (parentTransaction === null) {
 					await transaction.rollback();

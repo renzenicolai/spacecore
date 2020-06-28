@@ -1,5 +1,5 @@
 'use strict';
-const Controller = require('../models/controller.js');
+const Controller = require('./controller.js');
 const FileRecord = require('../models/record/file.js');
 const ImageFileRecord = require('../models/record/file/image.js');
 

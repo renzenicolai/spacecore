@@ -84,7 +84,7 @@ describe('Controller: relation', function () {
 		env.stop();
 	});
 	
-	it('put', async () => {
+	it('Put', async () => {
 		let controller = new Controller(env.database());
 		let relation = new Relation(exampleData);
 		expect(relation.getDirty()).to.equal(true);
@@ -94,7 +94,7 @@ describe('Controller: relation', function () {
 		expect(relation.getDirty()).to.equal(false);
 	});
 
-	it('get', async () => {
+	it('Get', async () => {
 		let controller = new Controller(env.database());
 		let relation = await controller.get(identifier);
 		expect(relation).to.be.an.instanceof(Relation);
@@ -110,7 +110,7 @@ describe('Controller: relation', function () {
 		expect(pictureData).to.eql(exampleData.picture);
 	});
 /*
-	it('edit', async () => {
+	it('Edit', async () => {
 		let controller = new Controller(env.database());
 		let relation = await controller.get(identifier);
 		testData.realname = "Changed during edit";

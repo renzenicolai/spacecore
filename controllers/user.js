@@ -1,5 +1,5 @@
 'use strict';
-const Controller = require('../models/controller.js');
+const Controller = require('./controller.js');
 const User = require('../models/record/user.js');
 const FileController = require('./file.js');
 
@@ -16,13 +16,7 @@ class UserController extends Controller {
 		if (record.picture !== null) {
 			record.picture = await this._fileController.get(record.picture);
 		}
-		record.permissions = [];
-		let permissionRecords = await this._getSubRecords(record.id, this._tablePermissions, 'user');
-		for (let i = 0; i < permissionRecords.length; i++) {
-			if (record.permissions.indexOf(permissionRecords[i].endpoint) < 0) {
-				record.permissions.push(permissionRecords[i].endpoint);
-			}
-		}
+		record.permissions = await this._getArraySubRecords(this._tablePermissions, record.id, 'user', 'endpoint');
 		record.enabled = Boolean(record.enabled);
 		let object = new User(record);
 		object.setDirty(false);
@@ -74,8 +68,9 @@ class UserController extends Controller {
 						], transaction);
 						result = object.getIdentifier();
 					}
+					await this._putArraySubRecords(this._tablePermissions, object.getIdentifier(), 'user', 'endpoint', object.getPermissions(), transaction);
 					// ---- PERMISSIONS ----
-					let currentPermissions = await this._getSubRecords(object.getIdentifier(), this._tablePermissions, 'user');
+					/*let currentPermissions = await this._getSubRecords(this._tablePermissions, object.getIdentifier(), this._tablePermissions, 'user');
 					let currentPermissionEndpoints = [];
 					for (let i = 0; i < currentPermissions.length; i++) {
 						currentPermissionEndpoints.push(currentPermissions[i].endpoint);
@@ -101,6 +96,7 @@ class UserController extends Controller {
 						], transaction));
 					}
 					await Promise.all(permissionQueries);
+					*/
 					// ----             ----
 				} else {
 					result = object.getIdentifier();
