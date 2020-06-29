@@ -10,8 +10,11 @@ function get(field, type) {
 }
 
 function set(field, type, input) {
+	if ((type === 'boolean') && (typeof input === 'number')) {
+		input = Boolean(input);
+	}
 	if (typeof input !== type) {
-		throw 'Expected '+field+' to be of type '+type;
+		throw 'Expected '+field+' to be of type '+type+', got '+(typeof input)+' instead';
 	} else {
 		this._data[field] = input;
 		if (field !== 'dirty') {

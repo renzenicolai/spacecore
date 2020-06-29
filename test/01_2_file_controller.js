@@ -15,7 +15,9 @@ var testData = {
 
 var identifier = null;
 
-describe('Controller: file', () => {
+describe('Controller: file', function () {
+	this.timeout(10000);
+
 	before(async () => {
 		env.start();
 		let schema = new Schema(env.database());
@@ -23,12 +25,14 @@ describe('Controller: file', () => {
 		await schema.create();
 		expect((await schema.check()).length).to.equal(0);
 	});
+
 	after(async () => {
 		let schema = new Schema(env.database());
 		await schema.drop();
 		env.stop();
 	});
-	it('Create (put)', async () => {
+
+	it('Create', async () => {
 		let controller = new Controller(env.database());
 		let file = new FileRecord(testData);
 		expect(file.getDirty()).to.equal(true);
@@ -37,8 +41,11 @@ describe('Controller: file', () => {
 		expect(identifier).to.be.above(0);
 		expect(file.getDirty()).to.equal(false);
 	});
-	it('Edit (get)', async () => {
+
+	it('Edit', async () => {
 		let controller = new Controller(env.database());
+		let creatFile = new FileRecord(testData);
+		let identifier = await controller.put(creatFile);
 		let file = await controller.get(identifier);
 		expect(file).to.be.an.instanceof(FileRecord);
 		expect(file.getName()).to.equal(testData.name);
@@ -57,6 +64,8 @@ describe('Controller: file', () => {
 	
 	it('Remove by id', async () => {
 		let controller = new Controller(env.database());
+		let creatFile = new FileRecord(testData);
+		let identifier = await controller.put(creatFile);
 		let deleted = await controller.remove(identifier);
 		expect(deleted).to.equal(true); // Deleted
 		deleted = await controller.remove(identifier);

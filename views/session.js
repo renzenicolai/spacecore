@@ -194,6 +194,8 @@ class Sessions {
 			]
 		);
 		
+		rpc.addAlwaysAllow(prefix+'create');
+		
 		/*
 		 * Destroy the current session
 		 * 

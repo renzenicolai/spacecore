@@ -14,7 +14,9 @@ const Controller     = require('../controllers/user.js');
 const View           = require('../views/user.js');
 
 
-describe('View: user', () => {
+describe('View: user', function () {
+	this.timeout(10000);
+	
 	before(async () => {
 		env.start();
 		let fileSchema = new FileSchema(env.database());

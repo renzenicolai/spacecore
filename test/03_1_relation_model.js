@@ -17,7 +17,7 @@ let exampleBankaccountData = {
 let exampleGroupData = {
 	name: 'testName',
 	description: 'testDescription',
-	default: false,
+	addtonew: false,
 	picture: {
 		name: 'testGroupPicture',
 		mime: 'image/jpeg',
@@ -28,7 +28,8 @@ let exampleGroupData = {
 let exampleTokenData = {
 	type: 'DS1337A',
 	public: '1337DEADBEEF',
-	private: 'FEED42'
+	private: 'FEED42',
+	enabled: true
 };
 
 let exampleData = {
@@ -81,7 +82,7 @@ describe('Model: relation group', () => {
 		let group = new RelationGroup(exampleGroupData);
 		expect(group.getName()).to.equal(exampleGroupData.name);
 		expect(group.getDescription()).to.equal(exampleGroupData.description);
-		expect(group.getDefault()).to.equal(exampleGroupData.default);
+		expect(group.getAddtonew()).to.equal(exampleGroupData.addtonew);
 		expect(group.getPicture()).to.be.an.instanceof(ImageFile);
 		expect(group.getPicture().getName()).to.equal(exampleGroupData.picture.name);
 	});
@@ -91,7 +92,7 @@ describe('Model: relation group', () => {
 		let serializedGroup = group.serialize();
 		expect(serializedGroup.name).to.equal('testName');
 		expect(serializedGroup.description).to.equal('testDescription');
-		expect(serializedGroup.default).to.equal(false);
+		expect(serializedGroup.addtonew).to.equal(false);
 		expect(serializedGroup.picture).to.be.an('object');
 		expect(serializedGroup.picture.name).to.equal('testGroupPicture');
 	});
@@ -103,6 +104,7 @@ describe('Model: relation token', () => {
 		expect(token.getType()).to.equal(exampleTokenData.type);
 		expect(token.getPublic()).to.equal(exampleTokenData.public);
 		expect(token.getPrivate()).to.equal(exampleTokenData.private);
+		expect(token.getEnabled()).to.equal(exampleTokenData.enabled);
 	});
 
 	it('Serialize', async () => {
@@ -110,10 +112,12 @@ describe('Model: relation token', () => {
 		let serializedToken = token.serialize();
 		expect(serializedToken.type).to.equal(exampleTokenData.type);
 		expect(serializedToken.public).to.equal(exampleTokenData.public);
+		expect(serializedToken.enabled).to.equal(exampleTokenData.enabled);
 		expect(serializedToken).to.not.have.property('private');
 		let serializedTokenP = token.serialize(true);
 		expect(serializedTokenP.type).to.equal(exampleTokenData.type);
 		expect(serializedTokenP.public).to.equal(exampleTokenData.public);
+		expect(serializedTokenP.enabled).to.equal(exampleTokenData.enabled);
 		expect(serializedTokenP.private).to.equal(exampleTokenData.private);
 	});
 });
@@ -264,9 +268,9 @@ describe('Model: relation', () => {
 	it('Groups', async () => {
 		let relation = new Relation(exampleData);
 		relation.setDirty(false);
-		let groupA = new RelationGroup({name: 'A', description: 'B', default: false, picture: null});
-		let groupB = new RelationGroup({name: 'A', description: 'B', default: false, picture: null});
-		let groupC = new RelationGroup({name: 'C', description: 'D', default: false, picture: null});
+		let groupA = new RelationGroup({name: 'A', description: 'B', addtonew: false, picture: null});
+		let groupB = new RelationGroup({name: 'A', description: 'B', addtonew: false, picture: null});
+		let groupC = new RelationGroup({name: 'C', description: 'D', addtonew: false, picture: null});
 		groupA.setIdentifier(42);
 		groupB.setIdentifier(42);
 		groupC.setIdentifier(43);
@@ -285,9 +289,9 @@ describe('Model: relation', () => {
 	it('Tokens', async () => {
 		let relation = new Relation(exampleData);
 		relation.setDirty(false);
-		let tokenA = new RelationToken({type: 'A', public: 'B', private: 'C'});
-		let tokenB = new RelationToken({type: 'A', public: 'B', private: 'C'});
-		let tokenC = new RelationToken({type: 'D', public: 'E', private: 'F'});
+		let tokenA = new RelationToken({type: 'A', enabled: true, public: 'B', private: 'C'});
+		let tokenB = new RelationToken({type: 'A', enabled: true, public: 'B', private: 'C'});
+		let tokenC = new RelationToken({type: 'D', enabled: true, public: 'E', private: 'F'});
 		tokenA.setIdentifier(42);
 		tokenB.setIdentifier(42);
 		tokenC.setIdentifier(43);

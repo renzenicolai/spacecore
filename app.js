@@ -16,7 +16,6 @@ const Mqttclient       = require('./lib/mqtt.js');
 const Database         = require('./lib/db.js');
 
 // Views
-const PingView         = require('./views/ping.js');
 const SessionView      = require('./views/session.js');
 const FileView         = require('./views/file.js');
 const UserView         = require('./views/user.js');
@@ -106,22 +105,15 @@ var rpc = new Rpc({
 });
 
 /* Views */
-var pingView = new PingView();
 var mt940View = new MT940View();
 var fileView = new FileView(database);
 var userView = new UserView(database);
 
 /* Registration of RPC methods */
 sessionView.registerRpcMethods(rpc);
-pingView.registerRpcMethods(rpc);
 mt940View.registerRpcMethods(rpc);
 fileView.registerRpcMethods(rpc);
 userView.registerRpcMethods(rpc);
-
-/* Permission overrides */
-rpc.addAlwaysAllow('ping');
-rpc.addAlwaysAllow('session/create');
-rpc.addAlwaysAllow('user/authenticate');
 
 /* Webserver */
 let websocketserver = null;

@@ -38,8 +38,9 @@ class RelationBankaccountSchema extends Schema {
 		this._schema = {
 			id:       { index: true,  type: 'int(11)',      isNullable: false },
 			relation: { index: false, type: 'int(11)',      isNullable: false },
-			name:     { index: false, type: 'varchar(200)', isNullable: false },
-			iban:     { index: false, type: 'varchar(200)', isNullable: false }
+			holder:   { index: false, type: 'varchar(200)', isNullable: false },
+			iban:     { index: false, type: 'varchar(200)', isNullable: false },
+			bic:      { index: false, type: 'varchar(200)', isNullable: false }
 		};
 		
 		this._constraints = [
@@ -71,8 +72,8 @@ class RelationTokenSchema extends Schema {
 			relation:   { index: false, type: 'int(11)',       isNullable: false                },
 			enabled:    { index: false, type: 'tinyint(1)',    isNullable: false, default: 0    },
 			type:       { index: false, type: 'varchar(200)',  isNullable: false,               },
-			publicKey:  { index: false, type: 'varchar(1024)', isNullable: false,               },
-			privateKey: { index: false, type: 'varchar(1024)', isNullable: true,  default: null },
+			public:     { index: false, type: 'varchar(1024)', isNullable: false,               },
+			private:    { index: false, type: 'varchar(1024)', isNullable: true,  default: null },
 		};
 		
 		this._constraints = [
@@ -85,11 +86,17 @@ class RelationGroupSchema extends Schema {
 	constructor(database) {
 		super(database, 'relation_groups');
 		this._schema = {
-			id:          { index: true,  type: 'int(11)',      isNullable: false,            },
-			name:        { index: false, type: 'varchar(200)', isNullable: false,            },
-			description: { index: false, type: 'text',         isNullable: false,            },
-			addToNew:    { index: false, type: 'tinyint(1)',   isNullable: false, default: 0 },
+			id:          { index: true,  type: 'int(11)',      isNullable: false,               },
+			name:        { index: false, type: 'varchar(200)', isNullable: false,               },
+			description: { index: false, type: 'text',         isNullable: false,               },
+			addtonew:    { index: false, type: 'tinyint(1)',   isNullable: false, default: 0    },
+			picture:     { index: false, type: 'int(11)',      isNullable: true,  default: null }
 		};
+
+		this._constraints = [
+			{name: 'picture_of_relation_group', key: 'picture', table: 'files', column: 'id'}
+		];
+
 		this._children = [
 			new RelationGroupMappingSchema(database)
 		];

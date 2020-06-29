@@ -21,16 +21,12 @@ class Controller {
 		return [toRemove, toCreate];
 	}
 	
-	async _getSubRecords(table, identifier, identifierColumn) {
+	async _getSubRecords(table, identifier, identifierColumn, column=null) {
 		let [records, fields] = await this._database.query('SELECT * FROM `'+table+'` WHERE `'+identifierColumn+'` = ?', [identifier]);
-		return records;
-	}
-
-	async _getArraySubRecords(table, identifier, identifierColumn, column) {
-		let records = await this._getSubRecords(table, identifier, identifierColumn);
-		let result = [];
-		for (let i = 0; i < records.length; i++) {
-			if (result.indexOf(records[i][column]) < 0) {
+		let result = records;
+		if (typeof column === 'string') {
+			result = [];
+			for (let i = 0; i < records.length; i++) {
 				result.push(records[i][column]);
 			}
 		}
@@ -41,19 +37,40 @@ class Controller {
 		let oldRecords = await this._getSubRecords(table, identifier, identifierColumn);
 		let old = [];
 		for (let i = 0; i < oldRecords.length; i++) old.push(oldRecords[i][column]);
-
 		let [toRemove, toCreate] = this._compareArrays(old, current);
-
 		let queries = [];
 		for (let i = 0; i < oldRecords.length; i++) {
-			if (oldRecords[i][column] === toRemove[i]) {
+			if (toRemove.indexOf(oldRecords[i][column]) >= 0) {
 				queries.push(this._database.query('DELETE FROM `'+table+'` WHERE `id` = ?', [oldRecords[i].id], transaction));
 			}
 		}
 		for (let i = 0; i < toCreate.length; i++) {
 			queries.push(this._database.query('INSERT INTO `'+table+'` (`'+identifierColumn+'`,`'+column+'`) VALUES (?, ?);', [identifier, toCreate[i]], transaction));
 		}
+		await Promise.all(queries);
+	}
 
+	async _putObjectSubRecords(table, identifier, identifierColumn, put, current, transaction) {
+		let oldRecords = await this._getSubRecords(table, identifier, identifierColumn);
+		let oldIdentifiers = [];
+		for (let i = 0; i < oldRecords.length; i++) oldIdentifiers.push(oldIdentifiers[i].id);
+		let newIdentifiers = [];
+		for (let i = 0; i < current.length; i++) {
+			let identifier = current[i].getIdentifier();
+			if (identifier !== null) {
+				newIdentifiers.push(identifier);
+			}
+		};
+		let [toRemove, toCreate] = this._compareArrays(oldIdentifiers, newIdentifiers);
+		let queries = [];
+		for (let i = 0; i < oldRecords.length; i++) {
+			if (toRemove.indexOf(oldRecords[i].id) >= 0) {
+				queries.push(this._database.query('DELETE FROM `'+table+'` WHERE `id` = ?', [oldRecords[i].id], transaction));
+			}
+		}
+		for (let i = 0; i < current.length; i++) {
+			queries.push(put(current[i], identifier, transaction));
+		}
 		await Promise.all(queries);
 	}
 	

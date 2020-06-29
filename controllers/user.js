@@ -16,7 +16,7 @@ class UserController extends Controller {
 		if (record.picture !== null) {
 			record.picture = await this._fileController.get(record.picture);
 		}
-		record.permissions = await this._getArraySubRecords(this._tablePermissions, record.id, 'user', 'endpoint');
+		record.permissions = await this._getSubRecords(this._tablePermissions, record.id, 'user', 'endpoint');
 		record.enabled = Boolean(record.enabled);
 		let object = new User(record);
 		object.setDirty(false);
@@ -117,7 +117,7 @@ class UserController extends Controller {
 		return result;
 	}
 	
-	async remove(input, transaction=null) {
+	async remove(input, parentTransaction=null) {
 		if (typeof input === 'number') {
 			var identifier = input;
 			var user = await this.get(identifier);
@@ -129,6 +129,10 @@ class UserController extends Controller {
 		}
 		if ((identifier === null) || (user === null)) {
 			return false;
+		}
+		let transaction = parentTransaction;
+		if (parentTransaction === null) {
+			transaction = await this._database.transaction('Remove user '+user.getUsername());
 		}
 		await this._database.query(
 			'DELETE FROM `'+this._tablePermissions+'` WHERE `user` = ?', [
@@ -143,6 +147,9 @@ class UserController extends Controller {
 			await this._fileController.remove(picture, transaction);
 		}
 		user.setIdentifier(null);
+		if (parentTransaction === null) {
+			await transaction.commit();
+		}
 		return true;
 	}
 	

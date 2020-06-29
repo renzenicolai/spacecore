@@ -253,6 +253,8 @@ class UserView {
 			]
 		);
 		
+		rpc.addAlwaysAllow(prefix+'authenticate');
+		
 		rpc.addMethod(
 			prefix+'me/edit',
 			this.editCurrentUser.bind(this),

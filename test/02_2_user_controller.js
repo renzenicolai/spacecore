@@ -24,8 +24,6 @@ var testData = {
 	}
 };
 
-var identifier = null;
-
 describe('Controller: user', function () {
 	this.timeout(10000);
 
@@ -53,14 +51,16 @@ describe('Controller: user', function () {
 		let controller = new Controller(env.database());
 		let user = new User(testData);
 		expect(user.getDirty()).to.equal(true);
-		identifier = await controller.put(user);
+		let identifier = await controller.put(user);
 		expect(identifier).to.be.a('number');
 		expect(identifier).to.be.above(0);
 		expect(user.getDirty()).to.equal(false);
 	});
 	
-	it('Get, edit, put', async () => {
+	it('Edit', async () => {
 		let controller = new Controller(env.database());
+		let creatUser = new User(testData);
+		let identifier = await controller.put(creatUser);
 		let user = await controller.get(identifier);
 		expect(user).to.be.an.instanceof(User);
 		expect(user.getUsername()).to.equal(testData.username);
@@ -96,6 +96,8 @@ describe('Controller: user', function () {
 	
 	it('Remove by id', async () => {
 		let controller = new Controller(env.database());
+		let creatUser = new User(testData);
+		let identifier = await controller.put(creatUser);
 		let deleted = await controller.remove(identifier);
 		expect(deleted).to.equal(true); // Deleted
 		deleted = await controller.remove(identifier);
@@ -107,7 +109,7 @@ describe('Controller: user', function () {
 		let user = new User(testData);
 		let deleted = await controller.remove(user);
 		expect(deleted).to.equal(false); // Non existent
-		identifier = await controller.put(user);
+		await controller.put(user);
 		deleted = await controller.remove(user);
 		expect(deleted).to.equal(true); // Deleted
 		deleted = await controller.remove(user);
@@ -117,6 +119,7 @@ describe('Controller: user', function () {
 	it('Find by username', async () => {
 		// Preparation
 		let controller = new Controller(env.database());
+		testData.username = 'usernameChangedForFindTest';
 		let user = new User(testData);
 		await controller.put(user);
 		
