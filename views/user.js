@@ -1,19 +1,14 @@
 'use strict';
 
-const shacrypt = require('shacrypt');
-const crypto = require('crypto');
-const mime = require('mime-types');
-const chalk = require('chalk');
-
-const User = require('../models/record/user.js');
-const Session = require('../models/session.js');
+const User           = require('../models/record/user.js');
+const Session        = require('../models/session.js');
 const UserController = require('../controllers/user.js');
 const FileController = require('../controllers/file.js');
 
 class UserView {
 	constructor(database) {
 		this._database          = database;
-		this._controller        = new UserController(database);
+		this._userController    = new UserController(database);
 		this._fileController    = new FileController(database);
 		
 		this.errors = {
@@ -21,13 +16,127 @@ class UserView {
 			session_user:    new Error('There is no user associated with your session'),
 			invalid:         new Error('Invalid username and password combination'),
 			username_in_use: new Error('The chosen username is already in use'),
-			notfound:        new Error('User not found')
+			not_found:       new Error('User not found')
 		};
+	}
+
+	async createUser(session, params) {
+		let existingUsers = await this._userController.find(null, params.username);
+		
+		if (existingUsers.length > 0) {
+			throw this.errors.username_in_use;
+		}
+		
+		let user = new User();
+		user.setUsername(params.username);
+		
+		if (typeof params.password === 'string') {
+			user.setPassword(params.password);
+		}
+		
+		if (typeof params.passwordHash === 'string') {
+			user.setPasswordHash(params.passwordHash);
+		}
+		
+		if (typeof params.username === 'string') {
+			user.setUsername(params.username);
+		}
+		
+		if (typeof params.realname === 'string') {
+			user.setRealname(params.realname);
+		}
+		
+		if (typeof params.title === 'string') {
+			user.setTitle(params.title);
+		}
+		
+		if (typeof params.enabled === 'boolean') {
+			user.setEnabled(params.enabled);
+		}
+		
+		if (Array.isArray(params.permissions)) {
+			user.setPermissions(params.permissions);
+		}
+		
+		let result = await this._userController.put(user);
+		return result;
+	}
+
+	async editUser(session, params) {
+		let users = await this._userController.find(params.id);
+		
+		if (users.length < 1) {
+			throw this.errors.not_found;
+		}
+		
+		let user = users[0]; // The identifier is unique so we will get only one result
+		
+		if (typeof params.username === 'string') {
+			let existingUsers = await this._userController.find(null, params.username);
+			if (existingUsers.length > 0) {
+				throw this.errors.username_in_use;
+			}
+			user.setUsername(params.username);
+		}
+		
+		if (typeof params.password === 'string') {
+			user.setPassword(params.password);
+		}
+		
+		if (typeof params.passwordHash === 'string') {
+			user.setPasswordHash(params.passwordHash);
+		}
+		
+		if (typeof params.username === 'string') {
+			user.setUsername(params.username);
+		}
+		
+		if (typeof params.realname === 'string') {
+			user.setRealname(params.realname);
+		}
+		
+		if (typeof params.title === 'string') {
+			user.setTitle(params.title);
+		}
+		
+		if (typeof params.enabled === 'boolean') {
+			user.setEnabled(params.enabled);
+		}
+		
+		if (Array.isArray(params.permissions)) {
+			user.setPermissions(params.permissions);
+		}
+		
+		
+		let result = await this._userController.put(user);
+		return result;
+	}
+	
+	async removeUser(session, params) {
+		if (!Array.isArray(params)) { // Convert input to array if supplied with only a single user identifier
+			if (typeof params === 'object') { // Input is an object containing the key 'id'
+				params = [params.id];
+			} else { // Input is a number
+				params = [params];
+			}
+		}
+		
+		let transaction = await this._database.transaction('Remove users '+params.toString());
+		let promises = [];
+		for (let i = 0; i < params.length; i++) {
+			promises.push(this._userController.remove(params[i], transaction));
+		}
+		let results = await Promise.all(promises);
+		await transaction.commit();
+		if (results.length === 1) { // Convert output to number if supplied with only a single user identifier
+			results = results[0];
+		}
+		return results;
 	}
 	
 	/* Methods for using a user with a session */
 
-	async authenticate(session, params) {
+	async authenticateUser(session, params) {
 		if (!(session instanceof Session)) {
 			throw this.errors.session;
 		}
@@ -37,7 +146,7 @@ class UserView {
 		}
 		
 		// Fetch all enabled users with the username supplied by the user
-		let users = await this._controller.findForAuthentication(params.username);
+		let users = await this._userController.findForAuthentication(params.username);
 		
 		// Try to authenticate using one of the returned user objects
 		let authenticatedUser = null;
@@ -76,7 +185,7 @@ class UserView {
 			user.setTitle(params.title);
 		}
 
-		let result = await this._controller.put(user);
+		let result = await this._userController.put(user);
 		return result;
 	}
 	
@@ -99,131 +208,13 @@ class UserView {
 			if (typeof params.enabled   === 'boolean') query.enabled   = params.enabled;
 		}
 		
-		let result = await this._controller.find(query.id, query.username, query.realname, query.title, query.enabled);
+		let result = await this._userController.find(query.id, query.username, query.realname, query.title, query.enabled);
 		
 		for (let i = 0; i < result.length; i++) {
 			result[i] = result[i].serialize(false);
 		}
 		
 		return result;
-	}
-	
-	async createUser(session, params) {
-		let existingUsers = await this._controller.find(null, params.username);
-		
-		if (existingUsers.length > 0) {
-			throw this.errors.username_in_use;
-		}
-		
-		let user = new User();
-		user.setUsername(params.username);
-		
-		if (typeof params.password === 'string') {
-			user.setPassword(params.password);
-		}
-		
-		if (typeof params.passwordHash === 'string') {
-			user.setPasswordHash(params.passwordHash);
-		}
-		
-		if (typeof params.username === 'string') {
-			user.setUsername(params.username);
-		}
-		
-		if (typeof params.realname === 'string') {
-			user.setRealname(params.realname);
-		}
-		
-		if (typeof params.title === 'string') {
-			user.setTitle(params.title);
-		}
-		
-		if (typeof params.enabled === 'boolean') {
-			user.setEnabled(params.enabled);
-		}
-		
-		if (Array.isArray(params.permissions)) {
-			user.setPermissions(params.permissions);
-		}
-		
-		let result = await this._controller.put(user);
-		return result;
-	}
-	
-	async editUser(session, params) {
-		let users = await this._controller.find(params.id);
-		
-		if (users.length < 1) {
-			throw this.error.notfound;
-		}
-		
-		let user = users[0]; // The identifier is unique so we will get only one result
-		
-		if (typeof params.username === 'string') {
-			let existingUsers = await this._controller.find(null, params.username);
-			if (existingUsers.length > 0) {
-				throw this.errors.username_in_use;
-			}
-			user.setUsername(params.username);
-		}
-		
-		if (typeof params.password === 'string') {
-			user.setPassword(params.password);
-		}
-		
-		if (typeof params.passwordHash === 'string') {
-			user.setPasswordHash(params.passwordHash);
-		}
-		
-		if (typeof params.username === 'string') {
-			user.setUsername(params.username);
-		}
-		
-		if (typeof params.realname === 'string') {
-			user.setRealname(params.realname);
-		}
-		
-		if (typeof params.title === 'string') {
-			user.setTitle(params.title);
-		}
-		
-		if (typeof params.enabled === 'boolean') {
-			user.setEnabled(params.enabled);
-		}
-		
-		if (Array.isArray(params.permissions)) {
-			user.setPermissions(params.permissions);
-		}
-		
-		
-		let result = await this._controller.put(user);
-		return result;
-	}
-	
-	async removeUser(session, params) {
-		if (!Array.isArray(params)) {
-			// Convert input to array if supplied with only a single user identifier
-			if (typeof params === 'object') {
-				// Input is an object containing the key 'id'
-				params = [params.id];
-			} else {
-				// Input is a number
-				params = [params];
-			}
-		}
-		
-		let transaction = await this._database.transaction('Remove users '+params.toString());
-		let promises = [];
-		for (let i = 0; i < params.length; i++) {
-			promises.push(this._controller.remove(params[i], transaction));
-		}
-		let results = await Promise.all(promises);
-		await transaction.commit();
-		if (results.length === 1) {
-			// Convert output to number if supplied with only a single user identifier
-			results = results[0];
-		}
-		return results;
 	}
 
 	/* RPC API definitions */
@@ -235,7 +226,7 @@ class UserView {
 		
 		rpc.addMethod(
 			prefix+'authenticate',
-			this.authenticate.bind(this),
+			this.authenticateUser.bind(this),
 			[
 				{
 					type: 'object',

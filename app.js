@@ -108,12 +108,14 @@ var rpc = new Rpc({
 var mt940View = new MT940View();
 var fileView = new FileView(database);
 var userView = new UserView(database);
+var relationView = new RelationView(database);
 
 /* Registration of RPC methods */
 sessionView.registerRpcMethods(rpc);
 mt940View.registerRpcMethods(rpc);
 fileView.registerRpcMethods(rpc);
 userView.registerRpcMethods(rpc);
+relationView.registerRpcMethods(rpc);
 
 /* Webserver */
 let websocketserver = null;
@@ -157,10 +159,6 @@ function start() {
 	/* Products */
 	//var productView = new ProductView(database);
 	//productView.registerRpcMethods(rpc);
-
-	/* Relations */
-	//var relationView = new RelationView(database, productView);
-	//relationView.registerRpcMethods(rpc);
 
 	/*var invoices = new Invoices({
 		database: database,

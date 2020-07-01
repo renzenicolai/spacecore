@@ -162,7 +162,7 @@ class UserController extends Controller {
 		return Promise.all(objects);
 	}
 	
-	async find(identifier=null, username=null, realname=null, title=null, enabled=null) {
+	async find(identifier=null, username=null, realname=null, title=null, enabled=null, exactMatch=false) {
 		let query = '';
 		let values = [];
 		
@@ -201,7 +201,13 @@ class UserController extends Controller {
 			throw 'Expected enabled to be a boolean or null';
 		}
 		
-		if (query !== '') query = ' WHERE '+query;
+		if (query !== '') {
+			query = ' WHERE '+query;
+		}
+		
+		if (exactMatch) {
+			query = query.replace('LIKE', '=');
+		}
 		
 		let [records, fields] = await this._database.query('SELECT * FROM `'+this._table+'`'+query, values);
 		

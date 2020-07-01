@@ -275,7 +275,7 @@ class RelationController extends Controller {
 		return true;
 	}
 	
-	async find(identifier = null, nickname = null, realname = null) {
+	async find(identifier = null, nickname = null, realname = null, token = null, tokenType = null, exactMatch=false) {
 		let query = '';
 		let values = [];
 		
@@ -300,7 +300,27 @@ class RelationController extends Controller {
 			throw 'Expected realname to be a string or null';
 		}
 		
-		if (query !== '') query = ' WHERE '+query;
+		if (typeof token === 'string') {
+			let tokens = this.listTokens(token, tokenType, true);
+			if (tokens.length < 1) {
+				return []; // If we can't find a matching token then there are no results
+			}
+			let placeholders = '';
+			for (let i = 0; i < tokens.length; i++) {
+				placeholders += '?';
+				if (i < tokens.length-1) placeholders += ', ';
+				values.push(tokens[i].getIdentifier());
+			}
+			query += ((query!=='')?' AND ':'')+'`id` IN ('+placeholders+')';
+		}
+		
+		if (query !== '') {
+			query = ' WHERE '+query;
+		}
+		
+		if (exactMatch) {
+			query = query.replace('LIKE', '=');
+		}
 		
 		let [records, fields] = await this._database.query('SELECT * FROM `'+this._table+'`'+query, values);
 		
@@ -308,6 +328,42 @@ class RelationController extends Controller {
 		for (let i = 0; i<records.length; i++) {
 			objects.push(this._convertRecordToRelation(records[i]));
 		}
+		return Promise.all(objects);
+	}
+	
+	async findTokens(publicKey=null, type=null, exactMatch = false) {
+		let query = '';
+		let values = [];
+		
+		if (typeof publicKey === 'string') {
+			query += ((query!=='')?' AND ':'')+'`public` LIKE ?';
+			values.push(publicKey);
+		} else if (publicKey !== null) {
+			throw 'Expected publicKey to be a string or null';
+		}
+		
+		if (typeof type === 'string') {
+			query += ((query!=='')?' AND ':'')+'`type` LIKE ?';
+			values.push(type);
+		} else if (type !== null) {
+			throw 'Expected type to be a string or null';
+		}
+		
+		if (query !== '') {
+			query = ' WHERE '+query;
+		}
+		
+		if (exactMatch) {
+			query = query.replace('LIKE', '=');
+		}
+		
+		let [records, fields] = await this._database.query('SELECT * FROM `'+this._tableTokens+'`'+query, values);
+		
+		let objects = [];
+		for (let i = 0; i<records.length; i++) {
+			objects.push(new Token(records[i]));
+		}
+		
 		return Promise.all(objects);
 	}
 
@@ -423,7 +479,7 @@ class RelationController extends Controller {
 		return true;
 	}
 
-	async findGroup(identifier = null, name = null, description = null, addtonew = null) {
+	async findGroup(identifier = null, name = null, description = null, addtonew = null, exactMatch = false) {
 		let query = '';
 		let values = [];
 		
@@ -456,6 +512,10 @@ class RelationController extends Controller {
 		}
 		
 		if (query !== '') query = ' WHERE '+query;
+		
+		if (exactMatch) {
+			query = query.replace('LIKE', '=');
+		}
 		
 		let [records, fields] = await this._database.query('SELECT * FROM `'+this._tableGroups+'`'+query, values);
 		

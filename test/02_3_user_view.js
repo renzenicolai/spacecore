@@ -52,12 +52,12 @@ describe('View: user', function () {
 		await controller.put(user);
 		let session = new Session();
 		let view = new View(database);
-		let successResult = await view.authenticate(session, {username: 'test'});
+		let successResult = await view.authenticateUser(session, {username: 'test'});
 		expect(successResult).to.be.an('object');
 		expect(successResult).to.have.property('username');
 		expect(successResult.username).to.equal('test');
-		expect(view.authenticate(session, {username: 'test', password: 'wrong'})).to.be.rejectedWith( view.errors.invalid );
-		expect(view.authenticate(session, {username: 'wrong'})).to.be.rejectedWith( view.errors.invalid );
+		expect(view.authenticateUser(session, {username: 'test', password: 'wrong'})).to.be.rejectedWith( view.errors.invalid );
+		expect(view.authenticateUser(session, {username: 'wrong'})).to.be.rejectedWith( view.errors.invalid );
 		await controller.remove(user);
 	});
 
@@ -76,13 +76,13 @@ describe('View: user', function () {
 		await controller.put(user);
 		let session = new Session();
 		let view = new View(database);
-		let successResult = await view.authenticate(session, {username: 'test', password: 'test'});
+		let successResult = await view.authenticateUser(session, {username: 'test', password: 'test'});
 		expect(successResult).to.be.an('object');
 		expect(successResult).to.have.property('username');
 		expect(successResult.username).to.equal('test');
-		expect(view.authenticate(session, {username: 'test', password: 'wrong'})).to.be.rejectedWith( view.errors.invalid );
-		expect(view.authenticate(session, {username: 'test'})).to.be.rejectedWith( view.errors.invalid );
-		expect(view.authenticate(null, {username: 'test'})).to.be.rejectedWith( view.errors.session );
+		expect(view.authenticateUser(session, {username: 'test', password: 'wrong'})).to.be.rejectedWith( view.errors.invalid );
+		expect(view.authenticateUser(session, {username: 'test'})).to.be.rejectedWith( view.errors.invalid );
+		expect(view.authenticateUser(null, {username: 'test'})).to.be.rejectedWith( view.errors.session );
 		await controller.remove(user);
 	});
 	

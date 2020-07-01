@@ -6,9 +6,9 @@ class UserPermissionsSchema extends Schema {
 	constructor(database) {
 		super(database, 'user_permissions');
 		this._schema = {
-			id:       { index: true,  type: 'int(11)',      isNullable: false,               },
-			user:     { index: false, type: 'int(11)',      isNullable: false                },
-			endpoint: { index: false, type: 'varchar(200)', isNullable: true,  default: null }
+			id:       { index: true,  type: 'int(11)',      isNullable: false },
+			user:     { index: false, type: 'int(11)',      isNullable: false },
+			endpoint: { index: false, type: 'varchar(200)', isNullable: false }
 		};
 		
 		this._constraints = [
