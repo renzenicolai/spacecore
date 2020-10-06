@@ -11,7 +11,7 @@
   "license": "GPLv3",
   "dependencies": {
     "chalk": "^3.0.0",
-    "electron": "^8.2.0",
+    "electron": "^8.5.2",
     "serialport": "^8.0.7",
     "uuid": "^7.0.3",
     "ws": "^7.2.3",
