@@ -6,3 +6,6 @@ __pycache__
 spacecore-cli.*
 password.js
 server/log/*
+server/log_archive
+.npm
+.cache
