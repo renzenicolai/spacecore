@@ -24,7 +24,7 @@ const Persons          = require('./modules/persons.js');
 const Products         = require('./modules/products.js');
 const Invoices         = require('./modules/invoices.js');
 const Mt940            = require('./modules/mt940.js');
-const Vending          = require('./modules/vending.js');
+//const Vending          = require('./modules/vending.js');
 
 // Project specific verification modules
 const VerifyBalance    = require('./verification/balance.js');
@@ -136,7 +136,8 @@ if (configuration.get("mqtt", "enable")) {
 		host: configuration.get("mqtt", "host"),
 		topic: configuration.get("mqtt", "topic"),
 		rpc: {
-			handle: (request) => {
+			handle: async (request) => {
+				console.log("Something did a request over mqtt, which is disabled.", request);
 				return "RPC over MQTT is disabled!";
 			}
 		}
@@ -192,7 +193,7 @@ function start() {
 	
 	invoices.registerRpcMethods(rpc);
 
-	if (mqttclient) {
+	/*if (mqttclient) {
 		var vending = new Vending({
 			database: database,
 			mqtt: mqttclient,
@@ -200,7 +201,7 @@ function start() {
 			persons: persons
 		});
 		vending.registerRpcMethods(rpc);
-	}
+	}*/
 
 	var verifications = [];
 
