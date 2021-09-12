@@ -23,8 +23,7 @@ const Users            = require('./modules/users.js');
 const Persons          = require('./modules/persons.js');
 const Products         = require('./modules/products.js');
 const Invoices         = require('./modules/invoices.js');
-const Mt940            = require('./modules/mt940.js');
-//const Vending          = require('./modules/vending.js');
+const Reports          = require('./modules/reports.js');
 
 // Project specific verification modules
 const VerifyBalance    = require('./verification/balance.js');
@@ -148,9 +147,6 @@ var ping = new Ping();
 ping.registerRpcMethods(rpc);
 sessions.addAlwaysAllow('ping');
 
-var mt940 = new Mt940();
-mt940.registerRpcMethods(rpc);
-
 /* Application elements depending on database availability */
 
 function start() {
@@ -190,8 +186,17 @@ function start() {
 		mqtt: mqttclient,
 		mqtt_topic: "tkkrlab/spacecore/transaction"
 	});
+    
+    invoices.registerRpcMethods(rpc);
+    
+    var reports = new Reports({
+		database: database,
+		persons: persons,
+		products: products,
+        invoices: invoices
+    });
 	
-	invoices.registerRpcMethods(rpc);
+	reports.registerRpcMethods(rpc);
 
 	/*if (mqttclient) {
 		var vending = new Vending({
