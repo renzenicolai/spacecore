@@ -1,6 +1,6 @@
 "use strict";
 
-const shacrypt = require('shacrypt');
+const unixcrypt = require('unixcrypt');
 const crypto   = require('crypto');
 const mime     = require('mime-types');
 const chalk    = require('chalk');
@@ -57,12 +57,12 @@ class Users {
 	}
 	
 	_hash(password) {
-		const salt = '$6$' + crypto.randomBytes(64).toString('base64');
-		return shacrypt.sha512crypt(password, salt);
+		return unixcrypt.encrypt(password);
 	}
 
 	_validate(enteredPassword, savedPassword) {
-		return savedPassword === shacrypt.sha512crypt(enteredPassword, savedPassword);
+        console.log("PWHASH", savedPassword);
+		return unixcrypt.verify(enteredPassword, savedPassword);
 	}
 	
 	async _getPermissions(id) {
