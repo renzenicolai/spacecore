@@ -106,6 +106,7 @@ var rpc = new Rpc({
 
 sessions.registerRpcMethods(rpc);
 sessions.addAlwaysAllow('session/create');
+sessions.addAlwaysAllow('session/state');
 
 if (configuration.get("rpc","webserver","enabled")) {
 	
@@ -146,7 +147,6 @@ if (configuration.get("mqtt", "enable")) {
 var ping = new Ping();
 ping.registerRpcMethods(rpc);
 sessions.addAlwaysAllow('ping');
-sessions.addAlwaysAllow('session/state');
 
 /* Application elements depending on database availability */
 
