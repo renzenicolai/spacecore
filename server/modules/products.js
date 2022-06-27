@@ -126,6 +126,7 @@ class Products {
 			}
 
 			if ((typeof params.identifier !== 'undefined') && (typeof params.identifier !== 'string')){
+				if (typeof params.identifierType_id === 'undefined') throw "IdentifierType incorrect.";
 				let identifierRecord = this._table_identifier.createRecord();
 				identifierRecord.setField("product_id", product_id);
 				identifierRecord.setField("type_id", 3); //3 => EAN, 4=TkkrLab
@@ -201,6 +202,7 @@ class Products {
 			
 			//Identifiers
 			if (typeof params.identifier !== 'undefined') {
+				if (typeof params.identifierType_id === 'undefined') throw "Expected identifierType incorrect.";
 				let identifierOperations = [];
 				let currentIdentifier = await this._table_identifier.selectRecords({product_id: product.getIndex()}); //List current identifier
 				console.log(currentIdentifier);
@@ -212,7 +214,7 @@ class Products {
 				} else {
 					let identifierRecord = this._table_identifier.createRecord();
 					identifierRecord.setField("product_id", product.getIndex());
-					identifierRecord.setField("type_id", 3); //3 => EAN, 4=TkkrLab //TODO: probably should get this value from database. 
+					identifierRecord.setField("type_id", params.identifierType_id); //3 => EAN, 4=TkkrLab //TODO: probably should get this value from database. 
 					identifierRecord.setField("value", params.identifier);
 					identifierOperations.push(identifierRecord.flush(dbTransaction));
 				}
