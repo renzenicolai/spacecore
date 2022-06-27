@@ -124,6 +124,14 @@ class Products {
 					operations.push(priceRecord.flush(dbTransaction));
 				}
 			}
+
+			if ((typeof params.identifier !== 'undefined') && (typeof params.identifier !== 'string')){
+				let identifierRecord = this._table_identifier.createRecord();
+				identifierRecord.setField("product_id", product_id);
+				identifierRecord.setField("type_id", 3); //3 => EAN, 4=TkkrLab
+				identifierRecord.setField("value", params.identifier);
+				operations.push(identifierRecord.flush(dbTransaction));
+			}
 			
 			await Promise.all(operations);
 			await dbTransaction.commit();
@@ -192,7 +200,28 @@ class Products {
 			}
 			
 			//Identifiers
-			
+			if (typeof params.identifier !== 'undefined') {
+				let identifierOperations = [];
+				let currentIdentifier = await this._table_identifier.selectRecords({product_id: product.getIndex()}); //List current identifier
+				console.log(currentIdentifier);
+				if (currentIdentifier.length > 0) {
+					if (params.identifier !== currentIdentifier[0].getField("value")){
+						currentIdentifier[0].setField("value", params.identifier);
+						identifierOperations.push(currentIdentifier[0].flush(dbTransaction));
+					}
+				} else {
+					let identifierRecord = this._table_identifier.createRecord();
+					identifierRecord.setField("product_id", product.getIndex());
+					identifierRecord.setField("type_id", 3); //3 => EAN, 4=TkkrLab //TODO: probably should get this value from database. 
+					identifierRecord.setField("value", params.identifier);
+					identifierOperations.push(identifierRecord.flush(dbTransaction));
+				}
+				await Promise.all(identifierOperations);
+			} else {
+				//remove all identifiers from database if identifier field is empty / undefined.
+				await this._removeAll(product, this._table_identifier, dbTransaction);       //Delete all identifiers
+			}
+
 			//Prices
 			if (typeof params.prices !== 'undefined') {
 				let priceOperations = [];
