@@ -61,7 +61,6 @@ class Users {
 	}
 
 	_validate(enteredPassword, savedPassword) {
-        console.log("PWHASH", savedPassword);
 		return unixcrypt.verify(enteredPassword, savedPassword);
 	}
 	
