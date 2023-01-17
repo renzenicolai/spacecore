@@ -1,6 +1,6 @@
 "use strict";
 
-const uuidv4 = require('uuid/v4');
+const crypto = require('crypto');
 const chalk  = require('chalk');
 
 class Session {
@@ -9,7 +9,7 @@ class Session {
 			alwaysAllow: []
 		}, opts);
 
-		this.id = uuidv4();
+		this.id = crypto.randomBytes(64).toString("base64");
 		this.user = null;
 		this.dateCreated = Math.floor((new Date()).getTime() / 1000);
 		this.dateLastUsed = this.dateCreated;
