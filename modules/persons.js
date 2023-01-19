@@ -6,17 +6,17 @@ const Tokens = require('../lib/tokens.js');
 class Persons {
 	constructor(opts) {
 		this._opts = Object.assign({
-			database:            null,
-			table:               'persons',
-			table_group:         'person_group',
+			database: null,
+			table: 'persons',
+			table_group: 'person_group',
 			table_group_mapping: 'person_group_mapping',
-			table_token:         'person_token',
-			table_address:       'person_address',
-			table_email:         'person_email',
-			table_phone:         'person_phone',
-			table_bankaccount:   'bankaccounts',
-			files:               null,
-			products:            null
+			table_token: 'person_token',
+			table_address: 'person_address',
+			table_email: 'person_email',
+			table_phone: 'person_phone',
+			table_bankaccount: 'bankaccounts',
+			files: null,
+			products: null
 		}, opts);
 		if (this._opts.database === null) {
 			console.log("The persons module can not be started without a database!");
@@ -24,7 +24,7 @@ class Persons {
 		}
 
 		/* Tables */
-		this._table               = this._opts.database.table(this._opts.table, {
+		this._table = this._opts.database.table(this._opts.table, {
 			columns: {
 				id: false,
 				user_name: true,
@@ -37,7 +37,7 @@ class Persons {
 			index: "id"
 		}); //Persons
 		
-		this._table_group         = this._opts.database.table(this._opts.table_group, {
+		this._table_group = this._opts.database.table(this._opts.table_group, {
 			columns: {
 				id: false,
 				name: false,
@@ -57,7 +57,7 @@ class Persons {
 			index: "id"
 		}); //Mapping between persons and groups
 		
-		this._table_token         = this._opts.database.table(this._opts.table_token, {
+		this._table_token = this._opts.database.table(this._opts.table_token, {
 			columns: {
 				id: false,
 				person_id: false,
@@ -69,7 +69,7 @@ class Persons {
 			index: "id"
 		}); //Tokens
 		
-		this._table_bankaccount   = this._opts.database.table(this._opts.table_bankaccount, {
+		this._table_bankaccount = this._opts.database.table(this._opts.table_bankaccount, {
 			columns: {
 				id: false,
 				person_id: false,
@@ -81,7 +81,7 @@ class Persons {
 			index: "id"
 		}); //Bankaccounts (Warning: this table is shared with other modules)
 		
-		this._table_address       = this._opts.database.table(this._opts.table_address, {
+		this._table_address = this._opts.database.table(this._opts.table_address, {
 			columns: {
 				id: false,
 				name: false,
@@ -93,7 +93,7 @@ class Persons {
 			index: "id"
 		}); //Addresses
 		
-		this._table_email         = this._opts.database.table(this._opts.table_email, {
+		this._table_email = this._opts.database.table(this._opts.table_email, {
 			columns: {
 				id: false,
 				person_id: false,
@@ -105,7 +105,7 @@ class Persons {
 			index: "id"
 		}); //Email addresses
 		
-		this._table_phone         = this._opts.database.table(this._opts.table_phone, {
+		this._table_phone = this._opts.database.table(this._opts.table_phone, {
 			columns: {
 				id: false,
 				person_id: false,
@@ -169,38 +169,38 @@ class Persons {
 		return Tokens.getType(token_type);
 	}
 
-	async list(session, params) {
+	async list(params, session) {
 		var persons = await this._table.list(params);
 		var tasks = [
-			Tasks.create('avatar',       this._opts.files.getFileAsBase64.bind(this._opts.files), persons, 'avatar_id'),
-			Tasks.create('groups',       this._getGroups.bind(this),                              persons, 'id'),
-			Tasks.create('bankaccounts', this._getBankaccounts.bind(this),                        persons, 'id'),
-			Tasks.create('tokens',       this._getTokens.bind(this),                              persons, 'id'),
-			Tasks.create('addresses',    this._getAddresses.bind(this),                           persons, 'id'),
-			Tasks.create('email',        this._getEmail.bind(this),                               persons, 'id'),
-			Tasks.create('phone',        this._getPhone.bind(this),                               persons, 'id')
+			Tasks.create('avatar', this._opts.files.getFileAsBase64.bind(this._opts.files), persons, 'avatar_id'),
+			Tasks.create('groups', this._getGroups.bind(this), persons, 'id'),
+			Tasks.create('bankaccounts', this._getBankaccounts.bind(this), persons, 'id'),
+			Tasks.create('tokens', this._getTokens.bind(this), persons, 'id'),
+			Tasks.create('addresses', this._getAddresses.bind(this), persons, 'id'),
+			Tasks.create('email', this._getEmail.bind(this), persons, 'id'),
+			Tasks.create('phone', this._getPhone.bind(this), persons, 'id')
 		];
 		return Tasks.merge(tasks, persons);
 	}
 	
-	async listForVending(session, params) { //Limited version of the normal list function
+	async listForVending(params, session) { //Limited version of the normal list function
 		var persons = await this._table.list(params);
 		var tasks = [
-			Tasks.create('avatar',       this._opts.files.getFileAsBase64.bind(this._opts.files), persons, 'avatar_id'),
-			Tasks.create('groups',       this._getGroups.bind(this),                              persons, 'id')
+			Tasks.create('avatar', this._opts.files.getFileAsBase64.bind(this._opts.files), persons, 'avatar_id'),
+			Tasks.create('groups', this._getGroups.bind(this), persons, 'id')
 		];
 		return Tasks.merge(tasks, persons);
 	}
 	
-	async listForVendingNoAvatar(session, params) { //Limited version of the normal list function
+	async listForVendingNoAvatar(params, session) { //Limited version of the normal list function
 		var persons = await this._table.list(params);
 		var tasks = [
-			Tasks.create('groups',       this._getGroups.bind(this),                              persons, 'id')
+			Tasks.create('groups', this._getGroups.bind(this), persons, 'id')
 		];
 		return Tasks.merge(tasks, persons);
 	}
 
-	async create(session, params) {
+	async create(params, session) {
 		var nick_name = "";
 		var first_name = "";
 		var last_name = "";
@@ -213,7 +213,7 @@ class Persons {
 			nick_name = params.nick_name.toLowerCase();
 			first_name = params.nick_name;
 			if (typeof params.first_name === "string") first_name = params.first_name;
-			if (typeof params.last_name  === "string") last_name  = params.last_name;
+			if (typeof params.last_name === "string") last_name = params.last_name;
 			if (typeof params.avatar === "object") avatar = params.avatar;
 		} else {
 			throw "Invalid parameters supplied";
@@ -293,7 +293,7 @@ class Persons {
 		return result[0];
 	}
 
-	async edit(session, params) {
+	async edit(params, session) {
 		if (typeof params !== 'object') throw "Invalid parameters";
 		
 		var person = await this._findById(params);
@@ -331,28 +331,28 @@ class Persons {
 		return Promise.all(operations);
 	}
 
-	async remove(session, params) {
+	async remove(params, session) {
 		var person = await this._findById(params);
 		var dbTransaction = await this._opts.database.transaction("Remove person #"+person.getIndex());
 
 		try {
 			await this._removeAll(person, this._table_group_mapping, dbTransaction); //Delete all group associations
-			await this._removeAll(person, this._table_token,         dbTransaction); //Delete all tokens
-			await this._removeAll(person, this._table_bankaccount,   dbTransaction); //Delete all bankaccounts
-			await this._removeAll(person, this._table_address,       dbTransaction); //Delete all bankaccounts
-			await this._removeAll(person, this._table_email,         dbTransaction); //Delete all email addresses
-			await this._removeAll(person, this._table_phone,         dbTransaction); //Delete all phonenumbers
-			await person.destroy(dbTransaction);                                     //Delete the person itself
-			await dbTransaction.commit();                                            //Commit the transaction
+			await this._removeAll(person, this._table_token, dbTransaction); //Delete all tokens
+			await this._removeAll(person, this._table_bankaccount, dbTransaction); //Delete all bankaccounts
+			await this._removeAll(person, this._table_address, dbTransaction); //Delete all bankaccounts
+			await this._removeAll(person, this._table_email, dbTransaction); //Delete all email addresses
+			await this._removeAll(person, this._table_phone, dbTransaction); //Delete all phonenumbers
+			await person.destroy(dbTransaction); //Delete the person itself
+			await dbTransaction.commit(); //Commit the transaction
 		} catch (e) {
-			await dbTransaction.rollback();                                          //Cancel the transaction
+			await dbTransaction.rollback(); //Cancel the transaction
 			console.log("Could not remove person:",e);
 			throw "Can not remove this person!";
 		}
 		return true;
 	}
 
-	async find(session, params) {
+	async find(params, session) {
 		if (typeof params !== 'string') throw "Parameter should be the nickname as a string!";
 		var results = await this.list(session, {nick_name: params.toLowerCase()});
 		if (results.length < 1) return null;
@@ -360,7 +360,7 @@ class Persons {
 		return results[0];
 	}
 	
-	async findForVending(session, params) {
+	async findForVending(params, session) {
 		if (typeof params !== 'string') throw "Parameter should be the nickname as a string!";
 		var results = await this.listForVending(session, {nick_name: params.toLowerCase()});
 		if (results.length < 1) return null;
@@ -368,7 +368,7 @@ class Persons {
 		return results[0];
 	}
 
-	async findByToken(session, params) {
+	async findByToken(params, session) {
 		if (typeof params !== 'string') throw "Parameter should be the token as a string!";
 		var tokens = await this._table_token.list({public: params});
 		if (tokens.length < 1) return null;
@@ -379,7 +379,7 @@ class Persons {
 		return results[0];
 	}
 	
-	async findByTokenForVending(session, params) {
+	async findByTokenForVending(params, session) {
 		if (typeof params !== 'string') throw "Parameter should be the token as a string!";
 		var tokens = await this._table_token.list({public: params});
 		if (tokens.length < 1) return null;
@@ -390,11 +390,11 @@ class Persons {
 		return results[0];
 	}
 
-	async addTokenToPerson(session, params) {
+	async addTokenToPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
-			(typeof params.type   !== 'number') ||
+			(typeof params.type !== 'number') ||
 			(typeof params.public !== 'string') ||
 			(typeof params.enabled !== 'boolean')
 		) throw "Invalid parameters";
@@ -417,7 +417,7 @@ class Persons {
 		return record.flush();
 	}
 	
-	async editTokenOfPerson(session, params) {
+	async editTokenOfPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.id !== 'number')
@@ -425,18 +425,18 @@ class Persons {
 		var record = await this._table_token.selectRecords({id: params.id});
 		if (record.length !== 1) throw "Token not found.";
 		record = record[0];
-		if (typeof params.type    === 'number')  record.setField("type",    params.type);
-		if (typeof params.public  === 'string')  record.setField("public",  params.public);
-		if (typeof params.private === 'string')  record.setField("private", params.private);
+		if (typeof params.type === 'number') record.setField("type", params.type);
+		if (typeof params.public === 'string') record.setField("public", params.public);
+		if (typeof params.private === 'string') record.setField("private", params.private);
 		if (typeof params.enabled === 'boolean') record.setField("enabled", params.enabled);
 		return record.flush();
 	}
 	
-	async removeTokenFromPerson(session, params) {
+	async removeTokenFromPerson(params, session) {
 		return this._removeRecordFromPerson(this._table_token, params);
 	}
 
-	async addBankaccountToPerson(session, params) {
+	async addBankaccountToPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
@@ -452,7 +452,7 @@ class Persons {
 		return record.flush();
 	}
 	
-	async editBankaccountOfPerson(session, params) {
+	async editBankaccountOfPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.id !== 'number')
@@ -466,11 +466,11 @@ class Persons {
 		return record.flush();
 	}
 	
-	async removeBankaccountFromPerson(session, params) {
+	async removeBankaccountFromPerson(params, session) {
 		return this._removeRecordFromPerson(this._table_bankaccount, params);
 	}
 
-	async addAddressToPerson(session, params) {
+	async addAddressToPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
@@ -489,7 +489,7 @@ class Persons {
 		return record.flush();
 	}
 	
-	async editAddressOfPerson(session, params) {
+	async editAddressOfPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.id !== 'number')
@@ -497,18 +497,18 @@ class Persons {
 		var record = await this._table_address.selectRecords({id: params.id});
 		if (record.length !== 1) throw "Address not found.";
 		record = record[0];
-		if (typeof params.street      === 'string') record.setField("street",      params.street);
+		if (typeof params.street === 'string') record.setField("street", params.street);
 		if (typeof params.housenumber === 'string') record.setField("housenumber", params.housenumber);
-		if (typeof params.postalcode  === 'string') record.setField("postalcode",  params.postalcode);
-		if (typeof params.city        === 'string') record.setField("city",        params.city);
+		if (typeof params.postalcode === 'string') record.setField("postalcode", params.postalcode);
+		if (typeof params.city === 'string') record.setField("city", params.city);
 		return record.flush();
 	}
 	
-	async removeAddressFromPerson(session, params) {
+	async removeAddressFromPerson(params, session) {
 		return this._removeRecordFromPerson(this._table_address, params);
 	}
 	
-	async addEmailToPerson(session, params) {
+	async addEmailToPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
@@ -521,7 +521,7 @@ class Persons {
 		return record.flush();
 	}
 	
-	async editEmailOfPerson(session, params) {
+	async editEmailOfPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.id !== 'number')
@@ -533,11 +533,11 @@ class Persons {
 		return record.flush();
 	}
 	
-	async removeEmailFromPerson(session, params) {
+	async removeEmailFromPerson(params, session) {
 		return this._removeRecordFromPerson(this._table_email, params);
 	}
 	
-	async addPhoneToPerson(session, params) {
+	async addPhoneToPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
@@ -550,7 +550,7 @@ class Persons {
 		return record.flush();
 	}
 	
-	async editPhoneOfPerson(session, params) {
+	async editPhoneOfPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.id !== 'number')
@@ -562,14 +562,14 @@ class Persons {
 		return record.flush();
 	}
 	
-	async removePhoneFromPerson(session, params) {
+	async removePhoneFromPerson(params, session) {
 		return this._removeRecordFromPerson(this._table_phone, params);
 	}
 	
 	async _removeRecordFromPerson(table, params) {
-		if ((typeof params        !== 'object') ||
+		if ((typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
-			(typeof params.id     !== 'number')
+			(typeof params.id !== 'number')
 		) throw "Invalid parameters";
 
 		var records = await table.selectRecords({person_id: params.person, id: params.id});
@@ -581,7 +581,7 @@ class Persons {
 		return true;
 	}
 
-	async addGroupToPerson(session, params) {
+	async addGroupToPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
@@ -603,7 +603,7 @@ class Persons {
 		return record.flush();
 	}
 
-	async removeGroupFromPerson(session, params) {
+	async removeGroupFromPerson(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.person !== 'number') ||
@@ -623,15 +623,15 @@ class Persons {
 	}
 
 	/* Tokens */
-	async listTokenTypes(session, params) {
+	async listTokenTypes(params, session) {
 		return Tokens.listTypes();
 	}
 	
-	async getTokenDb(session, params) {
+	async getTokenDb(params, session) {
 		var tokens = await this._table_token.list(null);
 		var tasks = [
 			Tasks.create('person', this._getSinglePerson.bind(this), tokens, 'person_id'),
-			Tasks.create('type',   this._getTokenType.bind(this),    tokens, 'type')
+			Tasks.create('type', this._getTokenType.bind(this), tokens, 'type')
 		];
 		var database = await Tasks.merge(tasks, tokens);
 		
@@ -652,7 +652,7 @@ class Persons {
 
 	/* Groups */
 
-	async listGroups(session, params) {
+	async listGroups(params, session) {
 		var groups = await this._table_group.list(params);
 		var tasks = [
 			Tasks.create('persons', this._getPersonsInGroup.bind(this), groups, 'id')
@@ -660,7 +660,7 @@ class Persons {
 		return Tasks.merge(tasks, groups);
 	}
 
-	async createGroup(session, params) {
+	async createGroup(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.name !== 'string') ||
@@ -676,7 +676,7 @@ class Persons {
 		return record.flush();
 	}
 
-	async editGroup(session, params) {
+	async editGroup(params, session) {
 		if (
 			(typeof params !== 'object') ||
 			(typeof params.id !== 'number')
@@ -713,7 +713,7 @@ class Persons {
 		return result.flush();
 	}
 
-	async removeGroup(session, params) {
+	async removeGroup(params, session) {
 		var force = false;
 		var id = null;
 		if (typeof params === 'number') {
@@ -761,16 +761,16 @@ class Persons {
 		return true;
 	}
 
-	async listTokens(session, params) {
+	async listTokens(params, session) {
 		var tokens = await this._table_token.list(params);
 		var tasks = [
 			Tasks.create('person', this._getSinglePerson.bind(this), tokens, 'person_id'),
-			Tasks.create('type',   this._getTokenType.bind(this),    tokens, 'type')
+			Tasks.create('type', this._getTokenType.bind(this), tokens, 'type')
 		];
 		return Tasks.merge(tasks, tokens);
 	}
 
-	authenticateToken(session, params) {
+	authenticateToken(params, session) {
 		throw "Not implemented";
 	}
 
@@ -793,52 +793,52 @@ class Persons {
 		if (prefix!=="") prefix = prefix + "/";
 
 		/* Persons */
-		rpc.addMethod(prefix+"list",                   this.list.bind(this));                        //Persons: list persons
-		rpc.addMethod(prefix+"listForVending",         this.listForVending.bind(this));              //Persons: list persons (for vending frontends)
-		rpc.addMethod(prefix+"listForVendingNoAvatar", this.listForVendingNoAvatar.bind(this));      //Persons: list persons (for vending frontends, no avatar)
-		rpc.addMethod(prefix+"create",                 this.create.bind(this));                      //Persons: create a person
-		rpc.addMethod(prefix+"edit",                   this.edit.bind(this));                        //Persons: edit a person
-		rpc.addMethod(prefix+"remove",                 this.remove.bind(this));                      //Persons: remove a person
+		rpc.addMethod(prefix + "list", this.list.bind(this), {}, null); //Persons: list persons
+		rpc.addMethod(prefix + "listForVending", this.listForVending.bind(this), {}, null); //Persons: list persons (for vending frontends)
+		rpc.addMethod(prefix + "listForVendingNoAvatar", this.listForVendingNoAvatar.bind(this), {}, null); //Persons: list persons (for vending frontends, no avatar)
+		rpc.addMethod(prefix + "create", this.create.bind(this), {}, null); //Persons: create a person
+		rpc.addMethod(prefix + "edit", this.edit.bind(this), {}, null); //Persons: edit a person
+		rpc.addMethod(prefix + "remove", this.remove.bind(this), {}, null); //Persons: remove a person
 		
-		rpc.addMethod(prefix+"find",                   this.find.bind(this));                        //Persons: find a person by its nickname
-		rpc.addMethod(prefix+"findForVending",         this.findForVending.bind(this));              //Persons: find a person by its nickname (for vending frontends)
-		rpc.addMethod(prefix+"findByToken",            this.findByToken.bind(this));                 //Persons: find a person by one of its tokens
-		rpc.addMethod(prefix+"findByTokenForVending",  this.findByTokenForVending.bind(this));       //Persons: find a person by one of its tokens (for vending frontends)
+		rpc.addMethod(prefix + "find", this.find.bind(this), {}, null); //Persons: find a person by its nickname
+		rpc.addMethod(prefix + "findForVending", this.findForVending.bind(this), {}, null); //Persons: find a person by its nickname (for vending frontends)
+		rpc.addMethod(prefix + "findByToken", this.findByToken.bind(this), {}, null); //Persons: find a person by one of its tokens
+		rpc.addMethod(prefix + "findByTokenForVending", this.findByTokenForVending.bind(this), {}, null); //Persons: find a person by one of its tokens (for vending frontends)
 		
-		rpc.addMethod(prefix+"addToken",               this.addTokenToPerson.bind(this));            //Persons: add a token to a person
-		rpc.addMethod(prefix+"editToken",              this.editTokenOfPerson.bind(this));           //Persons: edit a token of a person
-		rpc.addMethod(prefix+"removeToken",            this.removeTokenFromPerson.bind(this));       //Persons: remove a token from a person
+		rpc.addMethod(prefix + "addToken", this.addTokenToPerson.bind(this), {}, null); //Persons: add a token to a person
+		rpc.addMethod(prefix + "editToken", this.editTokenOfPerson.bind(this), {}, null); //Persons: edit a token of a person
+		rpc.addMethod(prefix + "removeToken", this.removeTokenFromPerson.bind(this), {}, null); //Persons: remove a token from a person
 		
-		rpc.addMethod(prefix+"addBankaccount",         this.addBankaccountToPerson.bind(this));      //Persons: add a bankaccount to a person
-		rpc.addMethod(prefix+"editBankaccount",        this.editBankaccountOfPerson.bind(this));     //Persons: edit a bankaccount of a person
-		rpc.addMethod(prefix+"removeBankaccount",      this.removeBankaccountFromPerson.bind(this)); //Persons: remove a bankaccount from a person
+		rpc.addMethod(prefix + "addBankaccount", this.addBankaccountToPerson.bind(this), {}, null); //Persons: add a bankaccount to a person
+		rpc.addMethod(prefix + "editBankaccount", this.editBankaccountOfPerson.bind(this), {}, null); //Persons: edit a bankaccount of a person
+		rpc.addMethod(prefix + "removeBankaccount", this.removeBankaccountFromPerson.bind(this), {}, null); //Persons: remove a bankaccount from a person
 		
-		rpc.addMethod(prefix+"addAddress",             this.addAddressToPerson.bind(this));          //Persons: add an address to a person
-		rpc.addMethod(prefix+"editAddress",            this.editAddressOfPerson.bind(this));         //Persons: edit an addresss of a person
-		rpc.addMethod(prefix+"removeAddress",          this.removeAddressFromPerson.bind(this));     //Persons: remove an address from a person
+		rpc.addMethod(prefix + "addAddress", this.addAddressToPerson.bind(this), {}, null); //Persons: add an address to a person
+		rpc.addMethod(prefix + "editAddress", this.editAddressOfPerson.bind(this), {}, null); //Persons: edit an addresss of a person
+		rpc.addMethod(prefix + "removeAddress", this.removeAddressFromPerson.bind(this), {}, null); //Persons: remove an address from a person
 		
-		rpc.addMethod(prefix+"addEmail",               this.addEmailToPerson.bind(this));            //Persons: add an email address to a person
-		rpc.addMethod(prefix+"editEmail",              this.editEmailOfPerson.bind(this));           //Persons: edit an email address of a person
-		rpc.addMethod(prefix+"removeEmail",            this.removeEmailFromPerson.bind(this));       //Persons: remove an email address from a person
+		rpc.addMethod(prefix + "addEmail", this.addEmailToPerson.bind(this), {}, null); //Persons: add an email address to a person
+		rpc.addMethod(prefix + "editEmail", this.editEmailOfPerson.bind(this), {}, null); //Persons: edit an email address of a person
+		rpc.addMethod(prefix + "removeEmail", this.removeEmailFromPerson.bind(this), {}, null); //Persons: remove an email address from a person
 		
-		rpc.addMethod(prefix+"addPhone",               this.addPhoneToPerson.bind(this));            //Persons: add a phonenumber to a person
-		rpc.addMethod(prefix+"editPhone",              this.editPhoneOfPerson.bind(this));           //Persons: edit a phonenumber of a person
-		rpc.addMethod(prefix+"removePhone",            this.removePhoneFromPerson.bind(this));       //Persons: remove a phonenumber from a person
+		rpc.addMethod(prefix + "addPhone", this.addPhoneToPerson.bind(this), {}, null); //Persons: add a phonenumber to a person
+		rpc.addMethod(prefix + "editPhone", this.editPhoneOfPerson.bind(this), {}, null); //Persons: edit a phonenumber of a person
+		rpc.addMethod(prefix + "removePhone", this.removePhoneFromPerson.bind(this), {}, null); //Persons: remove a phonenumber from a person
 		
-		rpc.addMethod(prefix+"addToGroup",             this.addGroupToPerson.bind(this));            //Persons: add a group to a person
-		rpc.addMethod(prefix+"removeFromGroup",        this.removeGroupFromPerson.bind(this));       //Persons: remove a group from a person
+		rpc.addMethod(prefix + "addToGroup", this.addGroupToPerson.bind(this), {}, null); //Persons: add a group to a person
+		rpc.addMethod(prefix + "removeFromGroup", this.removeGroupFromPerson.bind(this), {}, null); //Persons: remove a group from a person
 
 		/* Tokens */
-		rpc.addMethod(prefix+"token/list",             this.listTokens.bind(this));                  //Tokens: list tokens
-		rpc.addMethod(prefix+"token/authenticate",     this.authenticateToken.bind(this));           //Tokens: authenticate a token
-		rpc.addMethod(prefix+"token/type/list",        this.listTokenTypes.bind(this));              //Tokens: list token types
-		rpc.addMethod(prefix+"token/db",               this.getTokenDb.bind(this));                  //Tokens: database file in json format
+		rpc.addMethod(prefix + "token/list", this.listTokens.bind(this), {}, null); //Tokens: list tokens
+		rpc.addMethod(prefix + "token/authenticate", this.authenticateToken.bind(this), {}, null); //Tokens: authenticate a token
+		rpc.addMethod(prefix + "token/type/list", this.listTokenTypes.bind(this), {}, null); //Tokens: list token types
+		rpc.addMethod(prefix + "token/db", this.getTokenDb.bind(this), {}, null); //Tokens: database file in json format
 
 		/* Groups */
-		rpc.addMethod(prefix+"group/list",             this.listGroups.bind(this));                  //Groups: list groups
-		rpc.addMethod(prefix+"group/create",           this.createGroup.bind(this));                 //Groups: create a group
-		rpc.addMethod(prefix+"group/edit",             this.editGroup.bind(this));                   //Groups: edit a group
-		rpc.addMethod(prefix+"group/remove",           this.removeGroup.bind(this));                 //Groups: remove a group
+		rpc.addMethod(prefix + "group/list", this.listGroups.bind(this), {}, null); //Groups: list groups
+		rpc.addMethod(prefix + "group/create", this.createGroup.bind(this), {}, null); //Groups: create a group
+		rpc.addMethod(prefix + "group/edit", this.editGroup.bind(this), {}, null); //Groups: edit a group
+		rpc.addMethod(prefix + "group/remove", this.removeGroup.bind(this), {}, null); //Groups: remove a group
 	}
 }
 

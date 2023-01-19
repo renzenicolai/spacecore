@@ -5,6 +5,41 @@ const crypto   = require('crypto');
 const mime     = require('mime-types');
 const chalk    = require('chalk');
 
+class User {
+	constructor(opts) {
+		this.id = opts.id;
+		this.user_name = opts.user_name;
+		this.full_name = opts.full_name;
+		this.title = opts.title;
+		this.avatar = opts.avatar;
+		this.permissions = opts.permissions;
+	}
+	
+	serialize() {
+		return {
+			id: this.id,
+			user_name: this.user_name,
+			full_name: this.full_name,
+			title: this.title,
+			avatar: this.avatar,
+			permissions: this.permissions
+		};
+	}
+	
+	getPermissions() {
+		return this.permissions;
+	}
+	
+	checkPermission(method) {
+		for (let index = 0; index < this.permissions.length; index++) {
+			if (method === this.permissions[index]) {
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
 class Users {
 	constructor(opts) {
 		this._opts = Object.assign({
@@ -83,7 +118,7 @@ class Users {
 	
 	/* Methods for using a user with a session */
 
-	async authenticate(session, params) {
+	async authenticate(params, session) {
 		if (typeof session !== 'object') {
 			throw this.errors.session;
 		}
@@ -101,14 +136,14 @@ class Users {
 			) {
 				var permissions = await this._getPermissions(records[i].getIndex());
 				var avatar = await this._opts.files.getFileAsBase64(records[i].getField('avatar_id'));
-				session.user = {
+				session.setUser(new User({
 					id: records[i].getIndex(),
 					user_name: records[i].getField('user_name'),
 					full_name: records[i].getField('full_name'),
 					title: records[i].getField('title'),
 					avatar: avatar,
 					permissions: permissions
-				};
+				}));
 				var result = {
 					user_name: records[i].getField('user_name'),
 					full_name: records[i].getField('full_name'),
@@ -122,7 +157,7 @@ class Users {
 		throw this.errors.invalid;
 	}
 	
-	async editCurrentUser(session, params) {
+	async editCurrentUser(params, session) {
 		if (typeof session !== 'object')         throw this.errors.session;
 		if (typeof session.user.id !== 'number') throw this.errors.session_user;
 		
@@ -135,7 +170,7 @@ class Users {
 	
 	/* Methods for managing users */
 
-	async listUsers(session, params) {
+	async listUsers(params, session) {
 		let query = {};
 		
 		if (typeof params === "object" && params != null) {
@@ -177,7 +212,7 @@ class Users {
 		return result;
 	}
 	
-	async createUser(session, params) {
+	async createUser(params, session) {
 		if (typeof params.password    !== 'string')  params.password    = "";
 		if (typeof params.name        !== 'string')  params.name        = "";
 		if (typeof params.title       !== 'string')  params.title       = "";
@@ -218,7 +253,7 @@ class Users {
 		return id;
 	}
 	
-	async editUser(session, params) {
+	async editUser(params, session) {
 		let record = await this._getUserRecord(params.id);
 		
 		if (record === null) {
@@ -287,7 +322,7 @@ class Users {
 		return id;
 	}
 	
-	async removeUser(session, params) {
+	async removeUser(params, session) {
 		
 		let id = params;
 		if (typeof params !== "number") {
@@ -318,169 +353,51 @@ class Users {
 	/* RPC API definitions */
 
 	registerRpcMethods(rpc, prefix="user") {
-		if (prefix!=="") prefix = prefix + "/";
-
-		/* Methods for using a user with a session */
-		
+		if (prefix!=="") prefix = prefix + "/";		
 		rpc.addMethod(
-			prefix+"authenticate",
+			prefix + "authenticate",
 			this.authenticate.bind(this),
-			[
-				{
-					type: "object",
-					required: {
-						user_name: {
-							type: "string"
-						}
+			{
+				type: "object",
+				properties: {
+					user_name: {
+						type: "string"
 					},
-					optional: {
-						password: {
-							type: "string"
-						}
-					}
-				}
-			]
-		);
-		
-		rpc.addMethod(
-			prefix+"me/edit",
-			this.editCurrentUser.bind(this),
-			[
-				{
-					type: "object",
-					optional: {
-						password: {
-							type: "string"
-						},
-						full_name: {
-							type: "string"
-						},
-						title: {
-							type: "string"
-						}
-					}
-				}
-			]
-		);
-		
-		/* Methods for managing users */
-
-		rpc.addMethod(
-			prefix+"list",
-			this.listUsers.bind(this),
-			[
-				{ // Calling without parameters: lists all users on the system
-					type: "none"
-				},
-				{ // Calling with parameters: search for exact match to one of the following fields
-					type: "object",
-					optional: {
-						id: {
-							type: "number"
-						},
-						user_name: {
-							type: "string"
-						},
-						full_name: {
-							type: "string"
-						},
-						title: {
-							type: "string"
-						},
-						active: {
-							type: "boolean"
-						}
-					}
-				}
-			]
-		);
-
-		rpc.addMethod(
-			prefix+"create",
-			this.createUser.bind(this),
-			[
-				{ // Create a new user
-					type: "object",
-					required: {
-						user_name: {
-							type: "string"
-						}
-					},
-					optional: {
-						password: {
-							type: "string"
-						},
-						full_name: {
-							type: "string"
-						},
-						title: {
-							type: "string"
-						},
-						active: {
-							type: "boolean"
-						},
-						permissions: {
-							type: "array",
-							contains: "string"
-						}
-					}
-				}
-			]
-		);
-		
-		rpc.addMethod(
-			prefix+"edit",
-			this.editUser.bind(this),
-			[
-				{
-					type: "object",
-					required: {
-						id: {
-							type: "number"
-						}
-					},
-					optional: {
-						user_name: {
-							type: "string"
-						},
-						password: {
-							type: "string"
-						},
-						full_name: {
-							type: "string"
-						},
-						title: {
-							type: "string"
-						},
-						active: {
-							type: "boolean"
-						},
-						permissions: {
-							type: "array",
-							contains: "string"
-						}
-					}
-				}
-			]
-		);
-		
-		rpc.addMethod(
-			prefix+"remove",
-			this.removeUser.bind(this),
-			[
-				{
-					type: "object",
-					required: {
-						id: {
-							type: "number"
-						}
+					password: {
+						type: "string"
 					}
 				},
-				{
-					type: "number"
-				}
-			]
+				required: ["user_name"],
+				additionalProperties: false
+			},
+			{
+				type: "object",
+				properties: {
+					user_name: {
+						type: "string"
+					},
+					full_name: {
+						type: "string"
+					},
+					title: {
+						type: "string"
+					},
+					permissions: {
+						type: "array",
+						items: {
+							type: "string"
+						}
+					},
+				},
+				required: ["user_name", "full_name", "title", "permissions"]
+			},
+			true
 		);
+		//rpc.addMethod(prefix + "me/edit", this.editCurrentUser.bind(this), {}, null);
+		//rpc.addMethod(prefix + "list", this.listUsers.bind(this), {}, null);
+		//rpc.addMethod(prefix + "create", this.createUser.bind(this), {}, null);
+		//rpc.addMethod(prefix + "edit", this.editUser.bind(this), {}, null);
+		//rpc.addMethod(prefix + "remove", this.removeUser.bind(this), {}, null);
 	}
 }
 

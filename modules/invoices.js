@@ -52,14 +52,14 @@ class Invoices {
 		return this._table.selectRecords(where, extra, separator);
 	}
 
-	async list(session, params, whereKeySeparator="AND", resolvePersons=false) {
+	async list(params, session, whereKeySeparator="AND", resolvePersons=false) {
 		let invoices = await this._table.list(params, whereKeySeparator);
 		let rowPromises = [];
 		let personPromises = [];
 		for (let i in invoices) {
 			rowPromises.push(this._table_rows.selectRecords({"invoice_id":invoices[i].id},"","AND",false));
 			if (resolvePersons) {
-				personPromises.push(this._opts.persons.list(session, {id: invoices[i].person_id}));
+				personPromises.push(this._opts.persons.list({id: invoices[i].person_id}, session));
 			}
 		}
 		
@@ -79,7 +79,7 @@ class Invoices {
 		return invoices;
 	}
 	
-	async listLast(session, params) {
+	async listLast(params, session) {
 		let filter = {};
 		let amount = 5;
 		
@@ -114,7 +114,7 @@ class Invoices {
 		});
 	}
 	
-	async listQuery(session, params) {
+	async listQuery(params, session) {
 		if ((typeof params !== "object") || (params.length < 1) || (params.length > 2)) {
 			throw "Invalid param.";
 		}
@@ -158,7 +158,7 @@ class Invoices {
 		}
 	}
 	
-	async create(session, params) {
+	async create(params, session) {
 		// Basic checks
 		if (!("person_id" in params))                            throw "Please provide a person_id in params.";
 		if ((!("products" in params)) && (!("other" in params))) throw "Please provide products or other rows in params.";
@@ -166,7 +166,7 @@ class Invoices {
 		console.log(chalk.bgCyan.white.bold(" INVOICE ")+" Creating invoice for "+params.person_id+"...");
 		
 		// Find the person
-		let persons = await this._opts.persons.listForVendingNoAvatar(session, {"id": params.person_id});
+		let persons = await this._opts.persons.listForVendingNoAvatar({"id": params.person_id}, session);
 		if (persons.length < 1 || persons.length > 1) throw "Person not found!";
 		let person = persons[0];
 		let person_record = await this._opts.persons.getRecord(person.id);
@@ -181,7 +181,7 @@ class Invoices {
 						product_amounts[params.products[i]]++;
 					} else {
 						product_amounts[params.products[i]] = 1;
-						product_promises.push(this._opts.products.listNoImg(session, {"id":params.products[i]}));
+						product_promises.push(this._opts.products.listNoImg({"id":params.products[i]}, session));
 					}
 				} else if (
 					typeof params.products[i] === "object" && 
@@ -196,7 +196,7 @@ class Invoices {
 						product_amounts[params.products[i].id] += amount;
 					} else {
 						product_amounts[params.products[i].id] = amount;
-						product_promises.push(this._opts.products.list(session, {"id":params.products[i].id}));
+						product_promises.push(this._opts.products.list({"id":params.products[i].id}, session));
 					}
 				} else {
 					throw "Products should be either the product id or an object: {'id':..., 'amount':..., 'stock':...}";
@@ -212,7 +212,7 @@ class Invoices {
 				throw "Invalid product id provided.";
 			}
 			let product_id = product_results[product][0].id;
-			stock_promises.push(this._opts.products.listStockRecords(session, {'product_id': product_id, 'amount_current':{">":0}}));
+			stock_promises.push(this._opts.products.listStockRecords({'product_id': product_id, 'amount_current':{">":0}}, session));
 		}
 		
 		let stockRecords = await Promise.all(stock_promises);
@@ -377,7 +377,7 @@ class Invoices {
 		}
 	}
 	
-	async analysisStock(session, params) {
+	/*async analysisStock(params, session) {
 		if (typeof params !== 'object') {
 			throw "Expected a parameter object.";
 		}
@@ -417,12 +417,12 @@ class Invoices {
 		} else {
 			throw "Unsupported operation.";
 		}
-	}
+	}*/
 	
-	async pdf(session, params) {
+	async pdf(params, session) {
 		if (typeof params !== "number") throw "Expected parameter to be the id of the invoice.";
 		
-		let invoices = await this.list(session, {id : params}, "AND", true);
+		let invoices = await this.list({id : params}, session, "AND", true);
 		if (invoices.length !== 1) throw "Invoice not found";
 		let invoice = invoices[0];
 				
@@ -494,12 +494,71 @@ class Invoices {
 	
 	registerRpcMethods(rpc, prefix="invoice") {
 		if (prefix!=="") prefix = prefix + "/";
-		rpc.addMethod(prefix+"list", this.list.bind(this));
-		rpc.addMethod(prefix+"list/last", this.listLast.bind(this));
-		rpc.addMethod(prefix+"list/query", this.listQuery.bind(this));
-		rpc.addMethod(prefix+"create", this.create.bind(this));
-		rpc.addMethod(prefix+"analysis/stock", this.analysisStock.bind(this));
-		rpc.addMethod(prefix+"pdf", this.pdf.bind(this));
+		rpc.addMethod(
+			prefix + "list",
+			this.list.bind(this),
+			{
+				type: "object"
+			},
+			null
+		);
+		rpc.addMethod(
+			prefix + "list/last",
+			this.listLast.bind(this),
+			{
+				type: ["number", "object"],
+				properties: {
+					amount: {
+						type: "number"
+					},
+					query: {
+						type: "object"
+					}
+				}
+			},
+			null
+		);
+		rpc.addMethod(
+			prefix + "list/query",
+			this.listQuery.bind(this),
+			{type: "array"},
+			null
+		);
+		rpc.addMethod(
+			prefix + "create",
+			this.create.bind(this),
+			{
+				type: "object",
+				properties: {
+					person_id: {
+						type: "number"
+					},
+					products: {
+						
+					},
+					other: {
+						
+					}
+				}
+			},
+			null
+		);
+		/*rpc.addMethod(
+			prefix + "analysis/stock",
+			this.analysisStock.bind(this),
+			{
+				type: "object"
+			},
+			null
+		);*/
+		rpc.addMethod(
+			prefix + "pdf",
+			this.pdf.bind(this),
+			{
+				type: "number"
+			},
+			null
+		);
 	}
 }
 

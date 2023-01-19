@@ -1,8 +1,5 @@
 "use strict";
 
-//const mime = require('mime-types');
-//mime.lookup(result.filename.split('.').pop())
-
 class Files {
 	constructor(opts) {
 		this._opts = Object.assign({
@@ -35,7 +32,6 @@ class Files {
 	}
 	
 	async createFileFromBuffer(file, transaction=null) {
-		console.log("CreateFile",file);
 		if (typeof file !== 'object') throw 'File parameter should be an object';
 		if (typeof file.mime !== 'string')  throw 'MIME type missing';
 		if (typeof file.name !== 'string')  throw 'Name missing';
@@ -64,15 +60,15 @@ class Files {
 		return file[0].destroy(transaction);
 	}
 	
-	methodListFiles(session, params) {
+	methodListFiles(params, session) {
 		return this._table.selectRecordsRaw("SELECT `id`, `name`, `mime` FROM `"+this._opts.table+"` WHERE 1;", [], false);
 	}
 	
-	methodGetFile(session, params) {
+	methodGetFile(params, session) {
 		return this.getFileAsBase64(params);
 	}
 	
-	async methodAddFile(session, params) {
+	async methodAddFile(params, session) {
 		var operations = [];
 		if (typeof params !== 'object') throw "Parameter should be object with file list inside";
 		if (!Array.isArray(params.file)) throw "File list should be an array";
@@ -87,7 +83,7 @@ class Files {
 		return result;
 	}
 	
-	async methodRemoveFile(session, params) {
+	async methodRemoveFile(params, session) {
 		if (Array.isArray(params)) {
 			var operations = [];
 			for (var i in params) {
@@ -105,10 +101,63 @@ class Files {
 
 	registerRpcMethods(rpc, prefix="file") {
 		if (prefix!=="") prefix = prefix + "/";
-		rpc.addMethod(prefix+"list",   this.methodListFiles.bind(this));
-		rpc.addMethod(prefix+"get",    this.methodGetFile.bind(this));
-		rpc.addMethod(prefix+"add",    this.methodAddFile.bind(this));
-		rpc.addMethod(prefix+"remove", this.methodRemoveFile.bind(this));
+		rpc.addMethod(
+			prefix + "list",
+			this.methodListFiles.bind(this),
+			null,
+			null
+		);
+		rpc.addMethod(
+			prefix + "get",
+			this.methodGetFile.bind(this),
+			{
+				type: "number"
+			},
+			null
+		);
+		rpc.addMethod(
+			prefix + "add",
+			this.methodAddFile.bind(this),
+			{
+				type: "object",
+				properties: {
+					file: {
+						type: "array",
+						items: {
+							type: "object",
+							properties: {
+								data: {
+									type: 'string'
+								},
+								mime: {
+									type: 'string'
+								},
+								name: {
+									type: 'string'
+								},
+								size: {
+									type: 'number'
+								}
+							},
+							required: ["data", "mime", "name", "size"]
+						}
+					}
+				},
+				required: ["file"]
+			},
+			null
+		);
+		rpc.addMethod(
+			prefix + "remove",
+			this.methodRemoveFile.bind(this),
+			{
+				type: ["number", "array"],
+				items: {
+					type: "number"
+				}
+			},
+			null
+		);
 	}
 }
 

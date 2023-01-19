@@ -1,32 +1,28 @@
 "use strict";
 
 // System libraries
-const fs               = require('fs');
+const fs = require('fs');
 
 // NPM libraries
-const yargs            = require('yargs');
-const chalk            = require('chalk');
+const yargs = require('yargs');
+const chalk = require('chalk');
+const { Rpc, SessionManager, Webserver } = require("nicolai-jsonrpc");
 
 // Project specific libraries
-const Configuration    = require('./lib/configuration.js');
-const Rpc              = require('./lib/rpc.js');
-const Webserver        = require('./lib/webserver.js');
-const Websocketserver  = require('./lib/websocketserver.js');
-const Mqttclient       = require('./lib/mqtt.js');
-const Database         = require('./lib/db.js');
+const Configuration = require('./lib/configuration.js');
+const Mqttclient = require('./lib/mqtt.js');
+const Database = require('./lib/db.js');
 
 // Project specific modules
-const Ping             = require('./modules/ping.js');
-const Sessions         = require('./modules/sessions.js');
-const Files            = require('./modules/files.js');
-const Users            = require('./modules/users.js');
-const Persons          = require('./modules/persons.js');
-const Products         = require('./modules/products.js');
-const Invoices         = require('./modules/invoices.js');
-const Reports          = require('./modules/reports.js');
+const Files = require('./modules/files.js');
+const Users = require('./modules/users.js');
+const Persons = require('./modules/persons.js');
+const Products = require('./modules/products.js');
+const Invoices = require('./modules/invoices.js');
+const Reports = require('./modules/reports.js');
 
 // Project specific verification modules
-const VerifyBalance    = require('./verification/balance.js');
+const VerifyBalance = require('./verification/balance.js');
 
 // Argument parser
 const argv = yargs
@@ -94,38 +90,22 @@ var database = new Database({
 
 // Application elements not requiring database availability
 
-var sessions = new Sessions({
-	timeout: configuration.get("sessions","timeout")
+var sessionManager = new SessionManager({
+	timeout: configuration.get("sessions","timeout"),
+	userSchema: {}
 });
 
 var rpc = new Rpc({
-	strict: true,
-	auth: sessions,
-	identity: configuration.get("rpc","identity")
-});
-
-sessions.registerRpcMethods(rpc);
-sessions.addAlwaysAllow('session/create');
-sessions.addAlwaysAllow('session/state');
+	title: configuration.get("rpc","identity"),
+	version: ""
+}, sessionManager);
 
 if (configuration.get("rpc","webserver","enabled")) {
-	
-	var ws = null;
-	
-	if (configuration.get("rpc","webserver","websocket","enabled")) {
-		var websocketserver = new Websocketserver({
-			application: rpc
-		});
-		ws = websocketserver.ws();
-	}
-	
 	var webserver = new Webserver({
 		port: configuration.get("rpc","webserver","port"),
 		host: configuration.get("rpc","webserver","listen"),
 		queue: configuration.get("rpc","webserver","queue"),
 		application: rpc,
-		mime: 'application/json',
-		ws: ws
 	});
 }
 
@@ -144,10 +124,6 @@ if (configuration.get("mqtt", "enable")) {
 	});
 }
 
-var ping = new Ping();
-ping.registerRpcMethods(rpc);
-sessions.addAlwaysAllow('ping');
-
 /* Application elements depending on database availability */
 
 function start() {
@@ -163,7 +139,6 @@ function start() {
 	});
 	
 	users.registerRpcMethods(rpc);
-	sessions.addAlwaysAllow('user/authenticate');
 
 	var products = new Products({
 		database: database,
@@ -198,16 +173,6 @@ function start() {
     });
 	
 	reports.registerRpcMethods(rpc);
-
-	/*if (mqttclient) {
-		var vending = new Vending({
-			database: database,
-			mqtt: mqttclient,
-			sessions: sessions,
-			persons: persons
-		});
-		vending.registerRpcMethods(rpc);
-	}*/
 
 	var verifications = [];
 
