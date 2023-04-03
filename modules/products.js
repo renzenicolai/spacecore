@@ -192,6 +192,35 @@ class Products {
 			}
 			
 			//Identifiers
+			if (typeof params.identifiers !== 'undefined') {
+				console.log(params.identifiers, typeof params.identifiers);
+				if (!Array.isArray(params.identifiers)) throw "Expected identifiers to be a list of strings.";
+
+				let types = await this._table_identifier_type.selectRecords({});
+				let type_id = types[0].getField("id");
+
+				let identifierOperations = [];
+				let currentMappings = await this._table_identifier.selectRecords({product_id: product.getIndex()}); //List current identifiers
+				let currentIdentifiers = [];
+				for (let i in currentMappings) { //Loop through all existing mappings
+					if (!params.identifiers.includes(currentMappings[i].getField("value"))) { //If the mapping exists but shouldn't then...
+						identifierOperations.push(currentMappings[i].destroy(dbTransaction)); //...remove the mapping
+					} else { //The mapping exists and it should keep existing
+						currentIdentifiers.push(currentMappings[i].getField("value")); //Store the id of the identifier we are already in in a list
+					}
+				}
+				for (let i in params.identifiers) { //Loop through the identifiers of the identifiers we want to be in
+					let identifier = params.identifiers[i];
+					if (!currentIdentifiers.includes(identifier)) { //If the product is not yet in the identifier we want the product to be in then create the mapping
+						let record = this._table_identifier.createRecord();
+						record.setField("product_id", product.getIndex());
+						record.setField("value", identifier);
+						record.setField("type_id", type_id);
+						identifierOperations.push(record.flush(dbTransaction));
+					}
+				}
+				await Promise.all(identifierOperations);
+			}
 			
 			//Prices
 			if (typeof params.prices !== 'undefined') {
