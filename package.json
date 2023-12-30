@@ -8,7 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Renze Nicolai",
-  "license": "GPLv3",
+  "license": "MIT",
   "dependencies": {
     "chalk": "^4.1.2",
     "mime-types": "^2.1.27",
