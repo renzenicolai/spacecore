@@ -2,7 +2,6 @@
 
 const pdf    = require("./invoicesToPdf.js");
 const stream = require("stream");
-const chalk  = require("chalk");
 
 class WritableBufferStream extends stream.Writable {
     constructor(options) {
@@ -161,7 +160,7 @@ class Invoices {
         if (!("person_id" in params))                            throw "Please provide a person_id in params.";
         if ((!("products" in params)) && (!("other" in params))) throw "Please provide products or other rows in params.";
 
-        console.log(chalk.bgCyan.white.bold(" INVOICE ")+" Creating invoice for "+params.person_id+"...");
+        console.log("Creating invoice for "+params.person_id+"...");
 
         // Find the person
         let persons = await this._opts.persons.listForVendingNoAvatar({"id": params.person_id}, session);
@@ -365,7 +364,7 @@ class Invoices {
                 "rows": rows,
                 "person": person_record.getFields()
             };
-            console.log(chalk.bgCyan.white.bold(" INVOICE ")+" Invoice #"+invoice.getIndex()+" for person "+chalk.red(person_record.getField("nick_name"))+" has been created (total: "+chalk.red(invoice.getField("total"))+").");
+            console.log("Invoice #"+invoice.getIndex()+" for person "+person_record.getField("nick_name")+" has been created (total: "+invoice.getField("total")+").");
             this._notifyMqtt(result);
             return result;
         } catch (error) {
