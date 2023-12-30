@@ -805,7 +805,7 @@ ALTER TABLE `person_group_mapping`
 -- Constraints for table `person_phone`
 --
 ALTER TABLE `person_phone`
-  ADD CONSTRAINT `person_id_of_person_phone` FOREIGN KEY (`person_id`) REFERENCES `barsystem`.`barsystem_person` (`id`);
+  ADD CONSTRAINT `person_id_of_person_phone` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`);
 
 --
 -- Constraints for table `person_token`
