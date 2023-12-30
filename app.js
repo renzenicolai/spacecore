@@ -5,11 +5,10 @@ const fs = require('fs');
 
 // NPM libraries
 const yargs = require('yargs');
-const chalk = require('chalk');
 const { Rpc, SessionManager, Webserver } = require("nicolai-jsonrpc");
+const Configuration = require("nicolai-configuration");
 
 // Project specific libraries
-const Configuration = require('./lib/configuration.js');
 const Mqttclient = require('./lib/mqtt.js');
 const Database = require('./lib/db.js');
 
@@ -56,19 +55,19 @@ if (!logEnable) {
 
 process.on('unhandledRejection', (err) => {
 	if (logFile) logFile.write("Unhandled rejection: "+err+"\n");
-	console.log(chalk.bgRed.white.bold(" ERROR ")+" Unhandled rejection:", err);
+	console.error("Unhandled rejection:", err);
 	process.exit(1);
 });
 
 process.on('uncaughtException', (err) => {
 	if (logFile) logFile.write("Uncaught exception: "+err+"\n");
-	console.log(chalk.bgRed.white.bold(" ERROR ")+" Uncaught exception:", err);
+	console.error("Uncaught exception:", err);
 	process.exit(1);
 });
 
 process.on('SIGINT', () => {
 	if (logFile) logFile.write("Application interrupted.\n");
-	console.log(chalk.bgRed.white.bold(" ERROR ")+" Application interrupted");
+	console.error("Application interrupted");
 	process.exit(0);
 });
 
