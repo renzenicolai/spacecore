@@ -639,18 +639,18 @@ class Products {
 
     removeStock(session, params) {
         if (!("id" in params) && (typeof params.product_id === "number")) {
-            return new Promise((resolve, reject) => {return "Missing id param."; });
+            return new Promise(() => {return "Missing id param."; });
         }
         if (!("amount" in params) && (typeof params.amount === "number")) {
-            return new Promise((resolve, reject) => {return "Missing amount param."; });
+            return new Promise(() => {return "Missing amount param."; });
         }
         var id = params.id;
         var amount = params.amount;
-        if (amount < 0) return new Promise((resolve, reject) => {
+        if (amount < 0) return new Promise((resolve) => {
             return resolve("Invalid amount.");
         });
         return this._table_stock.selectRecords({id: id}).then((result) => {
-            if (result.length != 1) return new Promise((resolve, reject) => {
+            if (result.length != 1) return new Promise((resolve) => {
                 return resolve("Invalid id.");
             });
             var oldAmount = result[0].getField("amount_current");

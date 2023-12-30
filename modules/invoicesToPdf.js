@@ -3,7 +3,7 @@
 const PDFDocument = require("pdfkit");
 
 class PdfInvoice {
-    constructor(opts={}) {
+    constructor() {
         //Nothing to do.
     }
 
@@ -126,8 +126,6 @@ class PdfInvoice {
     }
 
     _renderTable(doc, offset, headerColumns, data) {
-        var lastColumns = [{text: "(Continues on the next page...)", width: doc.page.width-120}];
-
         var even = true;
         var first = true;
         for (var i in data) {

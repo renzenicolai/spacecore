@@ -1,10 +1,5 @@
 "use strict";
 
-const mime   = require("mime-types");
-const fs     = require("fs");
-const stream = require("stream");
-const chalk  = require("chalk");
-
 class Reports {
     constructor(opts) {
         this._opts = Object.assign({
@@ -71,8 +66,7 @@ class Reports {
         let timestamp_end   = Math.floor(Date.parse("01 Jan " + (year + 1) + " 00:00:00 UTC+1") / 1000);
         let relation_rows = await this._opts.persons.list({}, session);
         let relations = {};
-        let transaction_this_year_promises = [];
-        let transaction_after_promises = [];
+
         for (let index = 0; index < relation_rows.length; index++) {
             let relation = relation_rows[index];
             relations[relation.id] = relation;

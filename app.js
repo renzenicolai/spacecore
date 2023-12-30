@@ -43,12 +43,11 @@ var configuration = new Configuration(configFile);
 
 // Logfile
 var logEnable = configuration.get("log", "enable");
-if (!logEnable) {
-    var logFile = null;
-} else {
+var logFile = null;
+if (logEnable) {
     var logDir = configuration.get("log", "directory");
     if (logDir === null) logDir = "log/";
-    var logFile = fs.createWriteStream(logDir+(new Date()).getTime()+".txt");
+    logFile = fs.createWriteStream(logDir+(new Date()).getTime()+".txt");
 }
 
 // Error handlers
@@ -100,7 +99,7 @@ var rpc = new Rpc({
 }, sessionManager);
 
 if (configuration.get("rpc","webserver","enabled")) {
-    var webserver = new Webserver({
+    new Webserver({
         port: configuration.get("rpc","webserver","port"),
         host: configuration.get("rpc","webserver","listen"),
         queue: configuration.get("rpc","webserver","queue"),

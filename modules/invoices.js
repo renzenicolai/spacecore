@@ -1,8 +1,6 @@
 "use strict";
 
-const mime   = require("mime-types");
 const pdf    = require("./invoicesToPdf.js");
-const fs     = require("fs");
 const stream = require("stream");
 const chalk  = require("chalk");
 
@@ -235,7 +233,7 @@ class Invoices {
             let description = product.name;
             if (product.package_id !== null) description += " ("+product.package.name+")";
             record.setField("description", description);
-            let price = 0xFFFFFFFFFFFFFFFF;
+            let price = 0xFFFFFFFFFFFFF;
             let price_valid = false;
             for (let j in product.prices) {
                 let price_available = false;
@@ -360,7 +358,7 @@ class Invoices {
             for (let i in invoice_rows) {
                 rows.push(invoice_rows[i].getFields());
             }
-            let personResult = await person_record.flush(dbTransaction);
+            await person_record.flush(dbTransaction);
             await dbTransaction.commit();
             let result = {
                 "invoice": invoice.getFields(),
@@ -473,7 +471,7 @@ class Invoices {
 
         let converter = new WritableBufferStream();
 
-        let end = new Promise(function(resolve, reject) {
+        let end = new Promise(function(resolve) {
             converter.on("finish", () => {
                 resolve(converter.toBuffer());
             });

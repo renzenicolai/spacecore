@@ -1,9 +1,6 @@
 "use strict";
 
 const unixcrypt = require("unixcrypt");
-const crypto   = require("crypto");
-const mime     = require("mime-types");
-const chalk    = require("chalk");
 
 class User {
     constructor(opts) {
