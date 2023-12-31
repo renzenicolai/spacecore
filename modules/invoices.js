@@ -374,48 +374,6 @@ class Invoices {
         }
     }
 
-    /*async analysisStock(params, session) {
-		if (typeof params !== 'object') {
-			throw "Expected a parameter object.";
-		}
-		if (typeof params.operation !== 'string') {
-			throw "Expected an operation.";
-		}
-
-		if (params.operation === "unknownOrigin") {
-			let rows = await this._table_rows.selectRecordsRaw("SELECT * FROM `invoice_rows` WHERE `id` NOT IN (SELECT invoice_row_id FROM `product_stock_mapping`) AND `price` > 0", [], false);
-
-			let rowIds = [];
-			let invoiceIds = [];
-
-			for (let i in rows) {
-				let row = rows[i];
-				rowIds.push(row.id);
-				if (!(row.invoice_id in invoiceIds)) {
-					invoiceIds.push(row.invoice_id);
-				}
-			}
-
-			let invoices = await this.list(session, {id: invoiceIds}, "OR", true);
-
-			for (let i in invoices) {
-				for (let j in invoices[i].rows) {
-					let isUnknown = false;
-					let id = invoices[i].rows[j].id;
-					if (rowIds.lastIndexOf(id)>=0) {
-						isUnknown = true;
-					}
-					invoices[i].rows[j].isUnknown = isUnknown;
-				}
-			}
-
-			return invoices;
-
-		} else {
-			throw "Unsupported operation.";
-		}
-	}*/
-
     async pdf(params, session) {
         if (typeof params !== "number") throw "Expected parameter to be the id of the invoice.";
 
@@ -540,14 +498,6 @@ class Invoices {
             },
             null
         );
-        /*rpc.addMethod(
-			prefix + "analysis/stock",
-			this.analysisStock.bind(this),
-			{
-				type: "object"
-			},
-			null
-		);*/
         rpc.addMethod(
             prefix + "pdf",
             this.pdf.bind(this),

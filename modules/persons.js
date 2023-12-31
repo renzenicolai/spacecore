@@ -118,7 +118,11 @@ class Persons {
     /* Persons */
 
     _getGroups(person_id) {
-        return this._table_group_mapping.selectRecordsRaw("SELECT mapping.id as 'mapping_id', group.id, group.name, group.description FROM `"+this._opts.table_group_mapping+"` AS `mapping` INNER JOIN `"+this._opts.table_group+"` AS `group` ON mapping.person_group_id = group.id WHERE `person_id` = ?", [person_id], false);
+        return this._table_group_mapping.selectRecordsRaw(
+            "SELECT mapping.id as 'mapping_id', group.id, group.name, group.description FROM `"+this._opts.table_group_mapping+"` AS `mapping` INNER JOIN `"+this._opts.table_group+"` AS `group` ON mapping.person_group_id = group.id WHERE `person_id` = ?",
+            [person_id],
+            false
+        );
     }
 
     async _getTokens(person_id) {
@@ -232,14 +236,18 @@ class Persons {
         }
 
         var checks = await Promise.all([
-            this.list(session, {nick_name: nick_name}),
-            this._opts.products.find(session, nick_name)
+            this.list({nick_name: nick_name}, session),
+            this._opts.products.find(nick_name, session)
         ]);
 
-        if (checks[0].length > 0) throw "This nickname exists already!";
-        if (checks[1].length > 0) throw "This nickname would conflict with a product!";
+        if (checks[0].length > 0) {
+            throw new Error("This nickname exists already!");
+        }
+        if (checks[1].length > 0) {
+            throw new Error("This nickname would conflict with a product!");
+        }
 
-        var defaultGroups = await this.listGroups(session, {addToNew:1});
+        var defaultGroups = await this.listGroups({addToNew:1}, session);
 
         var dbTransaction = await this._opts.database.transaction("Add person ("+nick_name+")");
 
@@ -354,7 +362,7 @@ class Persons {
 
     async find(params, session) {
         if (typeof params !== "string") throw "Parameter should be the nickname as a string!";
-        var results = await this.list(session, {nick_name: params.toLowerCase()});
+        var results = await this.list({nick_name: params.toLowerCase()}, session);
         if (results.length < 1) return null;
         if (results.length > 1) throw "Multiple persons with the same nickname found, please check the database.";
         return results[0];
@@ -362,7 +370,7 @@ class Persons {
 
     async findForVending(params, session) {
         if (typeof params !== "string") throw "Parameter should be the nickname as a string!";
-        var results = await this.listForVending(session, {nick_name: params.toLowerCase()});
+        var results = await this.listForVending({nick_name: params.toLowerCase()}, session);
         if (results.length < 1) return null;
         if (results.length > 1) throw "Multiple persons with the same nickname found, please check the database.";
         return results[0];
@@ -373,7 +381,7 @@ class Persons {
         var tokens = await this._table_token.list({public: params});
         if (tokens.length < 1) return null;
         if (tokens.length > 1) throw "Multiple tokens with the same public key found, please check the database.";
-        var results = await this.list(session, {id: tokens[0].person_id});
+        var results = await this.list({id: tokens[0].person_id}, session);
         if (results.length < 1) return null;
         if (results.length > 1) throw "Multiple persons with the same id found, please check the database.";
         return results[0];
@@ -384,7 +392,7 @@ class Persons {
         var tokens = await this._table_token.list({public: params});
         if (tokens.length < 1) return null;
         if (tokens.length > 1) throw "Multiple tokens with the same public key found, please check the database.";
-        var results = await this.listForVending(session, {id: tokens[0].person_id});
+        var results = await this.listForVending({id: tokens[0].person_id}, session);
         if (results.length < 1) return null;
         if (results.length > 1) throw "Multiple persons with the same id found, please check the database.";
         return results[0];

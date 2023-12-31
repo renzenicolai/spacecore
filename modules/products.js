@@ -2,6 +2,8 @@
 
 const Tasks = require("../lib/tasks.js");
 
+const fs = require("fs");
+
 class Products {
     constructor(opts) {
         this._opts = Object.assign({
@@ -46,10 +48,24 @@ class Products {
 
     /* Products */
 
-    async list(session, params) {
+    async list(params, session) {
         var products = await this._table.list(params);
         var tasks = [
-            Tasks.create("picture",      this._opts.files.getFileAsBase64.bind(this._opts.files), products, "picture_id"),
+            //Tasks.create("picture",      this._opts.files.getFileAsBase64.bind(this._opts.files), products, "picture_id"),
+            Tasks.create("groups",       this._getGroups.bind(this),                              products, "id"),
+            Tasks.create("locations",    this._getLocations.bind(this),                           products, "id"),
+            Tasks.create("stock",        this._getStock.bind(this),                               products, "id"),
+            Tasks.create("brand",        this._getBrand.bind(this),                               products, "brand_id"),
+            Tasks.create("identifiers",  this._getIdentifiers.bind(this),                         products, "id"),
+            Tasks.create("package",      this._getPackage.bind(this),                             products, "package_id"),
+            Tasks.create("prices",       this._getPrices.bind(this),                              products, "id")
+        ];
+        return await Tasks.merge(tasks, products);;
+    }
+
+    async listNoImg(params, session) {
+        var products = await this._table.list(params);
+        var tasks = [
             Tasks.create("groups",       this._getGroups.bind(this),                              products, "id"),
             Tasks.create("locations",    this._getLocations.bind(this),                           products, "id"),
             Tasks.create("stock",        this._getStock.bind(this),                               products, "id"),
@@ -61,21 +77,8 @@ class Products {
         return Tasks.merge(tasks, products);
     }
 
-    async listNoImg(session, params) {
-        var products = await this._table.list(params);
-        var tasks = [
-            Tasks.create("groups",       this._getGroups.bind(this),                              products, "id"),
-            Tasks.create("locations",    this._getLocations.bind(this),                           products, "id"),
-            Tasks.create("stock",        this._getStock.bind(this),                               products, "id"),
-            Tasks.create("brand",        this._getBrand.bind(this),                               products, "brand_id"),
-            Tasks.create("identifiers",  this._getIdentifiers.bind(this),                         products, "id"),
-            Tasks.create("package",      this._getPackage.bind(this),                             products, "package_id"),
-            Tasks.create("prices",       this._getPrices.bind(this),                              products, "id")
-        ];
-        return Tasks.merge(tasks, products);
-    }
-
-    async create(session, params) {
+    async create(params, session) {
+        console.log(params);
         if (typeof params !== "object")                                                                                           throw "Expected parameter to be an object";
         if (typeof params.name !== "string")                                                                                      throw "Missing required property 'name'";
         if ((typeof params.description !== "undefined") && (typeof params.description !== "string"))                              throw "Expected description to to be a string";
@@ -134,7 +137,7 @@ class Products {
         }
     }
 
-    async edit(session, params) {
+    async edit(params, session) {
         var product = await this._findById(params);
         var dbTransaction = await this._opts.database.transaction("Edit product #"+product.getIndex());
         try {
@@ -332,7 +335,7 @@ class Products {
         return Promise.all(operations);
     }
 
-    async remove(session, params) {
+    async remove(params, session) {
         var product = await this._findById(params);
         var dbTransaction = await this._opts.database.transaction("Remove product #"+product.getIndex());
         try {
@@ -349,17 +352,19 @@ class Products {
         }
     }
 
-    async find(session, params) {
-        if (typeof params !== "string") throw "Parameter should be search string";
-        return this.list(session, {"name": {"LIKE":"%"+params+"%"}});
+    async find(params, session) {
+        if (typeof params !== "string") {
+            throw new Error("Parameter should be search string");
+        }
+        return this.list({"name": {"LIKE":"%"+params+"%"}}, session);
     }
 
-    async findByIdentifier(session, params) {
-        var barcodes = await this._listIdentifiers(session, params);
+    async findByIdentifier(params, session) {
+        var barcodes = await this._listIdentifiers(params, session);
         if (barcodes.length < 1) return [];
         var products = [];
         for (var i in barcodes) products.push(barcodes[i].product_id);
-        return this.list(session, {id: products});
+        return this.list({id: products}, session);
     }
 
 
@@ -424,11 +429,11 @@ class Products {
 
     //Identifier types
 
-    listIdentifierTypes(session, params) {
+    listIdentifierTypes(params, session) {
         return this._table_identifier_type.list(params);
     }
 
-    async addIdentifierType(session, params) {
+    async addIdentifierType(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.name      !== "string") ||
 			(typeof params.long_name !== "string") ||
@@ -441,7 +446,7 @@ class Products {
         return record.flush();
     }
 
-    async editIdentifierType(session, params) {
+    async editIdentifierType(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.id        !== "number")
         ) throw "Invalid parameters";
@@ -463,7 +468,7 @@ class Products {
         return record.flush();
     }
 
-    async removeIdentifierType(session, params) {
+    async removeIdentifierType(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.id        !== "number")
         ) throw "Invalid parameters";
@@ -489,7 +494,7 @@ class Products {
 
     //Identifiers
 
-    async _listIdentifiers(session, params) {
+    async _listIdentifiers(params, session) {
         var barcode = null;
         var type = null;
         if (typeof params === "object") {
@@ -519,7 +524,7 @@ class Products {
 
     //Locations
 
-    async listLocations(session, params) {
+    async listLocations(params, session) {
         var query = params;
         if (typeof params === "string") {
             query = {"name": params};
@@ -540,7 +545,7 @@ class Products {
         return Tasks.merge(tasks, locations);
     }
 
-    async createLocation(session, params) {
+    async createLocation(params, session) {
         if ((typeof params      !== "object") ||
 			(typeof params.name !== "string")
         ) throw "Invalid parameters";
@@ -564,7 +569,7 @@ class Products {
         return record.flush();
     }
 
-    async editLocation(session, params) {
+    async editLocation(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.id        !== "number")
         ) throw "Invalid parameters";
@@ -586,7 +591,7 @@ class Products {
         return record.flush();
     }
 
-    async removeLocation(session, params) {
+    async removeLocation(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.id        !== "number")
         ) throw "Invalid parameters";
@@ -610,57 +615,6 @@ class Products {
         }
     }
 
-    listStockRecords(session, params) {
-        return this._table_stock.selectRecords(params, "ORDER BY `timestamp_initial` ASC");
-    }
-
-    async addStock(session, params) {
-        if (typeof params !== "object")                                           throw "Params should be object containing 'product_id' and 'amount'.";
-        if (!("product_id" in params) && (typeof params.product_id === "number")) throw "Missing product_id parameter (or invalid type, expect number).";
-        if (!("amount" in params) && (typeof params.amount === "number"))         throw "Missing amount parameter (or invalid type, expect number).";
-        var dbTransaction = await this._opts.database.transaction("Add stock");
-        try {
-            var record = this._table_stock.createRecord();
-            record.setField("product_id", params.product_id);
-            record.setField("amount_initial", params.amount);
-            record.setField("amount_current", params.amount);
-            let result = await record.flush(dbTransaction);
-            await dbTransaction.commit();
-            return result;
-        } catch(e) {
-            await dbTransaction.rollback();
-            throw e;
-        }
-    }
-
-    async editStock(session, params) {
-        return "Not implemented";
-    }
-
-    removeStock(session, params) {
-        if (!("id" in params) && (typeof params.product_id === "number")) {
-            return new Promise(() => {return "Missing id param."; });
-        }
-        if (!("amount" in params) && (typeof params.amount === "number")) {
-            return new Promise(() => {return "Missing amount param."; });
-        }
-        var id = params.id;
-        var amount = params.amount;
-        if (amount < 0) return new Promise((resolve) => {
-            return resolve("Invalid amount.");
-        });
-        return this._table_stock.selectRecords({id: id}).then((result) => {
-            if (result.length != 1) return new Promise((resolve) => {
-                return resolve("Invalid id.");
-            });
-            var oldAmount = result[0].getField("amount_current");
-            var newAmount = oldAmount - amount;
-            if (newAmount < 0) newAmount = 0;
-            result[0].setField("amount_current", newAmount);
-            return result[0].flush();
-        });
-    }
-
     async _getProductsInGroup(product_group_id) {
         var mapping = await this._table_group_mapping.list({product_group_id : product_group_id});
         var products = [];
@@ -669,7 +623,7 @@ class Products {
         return this.list(null, {id: products});
     }
 
-    async listGroups(session, params) {
+    async listGroups(params, session) {
         var query = params;
         if (typeof params === "string") {
             query = {"name": params};
@@ -691,7 +645,7 @@ class Products {
         return Tasks.merge(tasks, groups);
     }
 
-    async createGroup(session, params) {
+    async createGroup(params, session) {
         if ((typeof params      !== "object") ||
 			(typeof params.name !== "string") ||
 			(typeof params.description !== "string")
@@ -714,7 +668,7 @@ class Products {
         }
     }
 
-    async editGroup(session, params) {
+    async editGroup(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.id        !== "number")
         ) throw "Invalid parameters";
@@ -745,7 +699,7 @@ class Products {
         }
     }
 
-    async removeGroup(session, params) {
+    async removeGroup(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.id        !== "number")
         ) throw "Invalid parameters";
@@ -775,7 +729,7 @@ class Products {
         return this.list(null, {brand_id: brand_id});
     }
 
-    async listBrands(session, params) {
+    async listBrands(params, session) {
         var query = params;
         if (typeof params === "string") {
             query = {"name": params};
@@ -797,7 +751,7 @@ class Products {
         return Tasks.merge(tasks, brands);
     }
 
-    async createBrand(session, params) {
+    async createBrand(params, session) {
         if ((typeof params      !== "object") ||
 			(typeof params.name !== "string") ||
 			(typeof params.description !== "string")
@@ -820,7 +774,7 @@ class Products {
         }
     }
 
-    async editBrand(session, params) {
+    async editBrand(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.id        !== "number")
         ) throw "Invalid parameters";
@@ -851,7 +805,7 @@ class Products {
         }
     }
 
-    async removeBrand(session, params) {
+    async removeBrand(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.id        !== "number")
         ) throw "Invalid parameters";
@@ -884,7 +838,7 @@ class Products {
         return this.list(null, {package_id: package_id});
     }
 
-    async listPackages(session, params) {
+    async listPackages(params, session) {
         var query = params;
         if (typeof params === "string") {
             query = {"name": params};
@@ -905,7 +859,7 @@ class Products {
         return Tasks.merge(tasks, packages);
     }
 
-    async createPackage(session, params) {
+    async createPackage(params, session) {
         if ((typeof params      !== "object") ||
 			(typeof params.name !== "string") ||
 			(typeof params.ask  !== "boolean")
@@ -916,7 +870,7 @@ class Products {
         return record.flush();
     }
 
-    async editPackage(session, params) {
+    async editPackage(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.id        !== "number")
         ) throw "Invalid parameters";
@@ -935,7 +889,7 @@ class Products {
         return record.flush();
     }
 
-    async removePackage(session, params) {
+    async removePackage(params, session) {
         if ((typeof params           !== "object") ||
 			(typeof params.id        !== "number")
         ) throw "Invalid parameters";
@@ -966,49 +920,45 @@ class Products {
         if (prefix!=="") prefix = prefix + "/";
 
         /* Products */
-        rpc.addMethod(prefix+"list",                   this.list.bind(this));                        //Products: list products
-        rpc.addMethod(prefix+"list/noimg",             this.listNoImg.bind(this));                   //Products: list products (No images)
-        rpc.addMethod(prefix+"create",                 this.create.bind(this));                      //Products: create a product
-        rpc.addMethod(prefix+"edit",                   this.edit.bind(this));                        //Products: edit a product
+        rpc.addMethod(prefix+"list",                   this.list.bind(this), {}, null);                        //Products: list products
+        rpc.addMethod(prefix+"list/noimg",             this.listNoImg.bind(this), {}, null);                   //Products: list products (No images)
+        rpc.addMethod(prefix+"create",                 this.create.bind(this), {}, null);                      //Products: create a product
+        rpc.addMethod(prefix+"edit",                   this.edit.bind(this), {}, null);                        //Products: edit a product
 
-        rpc.addMethod(prefix+"remove",                 this.remove.bind(this));                      //Products: remove a product
-        rpc.addMethod(prefix+"find",                   this.find.bind(this));                        //Products: find a product by it's name
+        rpc.addMethod(prefix+"remove",                 this.remove.bind(this), {}, null);                      //Products: remove a product
+        rpc.addMethod(prefix+"find",                   this.find.bind(this), {}, null);                        //Products: find a product by it's name
 
-        rpc.addMethod(prefix+"findByIdentifier",       this.findByIdentifier.bind(this));            //Products: find a product by one of it's identifiers
-
-        rpc.addMethod(prefix+"addStock",               this.addStock.bind(this));                    //Products: add stock
-        rpc.addMethod(prefix+"editStock",              this.editStock.bind(this));                   //Products: edit stock
-        rpc.addMethod(prefix+"removeStock",            this.removeStock.bind(this));                 //Products: remove stock
+        rpc.addMethod(prefix+"findByIdentifier",       this.findByIdentifier.bind(this), {}, null);            //Products: find a product by one of it's identifiers
 
         /* Groups */
-        rpc.addMethod(prefix+"group/list",             this.listGroups.bind(this));                  //Groups: list groups
-        rpc.addMethod(prefix+"group/create",           this.createGroup.bind(this));                 //Groups: create a group
-        rpc.addMethod(prefix+"group/edit",             this.editGroup.bind(this));                   //Groups: edit a group
-        rpc.addMethod(prefix+"group/remove",           this.removeGroup.bind(this));                 //Groups: remove a group
+        rpc.addMethod(prefix+"group/list",             this.listGroups.bind(this), {}, null);                  //Groups: list groups
+        rpc.addMethod(prefix+"group/create",           this.createGroup.bind(this), {}, null);                 //Groups: create a group
+        rpc.addMethod(prefix+"group/edit",             this.editGroup.bind(this), {}, null);                   //Groups: edit a group
+        rpc.addMethod(prefix+"group/remove",           this.removeGroup.bind(this), {}, null);                 //Groups: remove a group
 
         /* Identifiers */
-        rpc.addMethod(prefix+"identifier/type/list",   this.listIdentifierTypes.bind(this));         //Identifiers: list identifier types
-        rpc.addMethod(prefix+"identifier/type/create", this.addIdentifierType.bind(this));           //Identifiers: add an identifier type
-        rpc.addMethod(prefix+"identifier/type/edit",   this.editIdentifierType.bind(this));          //Identifiers: edit an identifier type
-        rpc.addMethod(prefix+"identifier/type/remove", this.removeIdentifierType.bind(this));        //Identifiers: remove an identifier type
+        rpc.addMethod(prefix+"identifier/type/list",   this.listIdentifierTypes.bind(this), {}, null);         //Identifiers: list identifier types
+        rpc.addMethod(prefix+"identifier/type/create", this.addIdentifierType.bind(this), {}, null);           //Identifiers: add an identifier type
+        rpc.addMethod(prefix+"identifier/type/edit",   this.editIdentifierType.bind(this), {}, null);          //Identifiers: edit an identifier type
+        rpc.addMethod(prefix+"identifier/type/remove", this.removeIdentifierType.bind(this), {}, null);        //Identifiers: remove an identifier type
 
         /* Locations */
-        rpc.addMethod(prefix+"location/list",          this.listLocations.bind(this));               //Locations: list locations
-        rpc.addMethod(prefix+"location/create",        this.createLocation.bind(this));              //Locations: create a location
-        rpc.addMethod(prefix+"location/edit",          this.editLocation.bind(this));                //Locations: edit a location
-        rpc.addMethod(prefix+"location/remove",        this.removeLocation.bind(this));              //Locations: remove a location
+        rpc.addMethod(prefix+"location/list",          this.listLocations.bind(this), {}, null);               //Locations: list locations
+        rpc.addMethod(prefix+"location/create",        this.createLocation.bind(this), {}, null);              //Locations: create a location
+        rpc.addMethod(prefix+"location/edit",          this.editLocation.bind(this), {}, null);                //Locations: edit a location
+        rpc.addMethod(prefix+"location/remove",        this.removeLocation.bind(this), {}, null);              //Locations: remove a location
 
         /* Brands */
-        rpc.addMethod(prefix+"brand/list",             this.listBrands.bind(this));                  //Brands: list brands
-        rpc.addMethod(prefix+"brand/create",           this.createBrand.bind(this));                 //Brands: create a brand
-        rpc.addMethod(prefix+"brand/edit",             this.editBrand.bind(this));                   //Brands: edit a brand
-        rpc.addMethod(prefix+"brand/remove",           this.removeBrand.bind(this));                 //Brands: remove a brand
+        rpc.addMethod(prefix+"brand/list",             this.listBrands.bind(this), {}, null);                  //Brands: list brands
+        rpc.addMethod(prefix+"brand/create",           this.createBrand.bind(this), {}, null);                 //Brands: create a brand
+        rpc.addMethod(prefix+"brand/edit",             this.editBrand.bind(this), {}, null);                   //Brands: edit a brand
+        rpc.addMethod(prefix+"brand/remove",           this.removeBrand.bind(this), {}, null);                 //Brands: remove a brand
 
         /* Packages */
-        rpc.addMethod(prefix+"package/list",           this.listPackages.bind(this));                //Packages: list
-        rpc.addMethod(prefix+"package/create",         this.createPackage.bind(this));               //Packages: create a package
-        rpc.addMethod(prefix+"package/edit",           this.editPackage.bind(this));                 //Packages: edit a package
-        rpc.addMethod(prefix+"package/remove",         this.removePackage.bind(this));               //Packages: remove a package
+        rpc.addMethod(prefix+"package/list",           this.listPackages.bind(this), {}, null);                //Packages: list
+        rpc.addMethod(prefix+"package/create",         this.createPackage.bind(this), {}, null);               //Packages: create a package
+        rpc.addMethod(prefix+"package/edit",           this.editPackage.bind(this), {}, null);                 //Packages: edit a package
+        rpc.addMethod(prefix+"package/remove",         this.removePackage.bind(this), {}, null);               //Packages: remove a package
     }
 }
 

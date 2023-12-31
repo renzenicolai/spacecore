@@ -162,7 +162,7 @@ class Users {
         if (typeof params.password === "string") internalParams.password = params.password;
         if (typeof params.full_name === "string") internalParams.full_name = params.full_name;
         if (typeof params.title    === "string") internalParams.title    = params.title;
-        return this.editUser(session, internalParams);
+        return this.editUser(internalParams, session);
     }
 
     /* Methods for managing users */
@@ -216,7 +216,7 @@ class Users {
         if (typeof params.active      !== "boolean") params.active      = false;
         if (typeof params.permissions !== "object")  params.permissions = [];
 
-        let existingUsers = await this.listUsers(session, {user_name: params.user_name});
+        let existingUsers = await this.listUsers({user_name: params.user_name}, session);
         if (existingUsers.length>0) {
             throw "A user with the username '"+params.user_name+"' exists already";
         }
@@ -261,7 +261,7 @@ class Users {
         let dbTransaction = await this._opts.database.transaction("edit user "+params.user_name);
 
         if (typeof params.user_name === "string") {
-            let existingUsers = await this.listUsers(session, {user_name: params.user_name});
+            let existingUsers = await this.listUsers({user_name: params.user_name}, session);
             if (existingUsers.length > 0) {
                 throw this.error.username_in_use;
             }

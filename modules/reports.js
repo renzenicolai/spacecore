@@ -130,13 +130,13 @@ class Reports {
             prefix + "transactions",
             this.transactions.bind(this),
             {},
-            {}
+            null
         );
         rpc.addMethod(
             prefix + "summary",
             this.summary.bind(this),
             {},
-            {}
+            null
         );
     }
 }
