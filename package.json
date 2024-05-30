@@ -16,7 +16,7 @@
     "bufferutil": "^4.0.8",
     "mime-types": "^2.1.27",
     "mqtt": "^4.3.8",
-    "mysql2": "^3.6.5",
+    "mysql2": "^3.9.8",
     "nicolai-configuration": "^1.0.0",
     "nicolai-jsonrpc": "^2.1.1",
     "pdfkit": "^0.14.0",
