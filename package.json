@@ -23,7 +23,7 @@
     "unixcrypt": "^1.2.0",
     "utf-8-validate": "^6.0.3",
     "uuid": "^9.0.1",
-    "ws": "^8.16.0",
+    "ws": "^8.17.1",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
