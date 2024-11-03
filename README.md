@@ -8,6 +8,16 @@ The application is far from feature complete and still in active development. Cu
 
 Use at your own risk!
 
+## Docker
+
+Easiest way to run is in docker.
+
+Go to the docker directory and type `docker compse up`
+
+This should start an initalized db + core, at <http://localhost:8080>
+
+(you also need the web admin frontend and cli interface to actually to stuff with it)
+
 # License
 
 Copyright (c) 2023 Renze Nicolai
