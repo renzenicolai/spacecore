@@ -10,7 +10,7 @@ database=$CONFIG_DATABASE_NAME
 """ >/etc/my.cnf
 
 # wait for db
-while ! mysql; do
+while ! mysql &>/dev/null; do
     echo "Waiting for db..."
     sleep 1
 done
