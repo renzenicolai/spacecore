@@ -1,6 +1,6 @@
 FROM node:22
 
-RUN apt update && apt install -y mariadb-client
+RUN apt update && apt install -y mariadb-client whois
 
 WORKDIR /app
 

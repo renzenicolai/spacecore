@@ -35,6 +35,8 @@ services:
      - CONFIG_DATABASE_USER=db
      - CONFIG_DATABASE_PASSWORD=db
      - CONFIG_DATABASE_NAME=db
+     #initial admin password:
+     - ADMIN_PASSWORD=admin
 
     depends_on:
       - db
@@ -50,6 +52,11 @@ services:
 
      ports: 
       - 80:80
+
+     depends_on:
+      - core
+
+      
    
 
 volumes:
