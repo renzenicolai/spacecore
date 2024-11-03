@@ -27,7 +27,7 @@ const VerifyBalance = require("./verification/balance.js");
 const argv = yargs
     .option("config", {
         alias: "c",
-        description: "Configuration file path",
+        description: "Configuration file path (use empty string to disable loading and only use CONFIG_... env variables)",
         type: "string",
     })
     .help()
@@ -35,7 +35,14 @@ const argv = yargs
     .argv;
 
 var configFile = "configuration.json";
-if (argv.config) configFile = argv.config;
+
+if (argv.config !== undefined) {
+    if (argv.config === "")
+        configFile = null
+    else
+        configFile = argv.config;
+}
+
 
 // Configuration
 
@@ -49,6 +56,12 @@ if (logEnable) {
     if (logDir === null) logDir = "log/";
     logFile = fs.createWriteStream(logDir+(new Date()).getTime()+".txt");
 }
+else
+{
+    //log to stdout instead
+    logFile = process.stdout;
+}
+
 
 // Error handlers
 
@@ -98,7 +111,8 @@ var rpc = new Rpc({
     version: ""
 }, sessionManager);
 
-if (configuration.get("rpc","webserver","enabled")) {
+
+if (configuration.get("rpc", "webserver", "enabled")) {
     new Webserver({
         port: configuration.get("rpc","webserver","port"),
         host: configuration.get("rpc","webserver","listen"),
