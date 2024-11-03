@@ -10,3 +10,4 @@ log_archive
 .npm
 .cache
 configuration.json
+.vscode
