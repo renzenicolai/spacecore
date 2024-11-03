@@ -1,0 +1,50 @@
+
+name: spacecore
+
+services: 
+  db:
+   image: mariadb:11.5
+   restart: unless-stopped
+   environment: 
+    - MARIADB_AUTO_UPGRADE=1
+    - MARIADB_RANDOM_ROOT_PASSWORD=1
+    - MARIADB_USER=db
+    - MARIADB_PASSWORD=db
+    - MARIADB_DATABASE=db
+
+   volumes:
+    - db:/var/lib/mysql
+
+  core:
+    build: 
+      context: ..
+      dockerfile: docker/Dockerfile
+  
+
+
+    restart: unless-stopped
+
+    environment:
+     - CONFIG_RPC_IDENTIY="Spacecore configuration"
+     - CONFIG_RPC_WEBSERVER_ENABLED=1
+     - CONFIG_RPC_WEBSERVER_PORT=8080
+     - CONFIG_RPC_WEBSOCKET_ENABLED=1
+     - CONFIG_SESSIONS_TIMEOUT=600
+     - CONFIG_MQTT_ENABLE=0
+     - CONFIG_DATABASE_HOST=db
+     - CONFIG_DATABASE_USER=db
+     - CONFIG_DATABASE_PASSWORD=db
+     - CONFIG_DATABASE_NAME=db
+
+    depends_on:
+      - db
+
+    stop_grace_period: 0s
+
+    ports: 
+      - 8080:8080
+
+volumes:
+  db:
+
+  
