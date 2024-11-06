@@ -11,3 +11,4 @@ log_archive
 .cache
 configuration.json
 .vscode
+.idea

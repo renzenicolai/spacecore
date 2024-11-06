@@ -22,7 +22,10 @@ if ! mysqldump db users >/dev/null; then
 
     echo "Create initial admin user"
     CRYPTED_PASS=$(mkpasswd -m sha-512 "$ADMIN_PASSWORD")
-    echo "INSERT INTO users (id, user_name, full_name, title, password, active, avatar_id) VALUES (NULL, 'admin', 'admin', 'bofh', '$CRYPTED_PASS', '1', NULL);" | mysql db
+    echo "INSERT INTO users (id, user_name, full_name, title, password, active, avatar_id) VALUES (NULL, 'admin', 'admin', 'bofh', '$CRYPTED_PASS', '1', NULL);" | mysql db || exit 1
+
+    echo "Giving admin full rights..."
+    mysql <admin_rights.sql || exit 1
 
 fi
 

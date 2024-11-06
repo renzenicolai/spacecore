@@ -43,7 +43,10 @@ services:
 
     stop_grace_period: 0s
 
- 
+    #for debugging
+#    ports:
+#     - 8080:8080
+#
   web:
      build: nginx-build
 
