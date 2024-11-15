@@ -18,7 +18,7 @@ services:
   core:
     build: 
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/spacecore-build/Dockerfile
   
 
 
@@ -35,14 +35,32 @@ services:
      - CONFIG_DATABASE_USER=db
      - CONFIG_DATABASE_PASSWORD=db
      - CONFIG_DATABASE_NAME=db
+     #initial admin password:
+     - ADMIN_PASSWORD=admin
 
     depends_on:
       - db
 
     stop_grace_period: 0s
 
-    ports: 
-      - 8080:8080
+    #for debugging
+#    ports:
+#     - 8080:8080
+#
+  web:
+     build: nginx-build
+
+     restart: unless-stopped
+     stop_grace_period: 0s
+
+     ports: 
+      - 80:80
+
+     depends_on:
+      - core
+
+      
+   
 
 volumes:
   db:
