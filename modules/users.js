@@ -1,9 +1,41 @@
 "use strict";
 
-const unixcrypt = require('unixcrypt');
-const crypto   = require('crypto');
-const mime     = require('mime-types');
-const chalk    = require('chalk');
+const unixcrypt = require("unixcrypt");
+
+class User {
+    constructor(opts) {
+        this.id = opts.id;
+        this.user_name = opts.user_name;
+        this.full_name = opts.full_name;
+        this.title = opts.title;
+        this.avatar = opts.avatar;
+        this.permissions = opts.permissions;
+    }
+
+    serialize() {
+        return {
+            id: this.id,
+            user_name: this.user_name,
+            full_name: this.full_name,
+            title: this.title,
+            avatar: this.avatar,
+            permissions: this.permissions
+        };
+    }
+
+    getPermissions() {
+        return this.permissions;
+    }
+
+    checkPermission(method) {
+        for (let index = 0; index < this.permissions.length; index++) {
+            if (method === this.permissions[index]) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
 
 class Users {
 	constructor(opts) {

@@ -1,17 +1,12 @@
 "use strict";
 
-const mime   = require('mime-types');
-const fs     = require('fs');
-const stream = require('stream');
-const chalk  = require('chalk');
-
 class Reports {
     constructor(opts) {
         this._opts = Object.assign({
             database: null,
-            table: 'invoices',
-            table_rows: 'invoice_rows',
-            table_rows_stock_mapping: 'product_stock_mapping',
+            table: "invoices",
+            table_rows: "invoice_rows",
+            table_rows_stock_mapping: "product_stock_mapping",
             persons: null,
             products: null,
             invoices: null
@@ -23,13 +18,13 @@ class Reports {
         this._table                    = this._opts.database.table(this._opts.table);
         this._table_rows               = this._opts.database.table(this._opts.table_rows);
     }
-    
-    async transactions(session, year) {
+
+    async transactions(year, session) {
         let timestamp_start = Math.floor(Date.parse("01 Jan " + (year    ) + " 00:00:00 UTC+1") / 1000);
         let timestamp_end   = Math.floor(Date.parse("01 Jan " + (year + 1) + " 00:00:00 UTC+1") / 1000);
-        let transactions = await this._opts.invoices.list(session, {"timestamp": {">=": timestamp_start, "<": timestamp_end}});
-        
-        let relation_rows = await this._opts.persons.list(session, {});
+        let transactions = await this._opts.invoices.list({"timestamp": {">=": timestamp_start, "<": timestamp_end}}, session);
+
+        let relation_rows = await this._opts.persons.list({}, session);
         let relations = {};
         for (let index = 0; index < relation_rows.length; index++) {
             let relation = relation_rows[index];
@@ -62,22 +57,21 @@ class Reports {
             name: "transactions-" + year + ".csv",
             mime: "text/csv",
             size: file.length,
-            data: file.toString('base64')
+            data: file.toString("base64")
         };
     }
-    
-    async summary(session, year) {
+
+    async summary(year, session) {
         let timestamp_start = Math.floor(Date.parse("01 Jan " + (year    ) + " 00:00:00 UTC+1") / 1000);
         let timestamp_end   = Math.floor(Date.parse("01 Jan " + (year + 1) + " 00:00:00 UTC+1") / 1000);
-        let relation_rows = await this._opts.persons.list(session, {});
+        let relation_rows = await this._opts.persons.list({}, session);
         let relations = {};
-        let transaction_this_year_promises = [];
-        let transaction_after_promises = [];
+
         for (let index = 0; index < relation_rows.length; index++) {
-            let relation = relation_rows[index]
+            let relation = relation_rows[index];
             relations[relation.id] = relation;
-            relations[relation.id].transactions_this_year_promise = this._opts.invoices.list(session, {"person_id": {"=": relation.id}, "timestamp": {">=": timestamp_start, "<": timestamp_end}});
-            relations[relation.id].transactions_after_promise = this._opts.invoices.list(session, {"person_id": {"=": relation.id}, "timestamp": {">=": timestamp_end}});
+            relations[relation.id].transactions_this_year_promise = this._opts.invoices.list({"person_id": {"=": relation.id}, "timestamp": {">=": timestamp_start, "<": timestamp_end}}, session);
+            relations[relation.id].transactions_after_promise = this._opts.invoices.list({"person_id": {"=": relation.id}, "timestamp": {">=": timestamp_end}}, session);
         }
         for (let index in relations) {
             let transactions_this_year = await relations[index].transactions_this_year_promise;
@@ -126,14 +120,24 @@ class Reports {
             name: "summary-" + year + ".csv",
             mime: "text/csv",
             size: file.length,
-            data: file.toString('base64')
+            data: file.toString("base64")
         };
     }
-    
+
     registerRpcMethods(rpc, prefix="report") {
         if (prefix!=="") prefix = prefix + "/";
-        rpc.addMethod(prefix+"transactions", this.transactions.bind(this));
-        rpc.addMethod(prefix+"summary", this.summary.bind(this));
+        rpc.addMethod(
+            prefix + "transactions",
+            this.transactions.bind(this),
+            {},
+            null
+        );
+        rpc.addMethod(
+            prefix + "summary",
+            this.summary.bind(this),
+            {},
+            null
+        );
     }
 }
 

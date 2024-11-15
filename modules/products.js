@@ -1,6 +1,8 @@
 "use strict";
 
-const Tasks = require('../lib/tasks.js');
+const Tasks = require("../lib/tasks.js");
+
+const fs = require("fs");
 
 class Products {
 	constructor(opts) {

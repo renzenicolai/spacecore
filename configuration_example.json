@@ -1,6 +1,6 @@
 {
 	"rpc": {
-		"identity": "Spacecore development server",
+		"identity": "Spacecore example configuration",
 		"webserver": {
 			"enabled": true,
 			"listen": "0.0.0.0",
@@ -23,7 +23,7 @@
 	"database": {
 		"host": "127.0.0.1",
 		"user": "spacecore",
-		"password": "CV5U3Pb4si1S6h9x",
-		"name": "spacecore"
+		"password": "mypassword",
+		"name": "mydatabase"
 	}
 }

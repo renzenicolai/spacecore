@@ -1,28 +1,32 @@
 {
   "name": "spacecore-server",
   "version": "1.0.0",
-  "description": "Financial management software for hackerspaces",
+  "description": "Management software for hackerspaces",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
+  },
+  "directories": {
+    "test": "test"
   },
   "author": "Renze Nicolai",
-  "license": "GPLv3",
+  "license": "MIT",
   "dependencies": {
-    "chalk": "^4.1.0",
+    "bufferutil": "^4.0.8",
     "mime-types": "^2.1.27",
-    "mqtt": "^3.0.0",
-    "mysql2": "^2.2.5",
-    "pdfkit": "^0.11.0",
-    "request": "^2.88.0",
-    "unixcrypt": "^1.0.13",
-    "uuid": "^7.0.3",
-    "ws": "^7.4.0",
-    "yargs": "^15.4.1"
+    "mqtt": "^4.3.8",
+    "mysql2": "^3.6.5",
+    "nicolai-configuration": "^1.1.0",
+    "nicolai-jsonrpc": "^2.1.1",
+    "pdfkit": "^0.14.0",
+    "unixcrypt": "^1.2.0",
+    "utf-8-validate": "^6.0.3",
+    "uuid": "^9.0.1",
+    "ws": "^8.16.0",
+    "yargs": "^17.7.2"
   },
-  "optionalDependencies": {
-    "bufferutil": "^4.0.0",
-    "utf-8-validate": "^5.0.1"
+  "devDependencies": {
+    "mocha": "^10.2.0"
   }
 }
